@@ -86,6 +86,11 @@ jQuery(document).ready(function () {
 		globalMuted = !globalMuted;
 		player.muted(globalMuted);
 		updateMuteIcon(slide, globalMuted);
+
+		// Pulse animation
+		var btn = jQuery(this);
+		btn.addClass('wpst-pulse');
+		setTimeout(function () { btn.removeClass('wpst-pulse'); }, 300);
 	});
 
 	function videojs_init() {
@@ -237,11 +242,13 @@ jQuery(document).ready(function () {
 	jQuery(document).on('click', '.enlight-content', function (e) {
 		swiper.disable();
 		jQuery('.wpst-progress-bar').addClass('hidden');
+		jQuery(this).parents('.swiper-slide').addClass('wpst-fullscreen');
 	});
 
 	jQuery(document).on('click', '.close-fullscreen', function (e) {
 		swiper.enable();
 		jQuery('.wpst-progress-bar').removeClass('hidden');
+		jQuery(this).parents('.swiper-slide').removeClass('wpst-fullscreen');
 	});
 
 	// Comments

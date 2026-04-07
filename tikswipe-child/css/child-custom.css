@@ -1,9 +1,70 @@
-/* Hide header menu (display switcher + hamburger) on home */
+/* ========================================
+   TikSwipe Child — Custom Overrides
+   ======================================== */
+
+/* Font: Inter instead of Poppins */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* ========================================
+   Border-radius system: 4px small, 8px card, 16px modal
+   ======================================== */
+.button,
+.button-color,
+.button-outline,
+.button-outline-grey,
+input,
+textarea,
+select,
+.tags-list a,
+.wpst-tags-more,
+.search-pills a {
+    border-radius: 4px !important;
+}
+
+.media-box,
+.alert,
+.dropzone,
+.dropzone-box {
+    border-radius: 8px !important;
+}
+
+.slideup-box,
+.comment-box,
+.modal-content {
+    border-radius: 16px !important;
+}
+
+/* ========================================
+   Standardize input heights to 46px
+   ======================================== */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
+input[type="tel"],
+input[type="number"],
+textarea,
+select,
+#searchform input.form-control,
+#searchform #searchsubmit {
+    height: 46px !important;
+}
+
+/* ========================================
+   Header: hide menu on home
+   ======================================== */
 body.media-body header .menu {
     display: none !important;
 }
 
-/* TikTok-style gradient from footer up to content area */
+/* ========================================
+   TikTok gradient — stronger + hide in fullscreen
+   ======================================== */
 body.media-body footer,
 body.media-body footer .footer-menu {
     background-color: transparent !important;
@@ -15,13 +76,100 @@ body.media-body .swiper-slide::after {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 45%;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
+    height: 50%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 40%, rgba(0, 0, 0, 0) 100%);
     z-index: 1;
     pointer-events: none;
+    transition: opacity 0.2s ease;
 }
 
-/* Hide swiper nav arrows on mobile */
+/* Hide gradient when in fullscreen mode */
+body.media-body .swiper-slide.wpst-fullscreen::after {
+    opacity: 0 !important;
+}
+
+/* ========================================
+   Footer: reduced to 50px
+   ======================================== */
+.footer-menu {
+    height: 50px !important;
+}
+
+.footer-menu a {
+    height: 50px !important;
+    gap: 4px !important;
+}
+
+.footer-menu svg {
+    width: 24px !important;
+    height: 24px !important;
+}
+
+.footer-menu a small {
+    font-size: 9px !important;
+}
+
+/* ========================================
+   Sidebar: compact (45px wide, 10px gap)
+   ======================================== */
+.swiper-side {
+    width: 45px !important;
+    right: 15px !important;
+}
+
+.swiper-side .enlight-content {
+    margin-top: 40px !important;
+}
+
+.swiper-side .enlight-content svg,
+.swiper-side .wpst-mute-toggle svg {
+    width: 26px !important;
+    height: 26px !important;
+}
+
+.swiper-side .wpst-mute-toggle,
+.swiper-side .avatar-img,
+.swiper-side .add-to-fav,
+.swiper-side .views-icon,
+.swiper-side .copy-link {
+    margin-top: 10px !important;
+}
+
+.swiper-side .add-to-fav svg,
+.swiper-side .views-icon svg,
+.swiper-side .copy-link svg {
+    width: 28px !important;
+    height: 28px !important;
+}
+
+.swiper-side .avatar-img img {
+    width: 36px !important;
+    height: 36px !important;
+    border-width: 2px !important;
+}
+
+.swiper-side .avatar-img svg {
+    width: 36px !important;
+    height: 36px !important;
+}
+
+/* ========================================
+   Content infos: lower position, smaller title
+   ======================================== */
+.single-content-infos {
+    bottom: 60px !important;
+    max-width: calc(100% - 70px) !important;
+}
+
+.single-content-infos h1,
+.single-content-infos h2 {
+    font-size: 16px !important;
+    line-height: 1.4 !important;
+}
+
+/* ========================================
+   Hide swiper nav arrows on mobile
+   ======================================== */
 @media (max-width: 1024px) {
     .swiper-button-prev,
     .swiper-button-next {
@@ -29,63 +177,122 @@ body.media-body .swiper-slide::after {
     }
 }
 
-/* Mute/Unmute toggle button */
+/* ========================================
+   Mute toggle
+   ======================================== */
 .swiper-side .wpst-mute-toggle {
-    margin-top: 15px;
     cursor: pointer;
+    transition: transform 0.15s ease;
 }
 
-/* Hide comment button */
+/* Mute pulse animation */
+.swiper-side .wpst-mute-toggle.wpst-pulse {
+    animation: wpstPulse 0.3s ease;
+}
+
+/* ========================================
+   Hide comment button
+   ======================================== */
 .swiper-side .comment-icon {
     display: none !important;
 }
 
-/* Views icon in sidebar (replaces comment icon position) */
+/* ========================================
+   Views icon — count BELOW the eye
+   ======================================== */
 .swiper-side .views-icon {
-    margin-top: 15px;
     position: relative;
     display: block;
+    text-align: center;
 }
 
 .swiper-side .views-icon span {
-    position: absolute;
-    top: 0;
-    right: 10px;
-    display: inline-block;
-    color: #fff;
-    padding: 1px 5px;
-    line-height: 1.3;
-    text-align: center;
-    font-weight: 500;
-    font-size: 12px;
+    position: relative;
+    top: auto;
+    right: auto;
+    display: block;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 600;
+    font-size: 11px;
+    line-height: 1;
+    margin-top: 2px;
 }
 
-/* Tags: show only 3 + "more" button */
+/* ========================================
+   Like pop animation
+   ======================================== */
+.swiper-side .add-to-fav,
+.swiper-side .fav-added {
+    transition: transform 0.15s ease;
+}
+
+.swiper-side .add-to-fav.wpst-pop,
+.swiper-side .fav-added.wpst-pop {
+    animation: wpstPop 0.35s ease;
+}
+
+@keyframes wpstPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+}
+
+@keyframes wpstPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* ========================================
+   Tags: softer borders, +N animation
+   ======================================== */
+.tags-list a {
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.tags-list a small {
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
 .wpst-tag-hidden {
     display: none;
 }
 
 .wpst-tag-hidden.wpst-tags-expanded {
     display: inline-block;
+    animation: wpstFadeIn 0.3s ease;
+}
+
+@keyframes wpstFadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .wpst-tags-more {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
     color: #fff;
     padding: 3px 10px;
-    border-radius: 3px;
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     text-decoration: none;
+    transition: background 0.2s ease;
 }
 
 .wpst-tags-more:hover {
-    background: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.3);
 }
 
+/* ========================================
+   Muted numbers hierarchy
+   ======================================== */
+.swiper-side .copy-link small {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
 
-/* Progress bar outside fullscreen */
+/* ========================================
+   Progress bar: brand color, bigger touch area
+   ======================================== */
 .wpst-progress-bar {
     position: absolute;
     bottom: 0;
@@ -93,19 +300,23 @@ body.media-body .swiper-slide::after {
     width: 100%;
     height: 3px;
     background: rgba(255, 255, 255, 0.2);
-    z-index: 7;
+    z-index: 8;
     cursor: pointer;
     transition: height 0.15s ease;
+    /* Larger touch target via padding */
+    padding-top: 18px;
+    margin-top: -18px;
+    box-sizing: content-box;
 }
 
 .wpst-progress-bar:hover {
-    height: 6px;
+    height: 5px;
 }
 
 .wpst-progress-played {
     height: 100%;
     width: 0%;
-    background: #fff;
+    background: #fd0131;
     pointer-events: none;
     position: relative;
 }
@@ -118,7 +329,7 @@ body.media-body .swiper-slide::after {
     transform: translateY(-50%);
     width: 10px;
     height: 10px;
-    background: #fff;
+    background: #fd0131;
     border-radius: 50%;
     opacity: 0;
     transition: opacity 0.15s ease;
@@ -128,12 +339,29 @@ body.media-body .swiper-slide::after {
     opacity: 1;
 }
 
-/******************************/
-/* Search & Favorites — dark  */
-/* TikTok 3-col vertical grid */
-/******************************/
+/* ========================================
+   Skeleton loading for grids
+   ======================================== */
+@keyframes wpstShimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+}
 
-/* Dark background for search & favorites pages */
+.wpst-skeleton {
+    background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+    background-size: 400px 100%;
+    animation: wpstShimmer 1.2s ease-in-out infinite;
+    border-radius: 4px;
+}
+
+.wpst-skeleton-item {
+    padding-bottom: 177.78%;
+    position: relative;
+}
+
+/* ========================================
+   Search & Favorites — dark theme
+   ======================================== */
 body.page-template-template-search-php,
 body.page-template-template-favorites-php {
     background-color: #000;
@@ -149,6 +377,17 @@ body.page-template-template-search-php main,
 body.page-template-template-favorites-php main {
     background-color: #000;
     color: #fff;
+}
+
+/* Dark header/logo area */
+body.page-template-template-search-php header,
+body.page-template-template-favorites-php header {
+    background-color: #000 !important;
+}
+
+body.page-template-template-search-php .logo,
+body.page-template-template-favorites-php .logo {
+    background-color: #000;
 }
 
 /* Favorites title */
@@ -175,11 +414,11 @@ body.page-template-template-search-php .search-pills a.active {
     color: #fff;
 }
 
+/* Search input dark */
 body.page-template-template-search-php #searchform input.form-control {
     background-color: #222;
     border-color: #333;
     color: #fff;
-    height: 50px;
 }
 
 body.page-template-template-search-php #searchform input.form-control::placeholder {
@@ -189,14 +428,39 @@ body.page-template-template-search-php #searchform input.form-control::placehold
 body.page-template-template-search-php #searchform #searchsubmit {
     background-color: #222;
     border-color: #333;
-    height: 50px;
 }
 
 body.page-template-template-search-php #searchform #searchsubmit svg path {
     fill: #fff;
 }
 
-/* Dark tabs for search & favorites */
+/* Search clear button */
+#searchform {
+    position: relative;
+}
+
+#searchform .wpst-search-clear {
+    position: absolute;
+    right: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #777;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 5px 10px;
+    display: none;
+    z-index: 2;
+    line-height: 1;
+    height: auto !important;
+}
+
+#searchform .wpst-search-clear:hover {
+    color: #fff;
+}
+
+/* Dark tabs */
 body.page-template-template-search-php .tab-wrapper,
 body.page-template-template-favorites-php .tab-wrapper {
     background-color: #000;
@@ -227,21 +491,20 @@ body.page-template-template-favorites-php .creator-tabs .count {
 body.page-template-template-search-php .content-wrapper,
 body.page-template-template-favorites-php .content-wrapper {
     background-color: #000;
-    padding-bottom: 65px;
+    padding-bottom: 55px;
 }
 
-/* TikTok-style 3-column vertical grid */
+/* TikTok 3-column vertical grid */
 body.page-template-template-search-php .tab-content-grid,
 body.page-template-template-favorites-php .tab-content-grid {
     grid-template-columns: repeat(3, 1fr);
-    gap: 1px;
+    gap: 2px;
     border-top: none;
 }
 
-/* Tall vertical ratio like TikTok thumbnails (9:16 aspect) */
 body.page-template-template-search-php .media-box,
 body.page-template-template-favorites-php .media-box {
-    padding-bottom: 177.78%; /* 16/9 ratio */
+    padding-bottom: 177.78%;
 }
 
 body.page-template-template-search-php .tab-content-grid .media-box img,
@@ -249,7 +512,6 @@ body.page-template-template-favorites-php .tab-content-grid .media-box img {
     object-fit: cover;
 }
 
-/* Remove the span-2 on first item for uniform grid */
 body.page-template-template-search-php .tab-content-grid li:first-child,
 body.page-template-template-favorites-php .tab-content-grid li:first-child {
     grid-column: span 1;
@@ -272,26 +534,34 @@ body.page-template-template-favorites-php .alert-info {
     color: #aaa;
 }
 
-/* Dark footer on these pages */
+/* ========================================
+   Footer fix for search/favorites: proper position
+   ======================================== */
 body.page-template-template-search-php footer,
 body.page-template-template-favorites-php footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-width: 1200px;
-    margin: 0 auto;
-    z-index: 10;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 100% !important;
+    max-width: 1200px !important;
+    z-index: 10 !important;
 }
 
 body.page-template-template-search-php .footer-menu,
 body.page-template-template-favorites-php .footer-menu {
-    background-color: rgba(0, 0, 0, 0.85) !important;
+    background-color: rgba(0, 0, 0, 0.95) !important;
 }
 
+/* Footer icons: use currentColor for proper dark/light */
 body.page-template-template-search-php .footer-menu svg path,
 body.page-template-template-favorites-php .footer-menu svg path {
-    fill: #fff;
+    fill: currentColor;
+}
+
+body.page-template-template-search-php .footer-menu a,
+body.page-template-template-favorites-php .footer-menu a {
+    color: #fff;
 }
 
 body.page-template-template-search-php .footer-menu #fav-menu svg path,
@@ -305,7 +575,13 @@ body.page-template-template-favorites-php .footer-menu a small {
     color: #fff;
 }
 
-/* Remove fav button dark styling */
 body.page-template-template-favorites-php .remove-fav svg path {
     fill: #fff;
+}
+
+/* ========================================
+   Lazy loading on grid thumbnails
+   ======================================== */
+.media-box img[loading="lazy"] {
+    background-color: #1a1a1a;
 }

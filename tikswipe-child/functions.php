@@ -21,11 +21,14 @@ function tikswipe_child_enqueue_styles() {
 		array( 'wpst-main-css' ),
 		wp_get_theme()->get( 'Version' ) . '.' . filemtime( get_stylesheet_directory() . '/css/child-custom.css' )
 	);
+
+	// Dequeue parent Poppins font.
+	wp_dequeue_style( 'wpst-font' );
 }
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_styles', 20 );
 
 /**
- * Replace parent JS files with child theme versions (player-init.js and loadmore.js).
+ * Replace parent JS files with child theme versions.
  */
 function tikswipe_child_enqueue_scripts() {
 	$js_version = wp_get_theme()->get( 'Version' );
@@ -43,7 +46,6 @@ function tikswipe_child_enqueue_scripts() {
 			true
 		);
 
-		// Re-localize since we deregistered.
 		wp_localize_script(
 			'player-init-js',
 			'wpst_player_init_var',
@@ -60,7 +62,6 @@ function tikswipe_child_enqueue_scripts() {
 	if ( wp_script_is( 'loadmore-js', 'enqueued' ) || wp_script_is( 'loadmore-js', 'registered' ) ) {
 		$loadmore_data = null;
 
-		// Capture existing localization data before deregistering.
 		global $wp_scripts;
 		if ( isset( $wp_scripts->registered['loadmore-js'] ) ) {
 			$loadmore_data = $wp_scripts->registered['loadmore-js']->extra;
@@ -77,13 +78,12 @@ function tikswipe_child_enqueue_scripts() {
 			true
 		);
 
-		// Re-apply localization data from parent.
 		if ( $loadmore_data && isset( $loadmore_data['data'] ) ) {
 			wp_add_inline_script( 'loadmore-js', $loadmore_data['data'], 'before' );
 		}
 	}
 
-	// Inline JS for tags expand toggle.
+	// Inline JS: tags expand + search clear + mute pulse.
 	wp_add_inline_script( 'wpst-main-js', "
 		jQuery(document).on('click', '.wpst-tags-more', function(e) {
 			e.preventDefault();
@@ -91,13 +91,35 @@ function tikswipe_child_enqueue_scripts() {
 			tagsList.find('.wpst-tag-hidden').addClass('wpst-tags-expanded').show();
 			jQuery(this).remove();
 		});
+
+		// Search clear button
+		jQuery(document).on('input', '#searchform #s', function() {
+			var clearBtn = jQuery(this).closest('#searchform').find('.wpst-search-clear');
+			if (jQuery(this).val().length > 0) {
+				clearBtn.show();
+			} else {
+				clearBtn.hide();
+			}
+		});
+		jQuery(document).on('click', '.wpst-search-clear', function(e) {
+			e.preventDefault();
+			var form = jQuery(this).closest('#searchform');
+			form.find('#s').val('').focus();
+			jQuery(this).hide();
+		});
+		// Show clear on page load if value present
+		jQuery(function() {
+			var searchInput = jQuery('#searchform #s');
+			if (searchInput.length && searchInput.val().length > 0) {
+				searchInput.closest('#searchform').find('.wpst-search-clear').show();
+			}
+		});
 	" );
 }
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
 
 /**
  * Override loadmore query on single posts to use category-based related videos.
- * Runs after parent enqueue (priority 22) to re-localize the loadmore_ajax_var.
  */
 function tikswipe_child_single_loadmore_query() {
 	if ( ! is_single() ) {
@@ -106,14 +128,13 @@ function tikswipe_child_single_loadmore_query() {
 
 	global $post;
 	$ads_displaying_frequency = get_theme_mod( 'wpst_ads_displaying_frequency', 5 );
-	$random_posts             = get_theme_mod( 'wpst_random_posts', false );
 	$post_cats                = wp_get_post_categories( $post->ID, array( 'fields' => 'ids' ) );
 
 	$loadmore_single_args = array(
 		'post_type'      => 'post',
 		'post_status'    => 'publish',
 		'posts_per_page' => $ads_displaying_frequency,
-		'orderby'        => $random_posts ? 'RAND(' . get_random_seed() . ')' : 'ID',
+		'orderby'        => 'RAND(' . get_random_seed() . ')',
 		'order'          => 'DESC',
 		'post__not_in'   => array( $post->ID ),
 		'tax_query'      => array(
@@ -137,7 +158,6 @@ function tikswipe_child_single_loadmore_query() {
 
 	$wp_query = new WP_Query( $loadmore_single_args );
 
-	// Override the localized data for loadmore.
 	wp_localize_script(
 		'loadmore-js',
 		'loadmore_ajax_var',
@@ -155,16 +175,14 @@ function tikswipe_child_single_loadmore_query() {
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_single_loadmore_query', 22 );
 
 /**
- * Fix randomization: regenerate seed on every new page load.
- * The parent theme stores a seed in $_SESSION that never changes.
- * We force a new seed each time the user arrives at any swipe view.
+ * Force randomization: always generate fresh seed on every page load.
+ * Ignores the customizer toggle — child theme always randomizes.
  */
 function tikswipe_child_reset_random_seed() {
-	if ( ! is_home() && ! is_front_page() && ! is_category() && ! is_tag() ) {
+	if ( ! is_home() && ! is_front_page() && ! is_category() && ! is_tag() && ! is_single() ) {
 		return;
 	}
 
-	// Only reset if we're not loading more via AJAX (paged > 1 should keep the same seed).
 	$paged = get_query_var( 'paged', 0 );
 	if ( $paged > 1 ) {
 		return;
@@ -174,28 +192,48 @@ function tikswipe_child_reset_random_seed() {
 		session_start();
 	}
 
-	// Always generate a fresh seed on page arrival.
 	$_SESSION['random_seed'] = wp_rand( 1, 999999 );
 }
 add_action( 'template_redirect', 'tikswipe_child_reset_random_seed', 1 );
 
 /**
- * Extend randomization to category and tag archives.
- * The parent only randomizes home/front_page/template-vids/template-pics.
+ * Force random ordering on all swipe views (home, categories, tags).
+ * Overrides parent which only runs when customizer toggle is on.
  */
-function tikswipe_child_randomize_archives( $query ) {
+function tikswipe_child_force_random_order( $query ) {
 	if ( is_admin() ) {
 		return;
 	}
 
-	$random_posts = get_theme_mod( 'wpst_random_posts', false );
-	if ( ! $random_posts ) {
-		return;
-	}
-
-	if ( ( is_category() || is_tag() ) && $query->is_main_query() ) {
+	if ( $query->is_main_query() && ( is_home() || is_front_page() || is_category() || is_tag() ) ) {
 		$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
 		$query->set( 'order', 'DESC' );
 	}
 }
-add_action( 'pre_get_posts', 'tikswipe_child_randomize_archives', 2 );
+add_action( 'pre_get_posts', 'tikswipe_child_force_random_order', 99 );
+
+/**
+ * Override searchform to add clear (X) button.
+ */
+function tikswipe_child_searchform( $form ) {
+	$form = '<form method="get" id="searchform" action="' . esc_url( home_url( '/' ) ) . '" role="search">
+		<div class="d-flex" style="position:relative;">
+			<input class="field form-control" id="s" name="s" placeholder="' . esc_attr__( 'Search...', 'wpst' ) . '" type="text" value="' . get_search_query() . '">
+			<button type="button" class="wpst-search-clear" aria-label="Clear">&times;</button>
+			<span class="input-group-append">
+				<button type="submit" id="searchsubmit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style="position: relative; top: 2px;"><path fill="currentColor" clip-rule="evenodd" fill-rule="evenodd" d="m9.952 1c-4.944 0-8.952 4.009-8.952 8.954 0 4.945 4.008 8.954 8.952 8.954 2.012 0 3.869-0.664 5.364-1.785l5.65 5.651c0.144 0.144 0.3391 0.2248 0.5426 0.2248 0.2036 0 0.3987-0.08082 0.5426-0.2248l0.7234-0.7236c0.2997-0.2997 0.2997-0.7857 0-1.085l-5.651-5.652c1.118-1.494 1.78-3.35 1.78-5.36 0-4.945-4.008-8.954-8.952-8.954zm5.606 13.81c1.128-1.302 1.811-3 1.811-4.858 0-4.098-3.321-7.419-7.417-7.419-4.097 0-7.418 3.322-7.418 7.419 0 4.098 3.321 7.419 7.418 7.419 1.858 0 3.557-0.6835 4.858-1.813 0.0046-0.0049 0.0093-0.0097 0.01397-0.01443l0.7234-0.7236c0.0035-0.0035 0.0069-0.0068 0.01044-0.01021z" style="stroke-width: 0.7674;"></path></svg></button>
+			</span>
+		</div>
+	</form>';
+	return $form;
+}
+add_filter( 'get_search_form', 'tikswipe_child_searchform' );
+
+/**
+ * Add lazy loading to grid thumbnails.
+ */
+function tikswipe_child_lazy_load_thumbs( $attr, $attachment, $size ) {
+	$attr['loading'] = 'lazy';
+	return $attr;
+}
+add_filter( 'wp_get_attachment_image_attributes', 'tikswipe_child_lazy_load_thumbs', 10, 3 );
