@@ -72,6 +72,14 @@ select,
 }
 
 /* ========================================
+   Hide video duration (show only in fullscreen via Video.js controls)
+   ======================================== */
+.post-datas,
+.media-box .video-duration {
+    display: none !important;
+}
+
+/* ========================================
    Smaller close button in fullscreen
    ======================================== */
 .close-fullscreen svg {
