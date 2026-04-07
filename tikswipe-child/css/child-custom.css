@@ -374,28 +374,30 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
 }
 
 /* ========================================
-   Progress bar: fixed above footer, brand color, large touch area
+   Progress bar: FIXED position, sits directly above footer
    ======================================== */
 .wpst-progress-bar {
-    position: absolute;
+    position: fixed;
     bottom: 50px;
     left: 0;
-    width: 100%;
+    right: 0;
     height: 4px;
     background: rgba(255, 255, 255, 0.15);
-    z-index: 9;
+    z-index: 99;
     cursor: pointer;
     transition: height 0.15s ease;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
-/* Invisible touch area — extends only downward into footer zone, not up into text */
+/* Invisible touch area — tall enough to grab easily */
 .wpst-progress-bar::before {
     content: '';
     position: absolute;
-    top: -10px;
-    bottom: -10px;
+    top: -12px;
+    bottom: -12px;
     left: 0;
-    width: 100%;
+    right: 0;
 }
 
 .wpst-progress-bar:hover {
@@ -723,6 +725,13 @@ body.page-template-template-favorites-php .remove-fav svg path {
 body.page-template-template-search-php header,
 body.search header,
 body.page-template-template-favorites-php header {
+    display: none !important;
+}
+
+/* Hide progress bar on grid pages */
+body.page-template-template-search-php #wpst-global-progress,
+body.search #wpst-global-progress,
+body.page-template-template-favorites-php #wpst-global-progress {
     display: none !important;
 }
 

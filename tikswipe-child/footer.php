@@ -25,6 +25,10 @@ $is_search = is_search() || is_page_template( 'template-search.php' );
 $is_fav    = is_page_template( 'template-favorites.php' );
 ?>
 
+	<div id="wpst-global-progress" class="wpst-progress-bar">
+		<div class="wpst-progress-played"></div>
+	</div>
+
 	<footer>
 		<div class="footer-menu footer-menu-<?php echo $menu_items; ?>">
 

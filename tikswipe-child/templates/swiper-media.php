@@ -94,11 +94,5 @@ if ( 'video' === $post_format ) {
 
 	<?php ob_end_flush(); ?>
 
-	<?php if ( 'video' === $post_format ) : ?>
-		<div class="wpst-progress-bar">
-			<div class="wpst-progress-played"></div>
-		</div>
-	<?php endif; ?>
-
 	<?php get_template_part( 'templates/post', 'content' ); ?>
 </div>
