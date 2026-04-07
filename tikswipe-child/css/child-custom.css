@@ -88,15 +88,15 @@ select,
 }
 
 /* ========================================
-   Fullscreen controls: close + zoom, bottom-left, small circles
+   Fullscreen controls: expand + close, right side, horizontal, black bg
    ======================================== */
 .wpst-fullscreen-controls {
     display: none;
     position: absolute;
     bottom: 80px;
-    left: 15px;
+    right: 15px;
     z-index: 3;
-    flex-direction: column;
+    flex-direction: row;
     gap: 10px;
 }
 
@@ -105,10 +105,10 @@ select,
     display: flex !important;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.6);
     border: none;
     outline: 0;
     cursor: pointer;
@@ -467,7 +467,7 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
    ======================================== */
 .wpst-progress-bar {
     position: fixed;
-    bottom: 50px;
+    bottom: 56px;
     left: 0;
     right: 0;
     height: 4px;
@@ -861,6 +861,40 @@ body.page-template-template-favorites-php .tab-content-grid {
 body.page-template-template-search-php main,
 body.search main {
     padding-top: 0;
+}
+
+/* ========================================
+   Grid: views count with border like categories
+   ======================================== */
+body.page-template-template-search-php .media-box .post-views,
+body.search .media-box .post-views,
+body.page-template-template-favorites-php .media-box .post-views {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+}
+
+/* ========================================
+   Fix white bar below bottom nav on search/favorites
+   ======================================== */
+body.page-template-template-search-php,
+body.search,
+body.page-template-template-favorites-php {
+    background-color: #000 !important;
+}
+
+body.page-template-template-search-php #content,
+body.search #content,
+body.page-template-template-favorites-php #content {
+    background-color: #000 !important;
+}
+
+body.page-template-template-search-php main,
+body.search main,
+body.page-template-template-favorites-php main {
+    padding-bottom: 60px !important;
 }
 
 /* ========================================

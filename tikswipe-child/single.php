@@ -12,8 +12,9 @@ get_header(); ?>
 					$paged                    = ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1;
 					$ads_displaying_frequency = get_theme_mod( 'wpst_ads_displaying_frequency', 5 );
 
-					// Get the current post's categories for related videos.
+					// Get ALL categories from the current post for related videos.
 					$post_cats = wp_get_post_categories( $post->ID, array( 'fields' => 'ids' ) );
+					$post_tags = wp_get_post_tags( $post->ID, array( 'fields' => 'ids' ) );
 
 					$args = array(
 						'post_type'      => 'post',
@@ -23,22 +24,22 @@ get_header(); ?>
 						'order'          => 'DESC',
 						'post__not_in'   => array( $post->ID ),
 						'tax_query'      => array(
-							'relation' => 'AND',
 							array(
 								'taxonomy' => 'post_format',
 								'field'    => 'slug',
-								'terms'    => array(
-									'post-format-' . get_post_format( $post->ID ),
-								),
+								'terms'    => array( 'post-format-video', 'post-format-image' ),
 								'operator' => 'IN',
 							),
 						),
 						'paged'          => $paged,
 					);
 
-					// Add category filter if the post has categories.
+					// Use category OR tag matching to widen the related pool.
 					if ( ! empty( $post_cats ) ) {
 						$args['category__in'] = $post_cats;
+					}
+					if ( ! empty( $post_tags ) ) {
+						$args['tag__in'] = $post_tags;
 					}
 
 					$wp_query = new WP_Query( $args );

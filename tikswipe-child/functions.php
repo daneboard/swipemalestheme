@@ -174,6 +174,7 @@ function tikswipe_child_override_loadmore() {
 	if ( is_single() ) {
 		global $post;
 		$post_cats = wp_get_post_categories( $post->ID, array( 'fields' => 'ids' ) );
+		$post_tags = wp_get_post_tags( $post->ID, array( 'fields' => 'ids' ) );
 
 		$args = array(
 			'post_type'      => 'post',
@@ -183,7 +184,6 @@ function tikswipe_child_override_loadmore() {
 			'order'          => 'DESC',
 			'post__not_in'   => array( $post->ID ),
 			'tax_query'      => array(
-				'relation' => 'AND',
 				array(
 					'taxonomy' => 'post_format',
 					'field'    => 'slug',
@@ -196,6 +196,9 @@ function tikswipe_child_override_loadmore() {
 
 		if ( ! empty( $post_cats ) ) {
 			$args['category__in'] = $post_cats;
+		}
+		if ( ! empty( $post_tags ) ) {
+			$args['tag__in'] = $post_tags;
 		}
 
 		$wp_query = new WP_Query( $args );
