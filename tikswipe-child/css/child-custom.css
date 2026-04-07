@@ -5,8 +5,16 @@
 /* Font: Inter instead of Poppins */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-* {
+*:not(.vjs-icon-placeholder):not(.video-js *) {
     font-family: 'Inter', sans-serif !important;
+}
+
+/* Preserve Video.js icon font */
+.video-js .vjs-icon-placeholder,
+.video-js .vjs-icon-placeholder::before,
+.video-js button,
+.video-js .vjs-control {
+    font-family: 'VideoJS' !important;
 }
 
 /* ========================================
@@ -179,10 +187,35 @@ select,
 }
 
 /* ========================================
-   Header: hide menu on home
+   Header: always visible (even in fullscreen), hide menu
    ======================================== */
+body.media-body header {
+    z-index: 100 !important;
+    position: absolute !important;
+}
+
 body.media-body header .menu {
+    display: flex !important;
+    align-items: center;
+}
+
+body.media-body header .menu > *:not(.wpst-pwa-btn) {
     display: none !important;
+}
+
+/* PWA install button — pill, black bg, white text */
+.wpst-pwa-btn {
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 1;
+    height: auto !important;
 }
 
 /* ========================================

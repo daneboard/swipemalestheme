@@ -7,7 +7,7 @@ jQuery(document).ready(function () {
 		jQuery('.embed-play-button').hide();
 		jQuery('.embed-content').css('opacity', '1');
 		slide.addClass('wpst-fullscreen');
-		jQuery('header, .slide-bg, .swiper-button-next, .swiper-button-prev, .single-content-infos, .swiper-side, #wpst-global-progress, footer').addClass('hidden');
+		jQuery('.slide-bg, .swiper-button-next, .swiper-button-prev, .single-content-infos, .swiper-side, #wpst-global-progress, footer').addClass('hidden');
 		slide.find('.vjs-big-play-button').click();
 		slide.find('.vjs-control-bar').addClass('show-control-bar');
 	});
@@ -29,7 +29,7 @@ jQuery(document).ready(function () {
 			}
 			jQuery(iframe).attr('src', iframeSrc);
 		}
-		jQuery('header, .slide-bg, .swiper-button-next, .swiper-button-prev, .single-content-infos, .swiper-side, #wpst-global-progress, footer').removeClass('hidden');
+		jQuery('.slide-bg, .swiper-button-next, .swiper-button-prev, .single-content-infos, .swiper-side, #wpst-global-progress, footer').removeClass('hidden');
 		jQuery('.playvideo').show();
 		jQuery(this).parents('.swiper-slide').find('.vjs-control-bar').removeClass('show-control-bar');
 		jQuery('.vjs-control-bar').hide();

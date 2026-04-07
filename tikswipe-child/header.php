@@ -48,6 +48,7 @@ if ( wp_is_mobile() ) :
 				<?php get_template_part( 'templates/content', 'logo' ); ?>
 			</div>
 			<div class="menu">
+				<button id="wpst-pwa-install" class="wpst-pwa-btn" style="display:none;">Fav this app</button>
 				<?php
 				wp_nav_menu(
 					array(

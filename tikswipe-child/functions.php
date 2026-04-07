@@ -124,6 +124,43 @@ function tikswipe_child_enqueue_scripts() {
 				lastY = y;
 			}, { passive: true });
 		})();
+
+		// PWA Add to Home Screen
+		(function() {
+			var btn = document.getElementById('wpst-pwa-install');
+			if (!btn) return;
+			var deferredPrompt = null;
+
+			// Android: beforeinstallprompt
+			window.addEventListener('beforeinstallprompt', function(e) {
+				e.preventDefault();
+				deferredPrompt = e;
+				btn.style.display = 'inline-block';
+			});
+
+			// iOS: detect Safari standalone capability
+			var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+			var isInStandalone = window.navigator.standalone === true;
+			if (isIos && !isInStandalone) {
+				btn.style.display = 'inline-block';
+			}
+
+			btn.addEventListener('click', function() {
+				if (deferredPrompt) {
+					deferredPrompt.prompt();
+					deferredPrompt.userChoice.then(function() {
+						deferredPrompt = null;
+						btn.style.display = 'none';
+					});
+				} else if (isIos) {
+					alert('Tap the Share button then \"Add to Home Screen\"');
+				}
+			});
+
+			window.addEventListener('appinstalled', function() {
+				btn.style.display = 'none';
+			});
+		})();
 	" );
 }
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
