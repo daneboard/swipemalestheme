@@ -13,6 +13,81 @@ jQuery(document).ready(function () {
 		var muted = false;
 	}
 
+	// Global mute state persists across slides (TikTok behavior)
+	var globalMuted = muted;
+
+	function updateMuteIcon(slide, isMuted) {
+		var muteBtn = jQuery(slide).find('.wpst-mute-toggle');
+		if (isMuted) {
+			muteBtn.find('.wpst-icon-muted').show();
+			muteBtn.find('.wpst-icon-unmuted').hide();
+		} else {
+			muteBtn.find('.wpst-icon-muted').hide();
+			muteBtn.find('.wpst-icon-unmuted').show();
+		}
+	}
+
+	// Progress bar update via requestAnimationFrame
+	var progressRAF = null;
+	function updateProgressBar() {
+		var activeSlide = document.querySelector('.swiper-slide-active');
+		if (activeSlide) {
+			var vjsEl = activeSlide.querySelector('video-js');
+			if (vjsEl && vjsEl.id) {
+				var player = videojs.getPlayer(vjsEl.id);
+				if (player && player.duration() > 0) {
+					var pct = (player.currentTime() / player.duration()) * 100;
+					var bar = activeSlide.querySelector('.wpst-progress-played');
+					if (bar) {
+						bar.style.width = pct + '%';
+					}
+				}
+			}
+		}
+		progressRAF = requestAnimationFrame(updateProgressBar);
+	}
+	progressRAF = requestAnimationFrame(updateProgressBar);
+
+	// Seek on progress bar click/drag
+	jQuery(document).on('mousedown touchstart', '.wpst-progress-bar', function (e) {
+		var bar = jQuery(this);
+		var slide = bar.closest('.swiper-slide');
+		var vjsEl = slide.find('video-js');
+		if (!vjsEl.length || !vjsEl.attr('id')) return;
+		var player = videojs.getPlayer(vjsEl.attr('id'));
+		if (!player || !player.duration()) return;
+
+		function seek(evt) {
+			var clientX = evt.type.indexOf('touch') !== -1 ? evt.originalEvent.touches[0].clientX : evt.clientX;
+			var rect = bar[0].getBoundingClientRect();
+			var pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+			player.currentTime(pct * player.duration());
+		}
+
+		seek(e);
+
+		jQuery(document).on('mousemove.wpstseek touchmove.wpstseek', function (ev) {
+			seek(ev);
+		});
+		jQuery(document).on('mouseup.wpstseek touchend.wpstseek', function () {
+			jQuery(document).off('.wpstseek');
+		});
+	});
+
+	// Mute toggle click
+	jQuery(document).on('click', '.wpst-mute-toggle', function (e) {
+		e.preventDefault();
+		var slide = jQuery(this).closest('.swiper-slide');
+		var vjsEl = slide.find('video-js');
+		if (!vjsEl.length || !vjsEl.attr('id')) return;
+		var player = videojs.getPlayer(vjsEl.attr('id'));
+		if (!player) return;
+
+		globalMuted = !globalMuted;
+		player.muted(globalMuted);
+		updateMuteIcon(slide, globalMuted);
+	});
+
 	function videojs_init() {
 		jQuery('video-js').each(function () {
 			var videoPlayer = jQuery(this);
@@ -47,7 +122,7 @@ jQuery(document).ready(function () {
 				success: function (response) {
 					var player = videojs(videoPlayerId, {
 						playsinline: true,
-						muted: muted,
+						muted: globalMuted,
 						autoplay: shouldAutoplay,
 						controls: true,
 						loop: true,
@@ -61,6 +136,10 @@ jQuery(document).ready(function () {
 						src: response.video_url,
 					});
 					videoPlayer.addClass('player-loaded');
+
+					// Sync mute icon for this slide
+					var parentSlide = videoPlayer.closest('.swiper-slide');
+					updateMuteIcon(parentSlide, globalMuted);
 				},
 			});
 		});
@@ -98,12 +177,25 @@ jQuery(document).ready(function () {
 				// });
 			},
 			transitionEnd: function () {
-				if (autoplay == false) {
-					return;
-				}
 				var index = this.realIndex;
 				var slide = document.getElementsByClassName('swiper-slide')[index];
 				var slideVideo = slide.getElementsByTagName('video-js')[0];
+
+				// Apply global mute state and sync icon on slide change
+				if (slideVideo && slideVideo.id) {
+					var p = videojs.getPlayer(slideVideo.id);
+					if (p) {
+						p.muted(globalMuted);
+					}
+					updateMuteIcon(jQuery(slide), globalMuted);
+				}
+
+				// Reset progress bar for non-active slides
+				jQuery('.swiper-slide').not('.swiper-slide-active').find('.wpst-progress-played').css('width', '0%');
+
+				if (autoplay == false) {
+					return;
+				}
 				var slideCurrentVideo = jQuery(slideVideo).find('video').get(0);
 				if (slideCurrentVideo != null && slideCurrentVideo != undefined) {
 					slideCurrentVideo.play();
@@ -144,10 +236,12 @@ jQuery(document).ready(function () {
 
 	jQuery(document).on('click', '.enlight-content', function (e) {
 		swiper.disable();
+		jQuery('.wpst-progress-bar').addClass('hidden');
 	});
 
 	jQuery(document).on('click', '.close-fullscreen', function (e) {
 		swiper.enable();
+		jQuery('.wpst-progress-bar').removeClass('hidden');
 	});
 
 	// Comments

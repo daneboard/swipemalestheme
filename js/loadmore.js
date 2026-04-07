@@ -6,7 +6,7 @@ jQuery(document).ready(function () {
 		jQuery('.embed-play-button').hide();
 		jQuery('.embed-content').css('opacity', '1');
 		jQuery('.close-fullscreen').show();
-		jQuery('header, .slide-bg, .swiper-button-next, .swiper-button-prev, .single-content-infos, .swiper-side, footer').addClass('hidden');
+		jQuery('header, .slide-bg, .swiper-button-next, .swiper-button-prev, .single-content-infos, .swiper-side, .wpst-progress-bar, footer').addClass('hidden');
 		jQuery(this).parents('.swiper-slide').find('.vjs-big-play-button').click();
 		jQuery(this).parents('.swiper-slide').find('.vjs-control-bar').addClass('show-control-bar');
 	});
@@ -27,7 +27,7 @@ jQuery(document).ready(function () {
 			}
 			jQuery(iframe).attr('src', iframeSrc);
 		}
-		jQuery('header, .slide-bg, .swiper-button-next, .swiper-button-prev, .single-content-infos, .swiper-side, footer').removeClass('hidden');
+		jQuery('header, .slide-bg, .swiper-button-next, .swiper-button-prev, .single-content-infos, .swiper-side, .wpst-progress-bar, footer').removeClass('hidden');
 		jQuery('.playvideo').show();
 		jQuery(this).parents('.swiper-slide').find('.vjs-control-bar').removeClass('show-control-bar');
 		jQuery('.vjs-control-bar').hide();
