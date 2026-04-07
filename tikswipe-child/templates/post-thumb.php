@@ -12,7 +12,7 @@ if ( has_post_thumbnail() ) {
 		<a href="<?php the_permalink(); ?>">
 		<?php echo apply_filters( 'wps_paywall_premium_badge', '', get_the_id() ); ?>
 			<?php if ( ! empty( $post_thumbnail_url ) ) : ?>
-				<img loading="lazy" src="<?php echo esc_url( $post_thumbnail_url ); ?>">
+				<img src="<?php echo esc_url( $post_thumbnail_url ); ?>">
 			<?php endif; ?>
 			<?php if ( ! empty( wpst_get_video_duration() ) ) : ?>
 				<span class="video-duration"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" style="position: relative; top: 1px;"><path fill="#ffffff" d="M3 22v-20l18 10-18 10z"/></svg> <?php echo wpst_get_video_duration(); ?></span>

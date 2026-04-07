@@ -315,10 +315,12 @@ function tikswipe_child_replace_loadmore_swipe_handler() {
 add_action( 'init', 'tikswipe_child_replace_loadmore_swipe_handler', 20 );
 
 /**
- * Add lazy loading to grid thumbnails.
+ * Add lazy loading to grid thumbnails — only on search/favorites pages.
  */
 function tikswipe_child_lazy_load_thumbs( $attr, $attachment, $size ) {
-	$attr['loading'] = 'lazy';
+	if ( is_search() || is_page_template( 'template-search.php' ) || is_page_template( 'template-favorites.php' ) ) {
+		$attr['loading'] = 'lazy';
+	}
 	return $attr;
 }
 add_filter( 'wp_get_attachment_image_attributes', 'tikswipe_child_lazy_load_thumbs', 10, 3 );
