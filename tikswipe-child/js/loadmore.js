@@ -7,9 +7,20 @@ jQuery(document).ready(function () {
 		jQuery('.embed-play-button').hide();
 		jQuery('.embed-content').css('opacity', '1');
 		slide.addClass('wpst-fullscreen');
+		jQuery('body').addClass('wpst-is-fullscreen');
 		jQuery('.slide-bg, .swiper-button-next, .swiper-button-prev, .single-content-infos, .swiper-side, #wpst-global-progress, footer').addClass('hidden');
 		slide.find('.vjs-big-play-button').click();
 		slide.find('.vjs-control-bar').addClass('show-control-bar');
+
+		// Sync controls visibility with VJS user activity
+		var vjsEl = slide.find('video-js');
+		if (vjsEl.length && vjsEl.attr('id')) {
+			var player = videojs.getPlayer(vjsEl.attr('id'));
+			if (player) {
+				player.on('useractive', function() { slide.removeClass('wpst-controls-hidden'); });
+				player.on('userinactive', function() { slide.addClass('wpst-controls-hidden'); });
+			}
+		}
 	});
 
 	jQuery(document).on('click', '.close-fullscreen', function (e) {
@@ -18,7 +29,8 @@ jQuery(document).ready(function () {
 		jQuery('.embed-thumbnail').show();
 		jQuery('.embed-play-button').show();
 		jQuery('.embed-content').css('opacity', '0');
-		slide.removeClass('wpst-fullscreen wpst-zoomed');
+		slide.removeClass('wpst-fullscreen wpst-zoomed wpst-controls-hidden');
+		jQuery('body').removeClass('wpst-is-fullscreen');
 		var iframe = jQuery(this).parents('.swiper-slide').find('iframe').get(0);
 		if (iframe) {
 			var iframeSrc = iframe.src;

@@ -134,9 +134,16 @@ select,
     background: none !important;
 }
 
-/* Show controls container in fullscreen */
+/* Show controls in fullscreen */
 .swiper-slide.wpst-fullscreen .wpst-fullscreen-controls {
     display: flex !important;
+    transition: opacity 0.3s ease;
+}
+
+/* Hide controls when VJS player is user-inactive */
+.swiper-slide.wpst-fullscreen.wpst-controls-hidden .wpst-fullscreen-controls {
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Zoom fill mode */
@@ -200,6 +207,12 @@ body.media-body header .menu {
 }
 
 body.media-body header .menu > *:not(.wpst-pwa-btn) {
+    display: none !important;
+}
+
+/* Hide PWA button when video is expanded */
+.swiper-slide.wpst-fullscreen ~ .wpst-pwa-btn,
+body.wpst-is-fullscreen .wpst-pwa-btn {
     display: none !important;
 }
 
@@ -312,9 +325,9 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
 /* ========================================
    Content infos: lower position, smaller title
    ======================================== */
-/* Layout stack from bottom: footer(50px) → progress bar(4px at 50px) → gap → content */
+/* Layout stack from bottom: footer(50px) → gap → progress bar(62px) → gap → content */
 .single-content-infos {
-    bottom: 70px !important;
+    bottom: 80px !important;
     max-width: calc(100% - 70px) !important;
 }
 
@@ -467,7 +480,7 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
    ======================================== */
 .wpst-progress-bar {
     position: fixed;
-    bottom: 56px;
+    bottom: 62px;
     left: 0;
     right: 0;
     height: 4px;
@@ -761,6 +774,7 @@ body.page-template-template-favorites-php footer {
     width: 100% !important;
     max-width: 1200px !important;
     z-index: 10 !important;
+    background-color: #000 !important;
 }
 
 body.page-template-template-search-php .footer-menu,
