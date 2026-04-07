@@ -321,6 +321,7 @@ function tikswipe_child_ajax_load_more_swipe() {
 	$ads_displaying_frequency = get_theme_mod( 'wpst_ads_displaying_frequency', 5 );
 	$args                     = json_decode( stripslashes( $_POST['query'] ), true );
 	$args['paged']            = intval( $_POST['page'] ) + 1;
+	$args['max_page']         = $_POST['maxpage'];
 	$args['post_type']        = 'post';
 	$args['post_status']      = 'publish';
 	$args['posts_per_page']   = $ads_displaying_frequency;
@@ -329,11 +330,11 @@ function tikswipe_child_ajax_load_more_swipe() {
 
 	$query = new WP_Query( $args );
 
-	// If category filter returns no results, retry without it (fallback to all posts).
+	// If category filter returns no results, retry without it.
 	if ( ! $query->have_posts() && ! empty( $args['category__in'] ) ) {
 		unset( $args['category__in'] );
-		$args['paged'] = 1; // Reset page since we're widening the query.
-		$query         = new WP_Query( $args );
+		unset( $args['tag__in'] );
+		$query = new WP_Query( $args );
 	}
 
 	if ( $query->have_posts() ) :
