@@ -4,6 +4,12 @@
     cursor: pointer;
 }
 
+/* Hide comment button */
+.swiper-side .comment-icon {
+    display: none !important;
+}
+
+
 /* Progress bar outside fullscreen */
 .wpst-progress-bar {
     position: absolute;
@@ -45,4 +51,186 @@
 
 .wpst-progress-bar:hover .wpst-progress-played::after {
     opacity: 1;
+}
+
+/******************************/
+/* Search & Favorites — dark  */
+/* TikTok 3-col vertical grid */
+/******************************/
+
+/* Dark background for search & favorites pages */
+body.page-template-template-search-php,
+body.page-template-template-favorites-php {
+    background-color: #000;
+    color: #fff;
+}
+
+body.page-template-template-search-php .content,
+body.page-template-template-favorites-php .content {
+    background-color: #000;
+}
+
+body.page-template-template-search-php main,
+body.page-template-template-favorites-php main {
+    background-color: #000;
+    color: #fff;
+}
+
+/* Favorites title */
+body.page-template-template-favorites-php main h1 {
+    color: #fff;
+    padding: 20px 15px 0;
+    font-size: 18px;
+}
+
+/* Dark search header */
+body.page-template-template-search-php .search-header {
+    background-color: #111;
+    padding: 20px 15px;
+    margin-bottom: 0;
+}
+
+body.page-template-template-search-php .search-pills a {
+    background: #222;
+    border-color: #333;
+    color: #aaa;
+}
+
+body.page-template-template-search-php .search-pills a.active {
+    color: #fff;
+}
+
+body.page-template-template-search-php #searchform input.form-control {
+    background-color: #222;
+    border-color: #333;
+    color: #fff;
+    height: 50px;
+}
+
+body.page-template-template-search-php #searchform input.form-control::placeholder {
+    color: #777;
+}
+
+body.page-template-template-search-php #searchform #searchsubmit {
+    background-color: #222;
+    border-color: #333;
+    height: 50px;
+}
+
+body.page-template-template-search-php #searchform #searchsubmit svg path {
+    fill: #fff;
+}
+
+/* Dark tabs for search & favorites */
+body.page-template-template-search-php .tab-wrapper,
+body.page-template-template-favorites-php .tab-wrapper {
+    background-color: #000;
+}
+
+body.page-template-template-search-php .tab-link,
+body.page-template-template-favorites-php .tab-link {
+    color: #fff;
+    border-color: transparent;
+}
+
+body.page-template-template-search-php .tab-link.active,
+body.page-template-template-favorites-php .tab-link.active {
+    border-bottom-color: #fff;
+}
+
+body.page-template-template-search-php .tab-link svg path,
+body.page-template-template-favorites-php .tab-link svg path {
+    fill: #fff;
+}
+
+body.page-template-template-search-php .creator-tabs .count,
+body.page-template-template-favorites-php .creator-tabs .count {
+    color: #fff;
+}
+
+/* Dark content wrapper */
+body.page-template-template-search-php .content-wrapper,
+body.page-template-template-favorites-php .content-wrapper {
+    background-color: #000;
+    padding-bottom: 65px;
+}
+
+/* TikTok-style 3-column vertical grid */
+body.page-template-template-search-php .tab-content-grid,
+body.page-template-template-favorites-php .tab-content-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    border-top: none;
+}
+
+/* Tall vertical ratio like TikTok thumbnails (9:16 aspect) */
+body.page-template-template-search-php .media-box,
+body.page-template-template-favorites-php .media-box {
+    padding-bottom: 177.78%; /* 16/9 ratio */
+}
+
+body.page-template-template-search-php .tab-content-grid .media-box img,
+body.page-template-template-favorites-php .tab-content-grid .media-box img {
+    object-fit: cover;
+}
+
+/* Remove the span-2 on first item for uniform grid */
+body.page-template-template-search-php .tab-content-grid li:first-child,
+body.page-template-template-favorites-php .tab-content-grid li:first-child {
+    grid-column: span 1;
+}
+
+body.page-template-template-search-php .tab-content-grid li:first-child .media-box,
+body.page-template-template-favorites-php .tab-content-grid li:first-child .media-box {
+    padding-bottom: 177.78%;
+}
+
+/* Dark empty state */
+body.page-template-template-search-php .tab-content,
+body.page-template-template-favorites-php .tab-content {
+    color: #aaa;
+}
+
+body.page-template-template-favorites-php .alert-info {
+    background-color: #111;
+    border-color: #222;
+    color: #aaa;
+}
+
+/* Dark footer on these pages */
+body.page-template-template-search-php footer,
+body.page-template-template-favorites-php footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 1200px;
+    margin: 0 auto;
+    z-index: 10;
+}
+
+body.page-template-template-search-php .footer-menu,
+body.page-template-template-favorites-php .footer-menu {
+    background-color: rgba(0, 0, 0, 0.85) !important;
+}
+
+body.page-template-template-search-php .footer-menu svg path,
+body.page-template-template-favorites-php .footer-menu svg path {
+    fill: #fff;
+}
+
+body.page-template-template-search-php .footer-menu #fav-menu svg path,
+body.page-template-template-favorites-php .footer-menu #fav-menu svg path {
+    stroke: #fff;
+    fill: none;
+}
+
+body.page-template-template-search-php .footer-menu a small,
+body.page-template-template-favorites-php .footer-menu a small {
+    color: #fff;
+}
+
+/* Remove fav button dark styling */
+body.page-template-template-favorites-php .remove-fav svg path {
+    fill: #fff;
 }
