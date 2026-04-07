@@ -11,12 +11,13 @@
 
 /* ========================================
    Border-radius system: 4px small, 8px card, 16px modal
+   Scoped selectors to avoid hitting Video.js buttons
    ======================================== */
 .button,
 .button-color,
 .button-outline,
 .button-outline-grey,
-input,
+input:not(.vjs-control *),
 textarea,
 select,
 .tags-list a,
@@ -36,6 +37,14 @@ select,
 .comment-box,
 .modal-content {
     border-radius: 16px !important;
+}
+
+/* Ensure Video.js buttons are never affected by our border-radius */
+.video-js button,
+.video-js .vjs-button,
+.video-js .vjs-control,
+.vjs-control-bar button {
+    border-radius: 0 !important;
 }
 
 /* ========================================
@@ -291,37 +300,47 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
 }
 
 /* ========================================
-   Hide description expand button
+   Hide description visually (keep in DOM for SEO)
    ======================================== */
-.post-desc .see-desc {
-    display: none !important;
-}
-
-.post-desc p {
-    display: block !important;
+.post-desc {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
 }
 
 /* ========================================
-   Progress bar: fixed above footer, brand color
+   Progress bar: fixed above footer, brand color, large touch area
    ======================================== */
 .wpst-progress-bar {
     position: absolute;
     bottom: 50px;
     left: 0;
     width: 100%;
-    height: 3px;
+    height: 4px;
     background: rgba(255, 255, 255, 0.15);
-    z-index: 8;
+    z-index: 9;
     cursor: pointer;
     transition: height 0.15s ease;
-    /* Larger touch target */
-    padding-top: 18px;
-    margin-top: -18px;
-    box-sizing: content-box;
+}
+
+/* Invisible touch area — 30px tall, only the visible bar draws */
+.wpst-progress-bar::before {
+    content: '';
+    position: absolute;
+    top: -15px;
+    left: 0;
+    width: 100%;
+    height: 34px;
 }
 
 .wpst-progress-bar:hover {
-    height: 5px;
+    height: 6px;
 }
 
 .wpst-progress-played {
@@ -603,11 +622,18 @@ body.page-template-template-favorites-php .footer-menu a {
     color: #fff;
 }
 
-body.page-template-template-search-php .footer-menu #fav-menu svg path,
-body.search .footer-menu #fav-menu svg path,
-body.page-template-template-favorites-php .footer-menu #fav-menu svg path {
+/* Only outline fav icon when NOT active */
+body.page-template-template-search-php .footer-menu #fav-menu:not(.active) svg path,
+body.search .footer-menu #fav-menu:not(.active) svg path,
+body.page-template-template-favorites-php .footer-menu #fav-menu:not(.active) svg path {
     stroke: #fff;
     fill: none;
+}
+
+/* Filled fav icon when active */
+body.page-template-template-favorites-php .footer-menu #fav-menu.active svg path {
+    fill: #fff !important;
+    stroke: #fff !important;
 }
 
 body.page-template-template-search-php .footer-menu a small,
@@ -672,6 +698,11 @@ body.page-template-template-favorites-php main {
 body.page-template-template-search-php main,
 body.search main {
     padding-top: 0;
+}
+
+/* Global: ensure filled fav icon shows fill when active */
+.footer-menu #fav-menu.active svg path {
+    fill: currentColor !important;
 }
 
 /* ========================================

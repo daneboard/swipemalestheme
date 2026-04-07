@@ -13,14 +13,13 @@ get_header(); ?>
 					$ads_displaying_frequency = get_theme_mod( 'wpst_ads_displaying_frequency', 5 );
 
 					// Get the current post's categories for related videos.
-					$post_cats    = wp_get_post_categories( $post->ID, array( 'fields' => 'ids' ) );
-					$random_posts = get_theme_mod( 'wpst_random_posts', false );
+					$post_cats = wp_get_post_categories( $post->ID, array( 'fields' => 'ids' ) );
 
 					$args = array(
 						'post_type'      => 'post',
 						'post_status'    => 'publish',
 						'posts_per_page' => $ads_displaying_frequency,
-						'orderby'        => $random_posts ? 'RAND(' . get_random_seed() . ')' : 'ID',
+						'orderby'        => 'RAND(' . get_random_seed() . ')',
 						'order'          => 'DESC',
 						'post__not_in'   => array( $post->ID ),
 						'tax_query'      => array(
