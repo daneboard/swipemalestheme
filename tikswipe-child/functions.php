@@ -81,7 +81,7 @@ function tikswipe_child_enqueue_scripts() {
 		}
 	}
 
-	// Inline JS: tags expand + search clear.
+	// Inline JS: tags expand + search clear + footer scroll hide/show.
 	wp_add_inline_script( 'wpst-main-js', "
 		jQuery(document).on('click', '.wpst-tags-more', function(e) {
 			e.preventDefault();
@@ -103,6 +103,27 @@ function tikswipe_child_enqueue_scripts() {
 			var si = jQuery('#searchform #s');
 			if (si.length && si.val().length > 0) si.closest('#searchform').find('.wpst-search-clear').show();
 		});
+
+		// Footer: hide on scroll down, show on scroll up (grid pages only)
+		(function() {
+			var lastY = 0;
+			var footer = document.querySelector('footer');
+			if (!footer) return;
+			var isGridPage = document.body.classList.contains('page-template-template-search-php')
+				|| document.body.classList.contains('page-template-template-favorites-php')
+				|| document.body.classList.contains('search');
+			if (!isGridPage) return;
+			window.addEventListener('scroll', function() {
+				var y = window.pageYOffset;
+				if (y > lastY && y > 60) {
+					footer.style.transform = 'translateX(-50%) translateY(100%)';
+				} else {
+					footer.style.transform = 'translateX(-50%) translateY(0)';
+				}
+				lastY = y;
+			}, { passive: true });
+			footer.style.transition = 'transform 0.25s ease';
+		})();
 	" );
 }
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
