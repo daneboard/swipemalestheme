@@ -65,6 +65,13 @@ select,
 }
 
 /* ========================================
+   Remove dark overlay on videos
+   ======================================== */
+.slide-bg {
+    background-color: transparent !important;
+}
+
+/* ========================================
    Header: hide menu on home
    ======================================== */
 body.media-body header .menu {
@@ -433,48 +440,58 @@ body.page-template-template-favorites-php main h1 {
     font-size: 18px;
 }
 
-/* Dark search header */
+/* Dark search header — seamless, no borders */
 body.page-template-template-search-php .search-header,
 body.search .search-header {
-    background-color: #111;
-    padding: 20px 15px;
+    background-color: #000;
+    padding: 15px 10px;
     margin-bottom: 0;
+}
+
+/* Search input: single unified bar, no visible borders */
+body.page-template-template-search-php #searchform .d-flex,
+body.search #searchform .d-flex {
+    background-color: #1a1a1a;
+    border-radius: 8px !important;
+    overflow: hidden;
+    border: none;
+}
+
+body.page-template-template-search-php #searchform input.form-control,
+body.search #searchform input.form-control {
+    background-color: transparent !important;
+    border: none !important;
+    color: #fff;
+    padding: 0 15px !important;
+}
+
+body.page-template-template-search-php #searchform input.form-control::placeholder,
+body.search #searchform input.form-control::placeholder {
+    color: #555;
+}
+
+body.page-template-template-search-php #searchform #searchsubmit,
+body.search #searchform #searchsubmit {
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 15px;
+}
+
+body.page-template-template-search-php #searchform #searchsubmit svg path,
+body.search #searchform #searchsubmit svg path {
+    fill: #666;
 }
 
 body.page-template-template-search-php .search-pills a,
 body.search .search-pills a {
-    background: #222;
-    border-color: #333;
+    background: #1a1a1a;
+    border: none;
     color: #aaa;
 }
 
 body.page-template-template-search-php .search-pills a.active,
 body.search .search-pills a.active {
     color: #fff;
-}
-
-/* Search input dark */
-body.page-template-template-search-php #searchform input.form-control,
-body.search #searchform input.form-control {
-    background-color: #222;
-    border-color: #333;
-    color: #fff;
-}
-
-body.page-template-template-search-php #searchform input.form-control::placeholder,
-body.search #searchform input.form-control::placeholder {
-    color: #777;
-}
-
-body.page-template-template-search-php #searchform #searchsubmit,
-body.search #searchform #searchsubmit {
-    background-color: #222;
-    border-color: #333;
-}
-
-body.page-template-template-search-php #searchform #searchsubmit svg path,
-body.search #searchform #searchsubmit svg path {
-    fill: #fff;
 }
 
 /* Search clear button */
@@ -484,12 +501,12 @@ body.search #searchform #searchsubmit svg path {
 
 #searchform .wpst-search-clear {
     position: absolute;
-    right: 60px;
+    right: 50px;
     top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
-    color: #777;
+    color: #555;
     font-size: 18px;
     cursor: pointer;
     padding: 5px 10px;
@@ -658,21 +675,16 @@ body.page-template-template-favorites-php header {
     display: none !important;
 }
 
-/* Smaller search box */
-body.page-template-template-search-php .search-header,
-body.search .search-header {
-    padding: 12px 15px !important;
-}
-
+/* Compact search sizing */
 body.page-template-template-search-php #searchform input.form-control,
 body.search #searchform input.form-control {
-    height: 40px !important;
+    height: 42px !important;
     font-size: 14px !important;
 }
 
 body.page-template-template-search-php #searchform #searchsubmit,
 body.search #searchform #searchsubmit {
-    height: 40px !important;
+    height: 42px !important;
 }
 
 /* Hide search pills (media/creators filter) */
