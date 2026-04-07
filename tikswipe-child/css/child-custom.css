@@ -374,17 +374,20 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
    Search & Favorites — dark theme
    ======================================== */
 body.page-template-template-search-php,
+body.search,
 body.page-template-template-favorites-php {
     background-color: #000;
     color: #fff;
 }
 
 body.page-template-template-search-php .content,
+body.search .content,
 body.page-template-template-favorites-php .content {
     background-color: #000;
 }
 
 body.page-template-template-search-php main,
+body.search main,
 body.page-template-template-favorites-php main {
     background-color: #000;
     color: #fff;
@@ -392,11 +395,13 @@ body.page-template-template-favorites-php main {
 
 /* Dark header/logo area */
 body.page-template-template-search-php header,
+body.search header,
 body.page-template-template-favorites-php header {
     background-color: #000 !important;
 }
 
 body.page-template-template-search-php .logo,
+body.search .logo,
 body.page-template-template-favorites-php .logo {
     background-color: #000;
 }
@@ -409,39 +414,46 @@ body.page-template-template-favorites-php main h1 {
 }
 
 /* Dark search header */
-body.page-template-template-search-php .search-header {
+body.page-template-template-search-php .search-header,
+body.search .search-header {
     background-color: #111;
     padding: 20px 15px;
     margin-bottom: 0;
 }
 
-body.page-template-template-search-php .search-pills a {
+body.page-template-template-search-php .search-pills a,
+body.search .search-pills a {
     background: #222;
     border-color: #333;
     color: #aaa;
 }
 
-body.page-template-template-search-php .search-pills a.active {
+body.page-template-template-search-php .search-pills a.active,
+body.search .search-pills a.active {
     color: #fff;
 }
 
 /* Search input dark */
-body.page-template-template-search-php #searchform input.form-control {
+body.page-template-template-search-php #searchform input.form-control,
+body.search #searchform input.form-control {
     background-color: #222;
     border-color: #333;
     color: #fff;
 }
 
-body.page-template-template-search-php #searchform input.form-control::placeholder {
+body.page-template-template-search-php #searchform input.form-control::placeholder,
+body.search #searchform input.form-control::placeholder {
     color: #777;
 }
 
-body.page-template-template-search-php #searchform #searchsubmit {
+body.page-template-template-search-php #searchform #searchsubmit,
+body.search #searchform #searchsubmit {
     background-color: #222;
     border-color: #333;
 }
 
-body.page-template-template-search-php #searchform #searchsubmit svg path {
+body.page-template-template-search-php #searchform #searchsubmit svg path,
+body.search #searchform #searchsubmit svg path {
     fill: #fff;
 }
 
@@ -473,33 +485,39 @@ body.page-template-template-search-php #searchform #searchsubmit svg path {
 
 /* Dark tabs */
 body.page-template-template-search-php .tab-wrapper,
+body.search .tab-wrapper,
 body.page-template-template-favorites-php .tab-wrapper {
     background-color: #000;
 }
 
 body.page-template-template-search-php .tab-link,
+body.search .tab-link,
 body.page-template-template-favorites-php .tab-link {
     color: #fff;
     border-color: transparent;
 }
 
 body.page-template-template-search-php .tab-link.active,
+body.search .tab-link.active,
 body.page-template-template-favorites-php .tab-link.active {
     border-bottom-color: #fff;
 }
 
 body.page-template-template-search-php .tab-link svg path,
+body.search .tab-link svg path,
 body.page-template-template-favorites-php .tab-link svg path {
     fill: #fff;
 }
 
 body.page-template-template-search-php .creator-tabs .count,
+body.search .creator-tabs .count,
 body.page-template-template-favorites-php .creator-tabs .count {
     color: #fff;
 }
 
 /* Dark content wrapper */
 body.page-template-template-search-php .content-wrapper,
+body.search .content-wrapper,
 body.page-template-template-favorites-php .content-wrapper {
     background-color: #000;
     padding-bottom: 55px;
@@ -507,6 +525,7 @@ body.page-template-template-favorites-php .content-wrapper {
 
 /* TikTok 3-column vertical grid */
 body.page-template-template-search-php .tab-content-grid,
+body.search .tab-content-grid,
 body.page-template-template-favorites-php .tab-content-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 2px;
@@ -514,27 +533,32 @@ body.page-template-template-favorites-php .tab-content-grid {
 }
 
 body.page-template-template-search-php .media-box,
+body.search .media-box,
 body.page-template-template-favorites-php .media-box {
     padding-bottom: 177.78%;
 }
 
 body.page-template-template-search-php .tab-content-grid .media-box img,
+body.search .tab-content-grid .media-box img,
 body.page-template-template-favorites-php .tab-content-grid .media-box img {
     object-fit: cover;
 }
 
 body.page-template-template-search-php .tab-content-grid li:first-child,
+body.search .tab-content-grid li:first-child,
 body.page-template-template-favorites-php .tab-content-grid li:first-child {
     grid-column: span 1;
 }
 
 body.page-template-template-search-php .tab-content-grid li:first-child .media-box,
+body.search .tab-content-grid li:first-child .media-box,
 body.page-template-template-favorites-php .tab-content-grid li:first-child .media-box {
     padding-bottom: 177.78%;
 }
 
 /* Dark empty state */
 body.page-template-template-search-php .tab-content,
+body.search .tab-content,
 body.page-template-template-favorites-php .tab-content {
     color: #aaa;
 }
@@ -549,6 +573,7 @@ body.page-template-template-favorites-php .alert-info {
    Footer fix for search/favorites: proper position
    ======================================== */
 body.page-template-template-search-php footer,
+body.search footer,
 body.page-template-template-favorites-php footer {
     position: fixed !important;
     bottom: 0 !important;
@@ -560,28 +585,33 @@ body.page-template-template-favorites-php footer {
 }
 
 body.page-template-template-search-php .footer-menu,
+body.search .footer-menu,
 body.page-template-template-favorites-php .footer-menu {
     background-color: rgba(0, 0, 0, 0.95) !important;
 }
 
 /* Footer icons: use currentColor for proper dark/light */
 body.page-template-template-search-php .footer-menu svg path,
+body.search .footer-menu svg path,
 body.page-template-template-favorites-php .footer-menu svg path {
     fill: currentColor;
 }
 
 body.page-template-template-search-php .footer-menu a,
+body.search .footer-menu a,
 body.page-template-template-favorites-php .footer-menu a {
     color: #fff;
 }
 
 body.page-template-template-search-php .footer-menu #fav-menu svg path,
+body.search .footer-menu #fav-menu svg path,
 body.page-template-template-favorites-php .footer-menu #fav-menu svg path {
     stroke: #fff;
     fill: none;
 }
 
 body.page-template-template-search-php .footer-menu a small,
+body.search .footer-menu a small,
 body.page-template-template-favorites-php .footer-menu a small {
     color: #fff;
 }
@@ -596,21 +626,25 @@ body.page-template-template-favorites-php .remove-fav svg path {
 
 /* Remove empty space below logo (caused by header padding/margin) */
 body.page-template-template-search-php header,
+body.search header,
 body.page-template-template-favorites-php header {
     display: none !important;
 }
 
 /* Smaller search box */
-body.page-template-template-search-php .search-header {
+body.page-template-template-search-php .search-header,
+body.search .search-header {
     padding: 12px 15px !important;
 }
 
-body.page-template-template-search-php #searchform input.form-control {
+body.page-template-template-search-php #searchform input.form-control,
+body.search #searchform input.form-control {
     height: 40px !important;
     font-size: 14px !important;
 }
 
-body.page-template-template-search-php #searchform #searchsubmit {
+body.page-template-template-search-php #searchform #searchsubmit,
+body.search #searchform #searchsubmit {
     height: 40px !important;
 }
 
@@ -621,6 +655,7 @@ body.page-template-template-search-php #searchform #searchsubmit {
 
 /* Hide tabs (vids/pics) on search and favorites */
 body.page-template-template-search-php .tab-wrapper,
+body.search .tab-wrapper,
 body.page-template-template-favorites-php .tab-wrapper {
     display: none !important;
 }
@@ -634,7 +669,8 @@ body.page-template-template-favorites-php main {
     padding-top: 10px;
 }
 
-body.page-template-template-search-php main {
+body.page-template-template-search-php main,
+body.search main {
     padding-top: 0;
 }
 
