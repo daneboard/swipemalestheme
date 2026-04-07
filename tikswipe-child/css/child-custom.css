@@ -80,11 +80,67 @@ select,
 }
 
 /* ========================================
-   Smaller close button in fullscreen
+   Fullscreen controls: close + zoom, bottom-left, small circles
    ======================================== */
-.close-fullscreen svg {
-    width: 30px !important;
-    height: 30px !important;
+.wpst-fullscreen-controls {
+    display: none;
+    position: absolute;
+    bottom: 80px;
+    left: 15px;
+    z-index: 3;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.wpst-fullscreen-controls .close-fullscreen,
+.wpst-fullscreen-controls .wpst-zoom-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    outline: 0;
+    cursor: pointer;
+    padding: 0;
+    position: static;
+    top: auto;
+    right: auto;
+}
+
+.wpst-fullscreen-controls .close-fullscreen svg,
+.wpst-fullscreen-controls .wpst-zoom-toggle svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+/* Override parent .close-fullscreen positioning */
+.close-fullscreen {
+    display: none !important;
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    background: none !important;
+}
+
+/* Show controls container in fullscreen */
+.swiper-slide.wpst-fullscreen .wpst-fullscreen-controls {
+    display: flex !important;
+}
+
+/* Zoom fill mode */
+.swiper-slide.wpst-zoomed video,
+.swiper-slide.wpst-zoomed .vjs-poster {
+    object-fit: cover !important;
+}
+
+/* Play button shadow */
+.vjs-big-play-button {
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
 }
 
 /* ========================================
@@ -493,19 +549,19 @@ body.page-template-template-favorites-php main h1 {
     font-size: 18px;
 }
 
-/* Dark search header — seamless, no borders */
+/* Dark search header — edge-to-edge, no extra padding */
 body.page-template-template-search-php .search-header,
 body.search .search-header {
     background-color: #000;
-    padding: 15px 10px;
-    margin-bottom: 0;
+    padding: 0;
+    margin: 0;
 }
 
-/* Search input: single unified bar, no visible borders */
+/* Search input: full-width unified bar, no borders */
 body.page-template-template-search-php #searchform .d-flex,
 body.search #searchform .d-flex {
     background-color: #1a1a1a;
-    border-radius: 8px !important;
+    border-radius: 0 !important;
     overflow: hidden;
     border: none;
 }
@@ -520,7 +576,7 @@ body.search #searchform input.form-control {
 
 body.page-template-template-search-php #searchform input.form-control::placeholder,
 body.search #searchform input.form-control::placeholder {
-    color: #555;
+    color: #888;
 }
 
 body.page-template-template-search-php #searchform #searchsubmit,
@@ -693,18 +749,11 @@ body.page-template-template-favorites-php .footer-menu a {
     color: #fff;
 }
 
-/* Only outline fav icon when NOT active */
-body.page-template-template-search-php .footer-menu #fav-menu:not(.active) svg path,
-body.search .footer-menu #fav-menu:not(.active) svg path,
-body.page-template-template-favorites-php .footer-menu #fav-menu:not(.active) svg path {
+body.page-template-template-search-php .footer-menu #fav-menu svg path,
+body.search .footer-menu #fav-menu svg path,
+body.page-template-template-favorites-php .footer-menu #fav-menu svg path {
     stroke: #fff;
     fill: none;
-}
-
-/* Filled fav icon when active */
-body.page-template-template-favorites-php .footer-menu #fav-menu.active svg path {
-    fill: #fff !important;
-    stroke: #fff !important;
 }
 
 body.page-template-template-search-php .footer-menu a small,
@@ -765,17 +814,20 @@ body.page-template-template-favorites-php main h1 {
 }
 
 body.page-template-template-favorites-php main {
-    padding-top: 10px;
+    padding-top: 0;
+}
+
+body.page-template-template-favorites-php .content-wrapper {
+    border-top: none !important;
+}
+
+body.page-template-template-favorites-php .tab-content-grid {
+    border-top: none !important;
 }
 
 body.page-template-template-search-php main,
 body.search main {
     padding-top: 0;
-}
-
-/* Global: ensure filled fav icon shows fill when active */
-.footer-menu #fav-menu.active svg path {
-    fill: currentColor !important;
 }
 
 /* ========================================

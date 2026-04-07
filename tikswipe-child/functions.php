@@ -113,16 +113,16 @@ function tikswipe_child_enqueue_scripts() {
 				|| document.body.classList.contains('page-template-template-favorites-php')
 				|| document.body.classList.contains('search');
 			if (!isGridPage) return;
+			footer.style.transition = 'bottom 0.25s ease';
 			window.addEventListener('scroll', function() {
 				var y = window.pageYOffset;
 				if (y > lastY && y > 60) {
-					footer.style.transform = 'translateX(-50%) translateY(100%)';
+					footer.style.bottom = '-60px';
 				} else {
-					footer.style.transform = 'translateX(-50%) translateY(0)';
+					footer.style.bottom = '0';
 				}
 				lastY = y;
 			}, { passive: true });
-			footer.style.transition = 'transform 0.25s ease';
 		})();
 	" );
 }
@@ -284,14 +284,17 @@ function tikswipe_child_ajax_load_more_swipe() {
 	$args['post_type']        = 'post';
 	$args['post_status']      = 'publish';
 	$args['posts_per_page']   = $ads_displaying_frequency;
-
-	// Always use RAND — do NOT let the parent's customizer check reset this.
-	$args['orderby'] = 'RAND(' . get_random_seed() . ')';
-	$args['order']   = 'DESC';
-
-	// category__in is already in $args from the localized query_vars — preserved.
+	$args['orderby']          = 'RAND(' . get_random_seed() . ')';
+	$args['order']            = 'DESC';
 
 	$query = new WP_Query( $args );
+
+	// If category filter returns no results, retry without it (fallback to all posts).
+	if ( ! $query->have_posts() && ! empty( $args['category__in'] ) ) {
+		unset( $args['category__in'] );
+		$args['paged'] = 1; // Reset page since we're widening the query.
+		$query         = new WP_Query( $args );
+	}
 
 	if ( $query->have_posts() ) :
 		while ( $query->have_posts() ) :
