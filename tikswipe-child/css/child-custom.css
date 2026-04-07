@@ -165,8 +165,9 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
 /* ========================================
    Content infos: lower position, smaller title
    ======================================== */
+/* Layout stack from bottom: footer(50px) → progress bar(4px at 50px) → gap → content */
 .single-content-infos {
-    bottom: 60px !important;
+    bottom: 70px !important;
     max-width: calc(100% - 70px) !important;
 }
 
@@ -329,14 +330,14 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
     transition: height 0.15s ease;
 }
 
-/* Invisible touch area — 30px tall, only the visible bar draws */
+/* Invisible touch area — extends only downward into footer zone, not up into text */
 .wpst-progress-bar::before {
     content: '';
     position: absolute;
-    top: -15px;
+    top: -10px;
+    bottom: -10px;
     left: 0;
     width: 100%;
-    height: 34px;
 }
 
 .wpst-progress-bar:hover {
