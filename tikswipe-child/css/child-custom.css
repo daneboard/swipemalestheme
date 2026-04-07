@@ -3,6 +3,32 @@ body.media-body header .menu {
     display: none !important;
 }
 
+/* TikTok-style gradient from footer up to content area */
+body.media-body footer,
+body.media-body footer .footer-menu {
+    background-color: transparent !important;
+}
+
+body.media-body .swiper-slide::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 45%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Hide swiper nav arrows on mobile */
+@media (max-width: 1024px) {
+    .swiper-button-prev,
+    .swiper-button-next {
+        display: none !important;
+    }
+}
+
 /* Mute/Unmute toggle button */
 .swiper-side .wpst-mute-toggle {
     margin-top: 15px;

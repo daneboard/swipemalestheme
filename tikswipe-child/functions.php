@@ -96,12 +96,12 @@ function tikswipe_child_enqueue_scripts() {
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
 
 /**
- * Fix randomization: regenerate seed on every new page load to the homepage.
+ * Fix randomization: regenerate seed on every new page load.
  * The parent theme stores a seed in $_SESSION that never changes.
- * We force a new seed each time the user arrives at the homepage.
+ * We force a new seed each time the user arrives at any swipe view.
  */
 function tikswipe_child_reset_random_seed() {
-	if ( ! is_home() && ! is_front_page() ) {
+	if ( ! is_home() && ! is_front_page() && ! is_category() && ! is_tag() ) {
 		return;
 	}
 
@@ -115,7 +115,28 @@ function tikswipe_child_reset_random_seed() {
 		session_start();
 	}
 
-	// Always generate a fresh seed on homepage arrival.
+	// Always generate a fresh seed on page arrival.
 	$_SESSION['random_seed'] = wp_rand( 1, 999999 );
 }
 add_action( 'template_redirect', 'tikswipe_child_reset_random_seed', 1 );
+
+/**
+ * Extend randomization to category and tag archives.
+ * The parent only randomizes home/front_page/template-vids/template-pics.
+ */
+function tikswipe_child_randomize_archives( $query ) {
+	if ( is_admin() ) {
+		return;
+	}
+
+	$random_posts = get_theme_mod( 'wpst_random_posts', false );
+	if ( ! $random_posts ) {
+		return;
+	}
+
+	if ( ( is_category() || is_tag() ) && $query->is_main_query() ) {
+		$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
+		$query->set( 'order', 'DESC' );
+	}
+}
+add_action( 'pre_get_posts', 'tikswipe_child_randomize_archives', 2 );
