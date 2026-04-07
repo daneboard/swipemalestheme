@@ -72,6 +72,41 @@ select,
 }
 
 /* ========================================
+   Logo: smaller, single block with main color bg
+   ======================================== */
+.logo-box .navbar-brand {
+    display: inline-block;
+    background-color: #fd0131;
+    color: #fff !important;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-decoration: none;
+}
+
+.logo-box .navbar-brand .logo-word-1 {
+    color: #fff !important;
+}
+
+.logo-box .navbar-brand .logo-word-2 {
+    background-color: transparent !important;
+    color: #fff !important;
+    padding: 0;
+    margin: 0;
+}
+
+.logo-box .navbar-brand .logo-text {
+    color: #fff !important;
+}
+
+.logo-box .navbar-brand-image img {
+    max-height: 28px !important;
+    top: 0 !important;
+}
+
+/* ========================================
    Header: hide menu on home
    ======================================== */
 body.media-body header .menu {
