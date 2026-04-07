@@ -1,0 +1,48 @@
+/* Mute/Unmute toggle button */
+.swiper-side .wpst-mute-toggle {
+    margin-top: 15px;
+    cursor: pointer;
+}
+
+/* Progress bar outside fullscreen */
+.wpst-progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    z-index: 7;
+    cursor: pointer;
+    transition: height 0.15s ease;
+}
+
+.wpst-progress-bar:hover {
+    height: 6px;
+}
+
+.wpst-progress-played {
+    height: 100%;
+    width: 0%;
+    background: #fff;
+    pointer-events: none;
+    position: relative;
+}
+
+.wpst-progress-played::after {
+    content: '';
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.wpst-progress-bar:hover .wpst-progress-played::after {
+    opacity: 1;
+}
