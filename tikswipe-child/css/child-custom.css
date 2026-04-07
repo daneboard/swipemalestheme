@@ -72,6 +72,14 @@ select,
 }
 
 /* ========================================
+   Smaller close button in fullscreen
+   ======================================== */
+.close-fullscreen svg {
+    width: 30px !important;
+    height: 30px !important;
+}
+
+/* ========================================
    Logo: smaller, single block with main color bg
    ======================================== */
 .logo-box .navbar-brand {
