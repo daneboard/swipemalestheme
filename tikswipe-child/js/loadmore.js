@@ -31,6 +31,9 @@ jQuery(document).ready(function () {
 		jQuery('.embed-content').css('opacity', '0');
 		slide.removeClass('wpst-fullscreen wpst-zoomed wpst-controls-hidden');
 		jQuery('body').removeClass('wpst-is-fullscreen');
+		// Reset zoom icon to expand state
+		slide.find('.wpst-zoom-expand').show();
+		slide.find('.wpst-zoom-compress').hide();
 		var iframe = jQuery(this).parents('.swiper-slide').find('iframe').get(0);
 		if (iframe) {
 			var iframeSrc = iframe.src;
@@ -132,10 +135,14 @@ jQuery(document).ready(function () {
 		}, 2000);
 	});
 
-	// Zoom toggle in fullscreen
+	// Zoom toggle in fullscreen — swap icons
 	jQuery(document).on('click', '.wpst-zoom-toggle', function (e) {
 		e.preventDefault();
-		jQuery(this).closest('.swiper-slide').toggleClass('wpst-zoomed');
+		var slide = jQuery(this).closest('.swiper-slide');
+		slide.toggleClass('wpst-zoomed');
+		var isZoomed = slide.hasClass('wpst-zoomed');
+		jQuery(this).find('.wpst-zoom-expand').toggle(!isZoomed);
+		jQuery(this).find('.wpst-zoom-compress').toggle(isZoomed);
 	});
 
 	// Post views
