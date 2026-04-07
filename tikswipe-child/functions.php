@@ -6,7 +6,6 @@ defined( 'ABSPATH' ) || exit;
  * Enqueue parent theme styles + child theme custom CSS.
  */
 function tikswipe_child_enqueue_styles() {
-	// Parent main CSS.
 	wp_enqueue_style(
 		'wpst-main-css',
 		get_template_directory_uri() . '/css/main.css',
@@ -14,7 +13,6 @@ function tikswipe_child_enqueue_styles() {
 		wp_get_theme()->parent()->get( 'Version' )
 	);
 
-	// Child custom CSS (only the new rules).
 	wp_enqueue_style(
 		'tikswipe-child-css',
 		get_stylesheet_directory_uri() . '/css/child-custom.css',
@@ -83,7 +81,7 @@ function tikswipe_child_enqueue_scripts() {
 		}
 	}
 
-	// Inline JS: tags expand + search clear + mute pulse.
+	// Inline JS: tags expand + search clear.
 	wp_add_inline_script( 'wpst-main-js', "
 		jQuery(document).on('click', '.wpst-tags-more', function(e) {
 			e.preventDefault();
@@ -91,15 +89,9 @@ function tikswipe_child_enqueue_scripts() {
 			tagsList.find('.wpst-tag-hidden').addClass('wpst-tags-expanded').show();
 			jQuery(this).remove();
 		});
-
-		// Search clear button
 		jQuery(document).on('input', '#searchform #s', function() {
 			var clearBtn = jQuery(this).closest('#searchform').find('.wpst-search-clear');
-			if (jQuery(this).val().length > 0) {
-				clearBtn.show();
-			} else {
-				clearBtn.hide();
-			}
+			clearBtn.toggle(jQuery(this).val().length > 0);
 		});
 		jQuery(document).on('click', '.wpst-search-clear', function(e) {
 			e.preventDefault();
@@ -107,76 +99,103 @@ function tikswipe_child_enqueue_scripts() {
 			form.find('#s').val('').focus();
 			jQuery(this).hide();
 		});
-		// Show clear on page load if value present
 		jQuery(function() {
-			var searchInput = jQuery('#searchform #s');
-			if (searchInput.length && searchInput.val().length > 0) {
-				searchInput.closest('#searchform').find('.wpst-search-clear').show();
-			}
+			var si = jQuery('#searchform #s');
+			if (si.length && si.val().length > 0) si.closest('#searchform').find('.wpst-search-clear').show();
 		});
 	" );
 }
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
 
 /**
- * Override loadmore query on single posts to use category-based related videos.
+ * Override loadmore query to use RAND for home AND category-based for single.
  */
-function tikswipe_child_single_loadmore_query() {
-	if ( ! is_single() ) {
-		return;
-	}
-
-	global $post;
+function tikswipe_child_override_loadmore() {
 	$ads_displaying_frequency = get_theme_mod( 'wpst_ads_displaying_frequency', 5 );
-	$post_cats                = wp_get_post_categories( $post->ID, array( 'fields' => 'ids' ) );
 
-	$loadmore_single_args = array(
-		'post_type'      => 'post',
-		'post_status'    => 'publish',
-		'posts_per_page' => $ads_displaying_frequency,
-		'orderby'        => 'RAND(' . get_random_seed() . ')',
-		'order'          => 'DESC',
-		'post__not_in'   => array( $post->ID ),
-		'tax_query'      => array(
-			'relation' => 'AND',
-			array(
-				'taxonomy' => 'post_format',
-				'field'    => 'slug',
-				'terms'    => array(
-					'post-format-video',
-					'post-format-image',
+	if ( is_single() ) {
+		global $post;
+		$post_cats = wp_get_post_categories( $post->ID, array( 'fields' => 'ids' ) );
+
+		$args = array(
+			'post_type'      => 'post',
+			'post_status'    => 'publish',
+			'posts_per_page' => $ads_displaying_frequency,
+			'orderby'        => 'RAND(' . get_random_seed() . ')',
+			'order'          => 'DESC',
+			'post__not_in'   => array( $post->ID ),
+			'tax_query'      => array(
+				'relation' => 'AND',
+				array(
+					'taxonomy' => 'post_format',
+					'field'    => 'slug',
+					'terms'    => array( 'post-format-video', 'post-format-image' ),
+					'operator' => 'IN',
 				),
-				'operator' => 'IN',
 			),
-		),
-		'paged'          => ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1,
-	);
+			'paged'          => ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1,
+		);
 
-	if ( ! empty( $post_cats ) ) {
-		$loadmore_single_args['category__in'] = $post_cats;
+		if ( ! empty( $post_cats ) ) {
+			$args['category__in'] = $post_cats;
+		}
+
+		$wp_query = new WP_Query( $args );
+
+		wp_localize_script(
+			'loadmore-js',
+			'loadmore_ajax_var',
+			array(
+				'ajaxurl'      => admin_url( 'admin-ajax.php' ),
+				'nonce'        => wp_create_nonce( 'ajax-nonce' ),
+				'posts'        => wp_json_encode( $wp_query->query_vars ),
+				'current_page' => get_query_var( 'paged' ) ? get_query_var( 'paged' ) : 1,
+				'max_page'     => $wp_query->max_num_pages,
+			)
+		);
+
+		wp_reset_postdata();
+
+	} elseif ( is_home() || is_front_page() ) {
+		// Override the parent's loadmore query to use RAND.
+		$args = array(
+			'post_type'      => 'post',
+			'post_status'    => 'publish',
+			'posts_per_page' => $ads_displaying_frequency,
+			'orderby'        => 'RAND(' . get_random_seed() . ')',
+			'order'          => 'DESC',
+			'tax_query'      => array(
+				array(
+					'taxonomy' => 'post_format',
+					'field'    => 'slug',
+					'terms'    => array( 'post-format-image', 'post-format-video' ),
+					'operator' => 'IN',
+				),
+			),
+			'paged'          => ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1,
+		);
+
+		$wp_query = new WP_Query( $args );
+
+		wp_localize_script(
+			'loadmore-js',
+			'loadmore_ajax_var',
+			array(
+				'ajaxurl'      => admin_url( 'admin-ajax.php' ),
+				'nonce'        => wp_create_nonce( 'ajax-nonce' ),
+				'posts'        => wp_json_encode( $wp_query->query_vars ),
+				'current_page' => get_query_var( 'paged' ) ? get_query_var( 'paged' ) : 1,
+				'max_page'     => $wp_query->max_num_pages,
+			)
+		);
+
+		wp_reset_postdata();
 	}
-
-	$wp_query = new WP_Query( $loadmore_single_args );
-
-	wp_localize_script(
-		'loadmore-js',
-		'loadmore_ajax_var',
-		array(
-			'ajaxurl'      => admin_url( 'admin-ajax.php' ),
-			'nonce'        => wp_create_nonce( 'ajax-nonce' ),
-			'posts'        => wp_json_encode( $wp_query->query_vars ),
-			'current_page' => get_query_var( 'paged' ) ? get_query_var( 'paged' ) : 1,
-			'max_page'     => $wp_query->max_num_pages,
-		)
-	);
-
-	wp_reset_postdata();
 }
-add_action( 'wp_enqueue_scripts', 'tikswipe_child_single_loadmore_query', 22 );
+add_action( 'wp_enqueue_scripts', 'tikswipe_child_override_loadmore', 22 );
 
 /**
- * Force randomization: always generate fresh seed on every page load.
- * Ignores the customizer toggle — child theme always randomizes.
+ * Force fresh random seed on every page load.
  */
 function tikswipe_child_reset_random_seed() {
 	if ( ! is_home() && ! is_front_page() && ! is_category() && ! is_tag() && ! is_single() ) {
@@ -197,15 +216,14 @@ function tikswipe_child_reset_random_seed() {
 add_action( 'template_redirect', 'tikswipe_child_reset_random_seed', 1 );
 
 /**
- * Force random ordering on all swipe views (home, categories, tags).
- * Overrides parent which only runs when customizer toggle is on.
+ * Force random ordering on category/tag archives (main query).
  */
 function tikswipe_child_force_random_order( $query ) {
-	if ( is_admin() ) {
+	if ( is_admin() || ! $query->is_main_query() ) {
 		return;
 	}
 
-	if ( $query->is_main_query() && ( is_home() || is_front_page() || is_category() || is_tag() ) ) {
+	if ( is_category() || is_tag() ) {
 		$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
 		$query->set( 'order', 'DESC' );
 	}

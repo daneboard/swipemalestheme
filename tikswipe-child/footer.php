@@ -14,25 +14,44 @@ if ( isset( $profile_avatar_basename ) && ! empty( $profile_avatar_basename ) ) 
 $current_user = wp_get_current_user();
 eval( WPSCORE()->eval_product_data( WPSCORE()->get_installed_theme( 'sku' ), 'footer_eval_2' ) );
 
-$menu_items = 3; // Home + Search + Favorites
+$menu_items = 3;
 if ( get_theme_mod( 'wpst_enable_creators', '' ) === true ) {
 	$menu_items++;
 }
+
+$is_home = is_front_page() || is_home();
+$is_search = is_search() || is_page_template( 'template-search.php' );
+$is_fav = is_page_template( 'template-favorites.php' );
 ?>
 
 	<footer>
 		<div class="footer-menu footer-menu-<?php echo $menu_items; ?>">
-			<a
-			<?php if ( is_front_page() || is_home() ) : ?>
-				class="active"<?php endif; ?> href="<?php echo esc_url( home_url( '/' ) ); ?>"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="24"><path fill="currentColor" clip-rule="evenodd" fill-rule="evenodd" d="m12 1c-0.1697-3.069e-5 -0.3394 0.05602-0.4796 0.1682l-10.23 8.186c-0.331 0.2648-0.3846 0.7477-0.1199 1.079 0.2648 0.331 0.7477 0.3846 1.079 0.1199l0.7999-0.6399v12.32c0 0.4238 0.3436 0.7674 0.7674 0.7674h16.37c0.4239 0 0.7674-0.3437 0.7674-0.7674v-12.32l0.7994 0.6395c0.331 0.2648 0.8139 0.2111 1.079-0.1199 0.2648-0.3309 0.2111-0.8139-0.1199-1.079l-2.034-1.627c-4e-3 -0.0033-8e-3 -0.00652-0.01197-0.00975l-8.186-6.549c-0.1402-0.1121-0.3099-0.1682-0.4795-0.1682zm-7.7e-5 1.75 7.419 5.935v12.78h-14.84v-12.78z" style="stroke-width: 0.7674;"></path></svg><small><?php esc_html_e( 'Home', 'wpst' ); ?></small></a>
+			<a <?php if ( $is_home ) : ?>class="active"<?php endif; ?> href="<?php echo esc_url( home_url( '/' ) ); ?>">
+				<?php if ( $is_home ) : ?>
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="24"><path fill="currentColor" d="M12.97 2.59a1.5 1.5 0 0 0-1.94 0l-7.5 6.363A1.5 1.5 0 0 0 3 10.097V19.5A1.5 1.5 0 0 0 4.5 21h4.75a.75.75 0 0 0 .75-.75v-4.5a2 2 0 0 1 4 0v4.5c0 .414.336.75.75.75h4.75a1.5 1.5 0 0 0 1.5-1.5v-9.403a1.5 1.5 0 0 0-.53-1.144l-7.5-6.363z"/></svg>
+				<?php else : ?>
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="24"><path fill="currentColor" d="m12 1c-0.17 0-0.34 0.056-0.48 0.168l-10.23 8.186c-0.331 0.265-0.385 0.748-0.12 1.079 0.265 0.331 0.748 0.385 1.079 0.12l0.8-0.64v12.32c0 0.424 0.344 0.767 0.767 0.767h16.37c0.424 0 0.767-0.344 0.767-0.767v-12.32l0.8 0.64c0.331 0.265 0.814 0.211 1.079-0.12 0.265-0.331 0.211-0.814-0.12-1.079l-2.034-1.627-0.012-0.01-8.186-6.549c-0.14-0.112-0.31-0.168-0.48-0.168zm0 1.75 7.419 5.935v12.78h-14.84v-12.78z"/></svg>
+				<?php endif; ?>
+				<small><?php esc_html_e( 'Home', 'wpst' ); ?></small>
+			</a>
 
-			<a id="search-menu"
-			<?php if ( is_search() || is_page_template( 'template-search.php' ) ) : ?>
-				class="active"<?php endif; ?> href="<?php echo esc_url( wpst_get_page_url( 'search' ) ); ?>"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="24"><path fill="currentColor" clip-rule="evenodd" fill-rule="evenodd" d="m9.952 1c-4.944 0-8.952 4.009-8.952 8.954 0 4.945 4.008 8.954 8.952 8.954 2.012 0 3.869-0.664 5.364-1.785l5.65 5.651c0.144 0.144 0.3391 0.2248 0.5426 0.2248 0.2036 0 0.3987-0.08082 0.5426-0.2248l0.7234-0.7236c0.2997-0.2997 0.2997-0.7857 0-1.085l-5.651-5.652c1.118-1.494 1.78-3.35 1.78-5.36 0-4.945-4.008-8.954-8.952-8.954zm5.606 13.81c1.128-1.302 1.811-3 1.811-4.858 0-4.098-3.321-7.419-7.417-7.419-4.097 0-7.418 3.322-7.418 7.419 0 4.098 3.321 7.419 7.418 7.419 1.858 0 3.557-0.6835 4.858-1.813 0.0046-0.0049 0.0093-0.0097 0.01397-0.01443l0.7234-0.7236c0.0035-0.0035 0.0069-0.0068 0.01044-0.01021z" style="stroke-width: 0.7674;"></path></svg><small><?php esc_html_e( 'Search', 'wpst' ); ?></small></a>
+			<a id="search-menu" <?php if ( $is_search ) : ?>class="active"<?php endif; ?> href="<?php echo esc_url( wpst_get_page_url( 'search' ) ); ?>">
+				<?php if ( $is_search ) : ?>
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="24"><path fill="currentColor" d="M10.5 2a8.5 8.5 0 0 1 6.676 13.762l4.781 4.781a.75.75 0 0 1-1.06 1.06l-4.781-4.78A8.5 8.5 0 1 1 10.5 2zM4 10.5a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0z"/><circle cx="10.5" cy="10.5" r="5" fill="currentColor" opacity="0.3"/></svg>
+				<?php else : ?>
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="24"><path fill="currentColor" d="M10.5 2a8.5 8.5 0 0 1 6.676 13.762l4.781 4.781a.75.75 0 0 1-1.06 1.06l-4.781-4.78A8.5 8.5 0 1 1 10.5 2zM4 10.5a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0z"/></svg>
+				<?php endif; ?>
+				<small><?php esc_html_e( 'Search', 'wpst' ); ?></small>
+			</a>
 
-			<a id="fav-menu"
-			<?php if ( is_page_template( 'template-favorites.php' ) ) : ?>
-				class="active"<?php endif; ?> href="<?php echo esc_url( wpst_get_page_url( 'favorites' ) ); ?>"><svg xmlns="http://www.w3.org/2000/svg" fill="none" width="24" height="24" viewBox="3.9 4.9 17.2 16.2"><path d="M17 16C15.8 17.3235 12.5 20.5 12.5 20.5C12.5 20.5 9.2 17.3235 8 16C5.2 12.9118 4.5 11.7059 4.5 9.5C4.5 7.29412 6.1 5.5 8.5 5.5C10.5 5.5 11.7 6.82353 12.5 8.14706C13.3 6.82353 14.5 5.5 16.5 5.5C18.9 5.5 20.5 7.29412 20.5 9.5C20.5 11.7059 19.8 12.9118 17 16Z" stroke="currentColor" stroke-width="1.2"/></svg><small><?php esc_html_e( 'Favorites', 'wpst' ); ?></small></a>
+			<a id="fav-menu" <?php if ( $is_fav ) : ?>class="active"<?php endif; ?> href="<?php echo esc_url( wpst_get_page_url( 'favorites' ) ); ?>">
+				<?php if ( $is_fav ) : ?>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="3.9 4.9 17.2 16.2"><path d="M17 16C15.8 17.3235 12.5 20.5 12.5 20.5C12.5 20.5 9.2 17.3235 8 16C5.2 12.9118 4.5 11.7059 4.5 9.5C4.5 7.29412 6.1 5.5 8.5 5.5C10.5 5.5 11.7 6.82353 12.5 8.14706C13.3 6.82353 14.5 5.5 16.5 5.5C18.9 5.5 20.5 7.29412 20.5 9.5C20.5 11.7059 19.8 12.9118 17 16Z" fill="currentColor" stroke="currentColor" stroke-width="1.2"/></svg>
+				<?php else : ?>
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" width="24" height="24" viewBox="3.9 4.9 17.2 16.2"><path d="M17 16C15.8 17.3235 12.5 20.5 12.5 20.5C12.5 20.5 9.2 17.3235 8 16C5.2 12.9118 4.5 11.7059 4.5 9.5C4.5 7.29412 6.1 5.5 8.5 5.5C10.5 5.5 11.7 6.82353 12.5 8.14706C13.3 6.82353 14.5 5.5 16.5 5.5C18.9 5.5 20.5 7.29412 20.5 9.5C20.5 11.7059 19.8 12.9118 17 16Z" stroke="currentColor" stroke-width="1.2"/></svg>
+				<?php endif; ?>
+				<small><?php esc_html_e( 'Favorites', 'wpst' ); ?></small>
+			</a>
 			<?php if ( get_theme_mod( 'wpst_enable_creators', '' ) === true ) : ?>
 				<?php if ( wpst_is_admin() ) : ?>
 					<a id="menu-profil" class="menu-profile" href="<?php echo esc_url( home_url( '/?view=profile' ) ); ?>"><?php echo $profile_avatar; ?><small><?php esc_html_e( 'Profile', 'wpst' ); ?></small></a>
