@@ -82,5 +82,40 @@ function tikswipe_child_enqueue_scripts() {
 			wp_add_inline_script( 'loadmore-js', $loadmore_data['data'], 'before' );
 		}
 	}
+
+	// Inline JS for tags expand toggle.
+	wp_add_inline_script( 'wpst-main-js', "
+		jQuery(document).on('click', '.wpst-tags-more', function(e) {
+			e.preventDefault();
+			var tagsList = jQuery(this).closest('.tags-list');
+			tagsList.find('.wpst-tag-hidden').addClass('wpst-tags-expanded').show();
+			jQuery(this).remove();
+		});
+	" );
 }
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
+
+/**
+ * Fix randomization: regenerate seed on every new page load to the homepage.
+ * The parent theme stores a seed in $_SESSION that never changes.
+ * We force a new seed each time the user arrives at the homepage.
+ */
+function tikswipe_child_reset_random_seed() {
+	if ( ! is_home() && ! is_front_page() ) {
+		return;
+	}
+
+	// Only reset if we're not loading more via AJAX (paged > 1 should keep the same seed).
+	$paged = get_query_var( 'paged', 0 );
+	if ( $paged > 1 ) {
+		return;
+	}
+
+	if ( ! isset( $_SESSION ) ) {
+		session_start();
+	}
+
+	// Always generate a fresh seed on homepage arrival.
+	$_SESSION['random_seed'] = wp_rand( 1, 999999 );
+}
+add_action( 'template_redirect', 'tikswipe_child_reset_random_seed', 1 );

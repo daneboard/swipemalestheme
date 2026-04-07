@@ -1,3 +1,8 @@
+/* Hide header menu (display switcher + hamburger) on home */
+body.media-body header .menu {
+    display: none !important;
+}
+
 /* Mute/Unmute toggle button */
 .swiper-side .wpst-mute-toggle {
     margin-top: 15px;
@@ -7,6 +12,50 @@
 /* Hide comment button */
 .swiper-side .comment-icon {
     display: none !important;
+}
+
+/* Views icon in sidebar (replaces comment icon position) */
+.swiper-side .views-icon {
+    margin-top: 15px;
+    position: relative;
+    display: block;
+}
+
+.swiper-side .views-icon span {
+    position: absolute;
+    top: 0;
+    right: 10px;
+    display: inline-block;
+    color: #fff;
+    padding: 1px 5px;
+    line-height: 1.3;
+    text-align: center;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+/* Tags: show only 3 + "more" button */
+.wpst-tag-hidden {
+    display: none;
+}
+
+.wpst-tag-hidden.wpst-tags-expanded {
+    display: inline-block;
+}
+
+.wpst-tags-more {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.wpst-tags-more:hover {
+    background: rgba(255, 255, 255, 0.35);
 }
 
 
