@@ -28,31 +28,121 @@ class TSVI_Scraper {
 		$doc->loadHTML( '<?xml encoding="utf-8"?>' . $html );
 		libxml_clear_errors();
 
-		$anchors = $doc->getElementsByTagName( 'a' );
+		$xpath = new DOMXPath( $doc );
 
-		foreach ( $anchors as $a ) {
-			$href  = $a->getAttribute( 'href' );
-			$title = trim( $a->getAttribute( 'title' ) ?: $a->textContent );
-
-			if ( empty( $href ) || $href === '#' || strpos( $href, 'javascript:' ) === 0 ) {
+		// Strategy 1: Items with data-video-id attribute (xgroovy-style).
+		$video_items = $xpath->query( '//*[@data-video-id]' );
+		foreach ( $video_items as $item ) {
+			if ( count( $links ) >= $limit ) {
+				break;
+			}
+			$a = $xpath->query( './/a[@href]', $item );
+			if ( ! $a->length ) {
+				continue;
+			}
+			$anchor = $a->item( 0 );
+			$href   = $anchor->getAttribute( 'href' );
+			if ( empty( $href ) || $href === '#' ) {
+				continue;
+			}
+			$abs = self::absolute_url( $href, $base_url );
+			if ( isset( $links[ $abs ] ) ) {
 				continue;
 			}
 
-			// Make absolute.
-			$abs = self::absolute_url( $href, $base_url );
+			$title = trim( $anchor->getAttribute( 'title' ) );
+			if ( ! $title ) {
+				$strong = $xpath->query( './/strong|.//h3|.//h2', $item );
+				$title  = $strong->length ? trim( $strong->item( 0 )->textContent ) : '';
+			}
+			$thumb    = self::find_nearby_thumbnail_in( $item, $xpath );
+			$duration = self::find_duration_text( $item );
 
-			// Filter: likely video page links (heuristic).
-			if ( self::looks_like_video_link( $abs, $a ) ) {
-				$thumb = self::find_nearby_thumbnail( $a );
+			$links[ $abs ] = array(
+				'url'       => $abs,
+				'title'     => sanitize_text_field( mb_substr( $title, 0, 200 ) ),
+				'thumbnail' => $thumb ? self::absolute_url( $thumb, $base_url ) : '',
+				'duration'  => $duration,
+			);
+		}
+
+		// Strategy 2: Article/div items with duration text (generic tube sites).
+		if ( empty( $links ) ) {
+			$containers = $xpath->query( '//article[contains(@class,"thumb")]|//div[contains(@class,"thumb")]|//div[contains(@class,"video-item")]|//div[contains(@class,"video_block")]|//li[contains(@class,"video")]' );
+			foreach ( $containers as $item ) {
+				if ( count( $links ) >= $limit ) {
+					break;
+				}
+				// Must have duration text to qualify as video.
+				$duration = self::find_duration_text( $item );
+				if ( ! $duration ) {
+					continue;
+				}
+				$a = $xpath->query( './/a[@href]', $item );
+				if ( ! $a->length ) {
+					continue;
+				}
+				$anchor = $a->item( 0 );
+				$href   = $anchor->getAttribute( 'href' );
+				if ( empty( $href ) || $href === '#' ) {
+					continue;
+				}
+				$abs = self::absolute_url( $href, $base_url );
+				if ( isset( $links[ $abs ] ) ) {
+					continue;
+				}
+
+				$title = trim( $anchor->getAttribute( 'title' ) );
+				if ( ! $title ) {
+					$headings = $xpath->query( './/h3|.//h2|.//strong[@class]', $item );
+					$title    = $headings->length ? trim( $headings->item( 0 )->textContent ) : '';
+				}
+				$thumb = self::find_nearby_thumbnail_in( $item, $xpath );
+
 				$links[ $abs ] = array(
 					'url'       => $abs,
 					'title'     => sanitize_text_field( mb_substr( $title, 0, 200 ) ),
 					'thumbnail' => $thumb ? self::absolute_url( $thumb, $base_url ) : '',
+					'duration'  => $duration,
 				);
 			}
+		}
 
-			if ( count( $links ) >= $limit ) {
-				break;
+		// Strategy 3: Fallback — <a> tags with video URL patterns + thumbnail.
+		if ( empty( $links ) ) {
+			$anchors = $doc->getElementsByTagName( 'a' );
+			foreach ( $anchors as $a ) {
+				if ( count( $links ) >= $limit ) {
+					break;
+				}
+				$href = $a->getAttribute( 'href' );
+				if ( empty( $href ) || $href === '#' || strpos( $href, 'javascript:' ) === 0 ) {
+					continue;
+				}
+				$abs = self::absolute_url( $href, $base_url );
+				if ( isset( $links[ $abs ] ) ) {
+					continue;
+				}
+				// Must match strict video URL pattern.
+				if ( ! preg_match( '#/(video|watch|view|play|clip)s?/\d+#i', $abs ) ) {
+					continue;
+				}
+				// Must have an img child.
+				$imgs = $a->getElementsByTagName( 'img' );
+				if ( ! $imgs->length ) {
+					continue;
+				}
+
+				$title = trim( $a->getAttribute( 'title' ) ?: $a->textContent );
+				$thumb = $imgs->item( 0 )->getAttribute( 'data-src' )
+					?: $imgs->item( 0 )->getAttribute( 'src' );
+
+				$links[ $abs ] = array(
+					'url'       => $abs,
+					'title'     => sanitize_text_field( mb_substr( $title, 0, 200 ) ),
+					'thumbnail' => $thumb ? self::absolute_url( $thumb, $base_url ) : '',
+					'duration'  => '',
+				);
 			}
 		}
 
@@ -335,24 +425,36 @@ class TSVI_Scraper {
 		return (bool) preg_match( '/\.(mp4|m3u8|webm)(\?|$)/i', $url );
 	}
 
-	private static function looks_like_video_link( $url, $anchor ) {
-		// Heuristic: URL contains /video/, /watch, /view, /embed, or has a thumbnail child.
-		if ( preg_match( '#/(video|watch|view|embed|play|clip)/|/video[_-]#i', $url ) ) {
-			return true;
+	/**
+	 * Find thumbnail inside a container element.
+	 */
+	private static function find_nearby_thumbnail_in( $container, $xpath ) {
+		$imgs = $xpath->query( './/img', $container );
+		if ( ! $imgs->length ) {
+			return '';
 		}
-		// Has an img child (thumbnail grid).
-		$imgs = $anchor->getElementsByTagName( 'img' );
-		if ( $imgs->length > 0 ) {
-			return true;
-		}
-		return false;
+		$img = $imgs->item( 0 );
+		return $img->getAttribute( 'data-src' )
+			?: $img->getAttribute( 'data-jpg' )
+			?: $img->getAttribute( 'src' );
 	}
 
-	private static function find_nearby_thumbnail( $anchor ) {
-		$imgs = $anchor->getElementsByTagName( 'img' );
-		if ( $imgs->length > 0 ) {
-			return $imgs->item( 0 )->getAttribute( 'data-src' )
-				?: $imgs->item( 0 )->getAttribute( 'src' );
+	/**
+	 * Find duration text inside a container (e.g., "29:15", "9 min", "02:10").
+	 */
+	private static function find_duration_text( $container ) {
+		$text = $container->textContent;
+		// Match MM:SS or HH:MM:SS patterns.
+		if ( preg_match( '/\b(\d{1,2}:\d{2}(?::\d{2})?)\b/', $text, $m ) ) {
+			return $m[1];
+		}
+		// Match "X min" patterns.
+		if ( preg_match( '/\b(\d+)\s*min/i', $text, $m ) ) {
+			return $m[1] . ':00';
+		}
+		// Match "Duration:" label followed by value.
+		if ( preg_match( '/duration[:\s]+(\d{1,2}:\d{2}(?::\d{2})?)/i', $text, $m ) ) {
+			return $m[1];
 		}
 		return '';
 	}
