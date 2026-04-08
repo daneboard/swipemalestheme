@@ -116,6 +116,12 @@ else :
 	<div class="swiper-button-next"></div> */
 	?>
 	<a href="#!" class="enlight-content"><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"><path fill="#ffffff" d="M24 9h-2v-7h-7v-2h9v9zm-9 15v-2h7v-7h2v9h-9zm-15-9h2v7h7v2h-9v-9zm9-15v2h-7v7h-2v-9h9z"/></svg></a>
+	<?php if ( 'video' === get_post_format() ) : ?>
+		<a href="#!" class="wpst-mute-toggle" title="<?php esc_attr_e( 'Mute / Unmute', 'tikswipe' ); ?>">
+			<svg class="wpst-icon-muted" xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"><path fill="#ffffff" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/><line x1="2" y1="2" x2="22" y2="22" stroke="#ffffff" stroke-width="2"/></svg>
+			<svg class="wpst-icon-unmuted" xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" style="display:none;"><path fill="#ffffff" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+		</a>
+	<?php endif; ?>
 	<?php if ( get_theme_mod( 'wpst_enable_creators', '' ) === true ) : ?>
 		<?php if ( $author_id == 1 ) : ?>
 			<a class="avatar-img" href="<?php echo esc_url( home_url( '/?view=profile' ) ); ?>"><?php echo $profile_avatar; ?></a>

@@ -27,34 +27,32 @@ jQuery(document).ready(function () {
 		}
 	}
 
-	// Progress bar update via requestAnimationFrame
+	// Helper: get the active slide's video player
+	function getActivePlayer() {
+		var activeSlide = document.querySelector('.swiper-slide-active');
+		if (!activeSlide) return null;
+		var vjsEl = activeSlide.querySelector('video-js');
+		if (!vjsEl || !vjsEl.id) return null;
+		return videojs.getPlayer(vjsEl.id) || null;
+	}
+
+	// Progress bar update via requestAnimationFrame (global bar)
+	var globalBar = document.querySelector('#wpst-global-progress .wpst-progress-played');
 	var progressRAF = null;
 	function updateProgressBar() {
-		var activeSlide = document.querySelector('.swiper-slide-active');
-		if (activeSlide) {
-			var vjsEl = activeSlide.querySelector('video-js');
-			if (vjsEl && vjsEl.id) {
-				var player = videojs.getPlayer(vjsEl.id);
-				if (player && player.duration() > 0) {
-					var pct = (player.currentTime() / player.duration()) * 100;
-					var bar = activeSlide.querySelector('.wpst-progress-played');
-					if (bar) {
-						bar.style.width = pct + '%';
-					}
-				}
-			}
+		var player = getActivePlayer();
+		if (player && player.duration() > 0 && globalBar) {
+			var pct = (player.currentTime() / player.duration()) * 100;
+			globalBar.style.width = pct + '%';
 		}
 		progressRAF = requestAnimationFrame(updateProgressBar);
 	}
 	progressRAF = requestAnimationFrame(updateProgressBar);
 
-	// Seek on progress bar click/drag
-	jQuery(document).on('mousedown touchstart', '.wpst-progress-bar', function (e) {
+	// Seek on progress bar click/drag (global bar)
+	jQuery(document).on('mousedown touchstart', '#wpst-global-progress', function (e) {
 		var bar = jQuery(this);
-		var slide = bar.closest('.swiper-slide');
-		var vjsEl = slide.find('video-js');
-		if (!vjsEl.length || !vjsEl.attr('id')) return;
-		var player = videojs.getPlayer(vjsEl.attr('id'));
+		var player = getActivePlayer();
 		if (!player || !player.duration()) return;
 
 		function seek(evt) {
@@ -86,6 +84,11 @@ jQuery(document).ready(function () {
 		globalMuted = !globalMuted;
 		player.muted(globalMuted);
 		updateMuteIcon(slide, globalMuted);
+
+		// Pulse animation
+		var btn = jQuery(this);
+		btn.addClass('wpst-pulse');
+		setTimeout(function () { btn.removeClass('wpst-pulse'); }, 300);
 	});
 
 	function videojs_init() {
@@ -190,8 +193,8 @@ jQuery(document).ready(function () {
 					updateMuteIcon(jQuery(slide), globalMuted);
 				}
 
-				// Reset progress bar for non-active slides
-				jQuery('.swiper-slide').not('.swiper-slide-active').find('.wpst-progress-played').css('width', '0%');
+				// Reset global progress bar on slide change
+				if (globalBar) globalBar.style.width = '0%';
 
 				if (autoplay == false) {
 					return;
@@ -236,12 +239,14 @@ jQuery(document).ready(function () {
 
 	jQuery(document).on('click', '.enlight-content', function (e) {
 		swiper.disable();
-		jQuery('.wpst-progress-bar').addClass('hidden');
+		jQuery('#wpst-global-progress').addClass('hidden');
+		jQuery(this).parents('.swiper-slide').addClass('wpst-fullscreen');
 	});
 
 	jQuery(document).on('click', '.close-fullscreen', function (e) {
 		swiper.enable();
-		jQuery('.wpst-progress-bar').removeClass('hidden');
+		jQuery('#wpst-global-progress').removeClass('hidden');
+		jQuery(this).parents('.swiper-slide').removeClass('wpst-fullscreen');
 	});
 
 	// Comments

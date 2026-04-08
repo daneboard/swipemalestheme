@@ -1,0 +1,915 @@
+/* ========================================
+   TikSwipe Child — Custom Overrides
+   ======================================== */
+
+/* Font: Inter instead of Poppins */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+*:not(.vjs-icon-placeholder):not(.video-js *) {
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* Preserve Video.js icon font */
+.video-js .vjs-icon-placeholder,
+.video-js .vjs-icon-placeholder::before,
+.video-js button,
+.video-js .vjs-control {
+    font-family: 'VideoJS' !important;
+}
+
+/* ========================================
+   Border-radius system: 4px small, 8px card, 16px modal
+   Scoped selectors to avoid hitting Video.js buttons
+   ======================================== */
+.button,
+.button-color,
+.button-outline,
+.button-outline-grey,
+input:not(.vjs-control *),
+textarea,
+select,
+.tags-list a,
+.wpst-tags-more,
+.search-pills a {
+    border-radius: 4px !important;
+}
+
+.media-box,
+.alert,
+.dropzone,
+.dropzone-box {
+    border-radius: 8px !important;
+}
+
+.slideup-box,
+.comment-box,
+.modal-content {
+    border-radius: 16px !important;
+}
+
+/* Ensure Video.js buttons are never affected by our border-radius */
+.video-js button,
+.video-js .vjs-button,
+.video-js .vjs-control,
+.vjs-control-bar button {
+    border-radius: 0 !important;
+}
+
+/* ========================================
+   Standardize input heights to 46px
+   ======================================== */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
+input[type="tel"],
+input[type="number"],
+textarea,
+select,
+#searchform input.form-control,
+#searchform #searchsubmit {
+    height: 46px !important;
+}
+
+/* ========================================
+   Remove dark overlay on videos
+   ======================================== */
+.slide-bg {
+    background-color: transparent !important;
+}
+
+/* ========================================
+   Hide video duration (show only in fullscreen via Video.js controls)
+   ======================================== */
+.post-datas,
+.media-box .video-duration {
+    display: none !important;
+}
+
+/* ========================================
+   Fullscreen controls: expand + close, right side, horizontal, black bg
+   ======================================== */
+.wpst-fullscreen-controls {
+    display: none;
+    position: absolute;
+    bottom: 80px;
+    right: 15px;
+    z-index: 3;
+    flex-direction: row;
+    gap: 10px;
+}
+
+/* Override parent .close-fullscreen — reset everything, let container rule control */
+.close-fullscreen {
+    display: none !important;
+}
+
+/* Both buttons inside fullscreen controls — identical styling */
+.wpst-fullscreen-controls .close-fullscreen,
+.wpst-fullscreen-controls .wpst-zoom-toggle {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    border: none !important;
+    outline: 0 !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+}
+
+.wpst-fullscreen-controls .close-fullscreen svg,
+.wpst-fullscreen-controls .wpst-zoom-toggle svg {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+/* Show controls in fullscreen */
+.swiper-slide.wpst-fullscreen .wpst-fullscreen-controls {
+    display: flex !important;
+    transition: opacity 0.3s ease;
+}
+
+/* Hide controls when VJS player is user-inactive */
+.swiper-slide.wpst-fullscreen.wpst-controls-hidden .wpst-fullscreen-controls {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Zoom fill mode */
+.swiper-slide.wpst-zoomed video,
+.swiper-slide.wpst-zoomed .vjs-poster {
+    object-fit: cover !important;
+}
+
+/* Play button shadow */
+.vjs-big-play-button {
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+/* ========================================
+   Logo: smaller, single block with main color bg
+   ======================================== */
+.logo-box .navbar-brand {
+    display: inline-block;
+    background-color: #fd0131;
+    color: #fff !important;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-decoration: none;
+}
+
+.logo-box .navbar-brand .logo-word-1 {
+    color: #fff !important;
+}
+
+.logo-box .navbar-brand .logo-word-2 {
+    background-color: transparent !important;
+    color: #fff !important;
+    padding: 0;
+    margin: 0;
+}
+
+.logo-box .navbar-brand .logo-text {
+    color: #fff !important;
+}
+
+.logo-box .navbar-brand-image img {
+    max-height: 28px !important;
+    top: 0 !important;
+}
+
+/* ========================================
+   Header: always visible (even in fullscreen), hide menu
+   ======================================== */
+body.media-body header {
+    z-index: 100 !important;
+    position: absolute !important;
+}
+
+body.media-body header .menu {
+    display: flex !important;
+    align-items: center;
+}
+
+body.media-body header .menu > *:not(.wpst-pwa-btn) {
+    display: none !important;
+}
+
+/* Hide PWA button when video is expanded */
+.swiper-slide.wpst-fullscreen ~ .wpst-pwa-btn,
+body.wpst-is-fullscreen .wpst-pwa-btn {
+    display: none !important;
+}
+
+/* PWA install button — pill, black bg, white text */
+.wpst-pwa-btn {
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 1;
+    height: auto !important;
+}
+
+/* ========================================
+   TikTok gradient — stronger + hide in fullscreen
+   ======================================== */
+body.media-body footer,
+body.media-body footer .footer-menu {
+    background-color: transparent !important;
+}
+
+body.media-body .swiper-slide::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 40%, rgba(0, 0, 0, 0) 100%);
+    z-index: 1;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+/* Hide gradient when in fullscreen mode */
+body.media-body .swiper-slide.wpst-fullscreen::after {
+    opacity: 0 !important;
+}
+
+/* ========================================
+   Footer: reduced to 50px
+   ======================================== */
+.footer-menu {
+    height: 50px !important;
+}
+
+.footer-menu a {
+    height: 50px !important;
+    gap: 4px !important;
+}
+
+.footer-menu svg {
+    width: 24px !important;
+    height: 24px !important;
+}
+
+.footer-menu a small {
+    font-size: 9px !important;
+}
+
+/* ========================================
+   Sidebar: compact (45px wide, 10px gap)
+   ======================================== */
+.swiper-side {
+    width: 45px !important;
+    right: 15px !important;
+}
+
+.swiper-side .enlight-content {
+    margin-top: 40px !important;
+}
+
+.swiper-side .enlight-content svg,
+.swiper-side .wpst-mute-toggle svg {
+    width: 26px !important;
+    height: 26px !important;
+}
+
+.swiper-side .wpst-mute-toggle,
+.swiper-side .avatar-img,
+.swiper-side .add-to-fav,
+.swiper-side .views-icon,
+.swiper-side .copy-link {
+    margin-top: 10px !important;
+}
+
+.swiper-side .add-to-fav svg,
+.swiper-side .views-icon svg,
+.swiper-side .copy-link svg {
+    width: 28px !important;
+    height: 28px !important;
+}
+
+.swiper-side .avatar-img img {
+    width: 36px !important;
+    height: 36px !important;
+    border-width: 2px !important;
+}
+
+.swiper-side .avatar-img svg {
+    width: 36px !important;
+    height: 36px !important;
+}
+
+/* ========================================
+   Content infos: lower position, smaller title
+   ======================================== */
+/* Layout stack from bottom: footer(50px) → gap → progress bar(62px) → gap → content */
+.single-content-infos {
+    bottom: 80px !important;
+    max-width: calc(100% - 70px) !important;
+}
+
+.single-content-infos h1,
+.single-content-infos h2 {
+    font-size: 16px !important;
+    line-height: 1.4 !important;
+}
+
+/* ========================================
+   Hide swiper nav arrows on mobile
+   ======================================== */
+@media (max-width: 1024px) {
+    .swiper-button-prev,
+    .swiper-button-next {
+        display: none !important;
+    }
+}
+
+/* ========================================
+   Mute toggle
+   ======================================== */
+.swiper-side .wpst-mute-toggle {
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+/* Mute pulse animation */
+.swiper-side .wpst-mute-toggle.wpst-pulse {
+    animation: wpstPulse 0.3s ease;
+}
+
+/* ========================================
+   Hide comment button
+   ======================================== */
+.swiper-side .comment-icon {
+    display: none !important;
+}
+
+/* ========================================
+   Views icon — count BELOW the eye
+   ======================================== */
+.swiper-side .views-icon {
+    position: relative;
+    display: block;
+    text-align: center;
+}
+
+.swiper-side .views-icon span {
+    position: relative;
+    top: auto;
+    right: auto;
+    display: block;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 600;
+    font-size: 11px;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+/* ========================================
+   Like pop animation
+   ======================================== */
+.swiper-side .add-to-fav,
+.swiper-side .fav-added {
+    transition: transform 0.15s ease;
+}
+
+.swiper-side .add-to-fav.wpst-pop,
+.swiper-side .fav-added.wpst-pop {
+    animation: wpstPop 0.35s ease;
+}
+
+@keyframes wpstPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+}
+
+@keyframes wpstPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* ========================================
+   Tags: softer borders, +N animation
+   ======================================== */
+.tags-list a {
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.tags-list a small {
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.wpst-tag-hidden {
+    display: none;
+}
+
+.wpst-tag-hidden.wpst-tags-expanded {
+    display: inline-block;
+    animation: wpstFadeIn 0.3s ease;
+}
+
+@keyframes wpstFadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.wpst-tags-more {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 3px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.wpst-tags-more:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ========================================
+   Muted numbers hierarchy
+   ======================================== */
+.swiper-side .copy-link small {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ========================================
+   Hide description visually (keep in DOM for SEO)
+   ======================================== */
+.post-desc {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* ========================================
+   Progress bar: FIXED position, sits directly above footer
+   ======================================== */
+.wpst-progress-bar {
+    position: fixed;
+    bottom: 68px;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    z-index: 99;
+    cursor: pointer;
+    transition: height 0.15s ease;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Invisible touch area — tall enough to grab easily */
+.wpst-progress-bar::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    bottom: -12px;
+    left: 0;
+    right: 0;
+}
+
+.wpst-progress-bar:hover {
+    height: 6px;
+}
+
+.wpst-progress-played {
+    height: 100%;
+    width: 0%;
+    background: #fd0131;
+    pointer-events: none;
+    position: relative;
+}
+
+.wpst-progress-played::after {
+    content: '';
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    background: #fd0131;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.wpst-progress-bar:hover .wpst-progress-played::after {
+    opacity: 1;
+}
+
+/* ========================================
+   Skeleton loading for grids
+   ======================================== */
+@keyframes wpstShimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+}
+
+.wpst-skeleton {
+    background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+    background-size: 400px 100%;
+    animation: wpstShimmer 1.2s ease-in-out infinite;
+    border-radius: 4px;
+}
+
+.wpst-skeleton-item {
+    padding-bottom: 177.78%;
+    position: relative;
+}
+
+/* ========================================
+   Search & Favorites — dark theme
+   ======================================== */
+body.page-template-template-search-php,
+body.search,
+body.page-template-template-favorites-php {
+    background-color: #000;
+    color: #fff;
+}
+
+body.page-template-template-search-php .content,
+body.search .content,
+body.page-template-template-favorites-php .content {
+    background-color: #000;
+}
+
+body.page-template-template-search-php main,
+body.search main,
+body.page-template-template-favorites-php main {
+    background-color: #000;
+    color: #fff;
+}
+
+/* Dark header/logo area */
+body.page-template-template-search-php header,
+body.search header,
+body.page-template-template-favorites-php header {
+    background-color: #000 !important;
+}
+
+body.page-template-template-search-php .logo,
+body.search .logo,
+body.page-template-template-favorites-php .logo {
+    background-color: #000;
+}
+
+/* Favorites title */
+body.page-template-template-favorites-php main h1 {
+    color: #fff;
+    padding: 20px 15px 0;
+    font-size: 18px;
+}
+
+/* Dark search header — edge-to-edge, no extra padding */
+body.page-template-template-search-php .search-header,
+body.search .search-header {
+    background-color: #000;
+    padding: 0;
+    margin: 0;
+}
+
+/* Search input: full-width unified bar, no borders */
+body.page-template-template-search-php #searchform .d-flex,
+body.search #searchform .d-flex {
+    background-color: #1a1a1a;
+    border-radius: 0 !important;
+    overflow: hidden;
+    border: none;
+}
+
+body.page-template-template-search-php #searchform input.form-control,
+body.search #searchform input.form-control {
+    background-color: transparent !important;
+    border: none !important;
+    color: #fff;
+    padding: 0 15px !important;
+}
+
+body.page-template-template-search-php #searchform input.form-control::placeholder,
+body.search #searchform input.form-control::placeholder {
+    color: #888;
+}
+
+body.page-template-template-search-php #searchform #searchsubmit,
+body.search #searchform #searchsubmit {
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 15px;
+}
+
+body.page-template-template-search-php #searchform #searchsubmit svg path,
+body.search #searchform #searchsubmit svg path {
+    fill: #666;
+}
+
+body.page-template-template-search-php .search-pills a,
+body.search .search-pills a {
+    background: #1a1a1a;
+    border: none;
+    color: #aaa;
+}
+
+body.page-template-template-search-php .search-pills a.active,
+body.search .search-pills a.active {
+    color: #fff;
+}
+
+/* Search clear button */
+#searchform {
+    position: relative;
+}
+
+#searchform .wpst-search-clear {
+    position: absolute;
+    right: 50px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 5px 10px;
+    display: none;
+    z-index: 2;
+    line-height: 1;
+    height: auto !important;
+}
+
+#searchform .wpst-search-clear:hover {
+    color: #fff;
+}
+
+/* Dark tabs */
+body.page-template-template-search-php .tab-wrapper,
+body.search .tab-wrapper,
+body.page-template-template-favorites-php .tab-wrapper {
+    background-color: #000;
+}
+
+body.page-template-template-search-php .tab-link,
+body.search .tab-link,
+body.page-template-template-favorites-php .tab-link {
+    color: #fff;
+    border-color: transparent;
+}
+
+body.page-template-template-search-php .tab-link.active,
+body.search .tab-link.active,
+body.page-template-template-favorites-php .tab-link.active {
+    border-bottom-color: #fff;
+}
+
+body.page-template-template-search-php .tab-link svg path,
+body.search .tab-link svg path,
+body.page-template-template-favorites-php .tab-link svg path {
+    fill: #fff;
+}
+
+body.page-template-template-search-php .creator-tabs .count,
+body.search .creator-tabs .count,
+body.page-template-template-favorites-php .creator-tabs .count {
+    color: #fff;
+}
+
+/* Dark content wrapper */
+body.page-template-template-search-php .content-wrapper,
+body.search .content-wrapper,
+body.page-template-template-favorites-php .content-wrapper {
+    background-color: #000;
+    padding-bottom: 55px;
+}
+
+/* TikTok 3-column vertical grid */
+body.page-template-template-search-php .tab-content-grid,
+body.search .tab-content-grid,
+body.page-template-template-favorites-php .tab-content-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    border-top: none;
+}
+
+body.page-template-template-search-php .media-box,
+body.search .media-box,
+body.page-template-template-favorites-php .media-box {
+    padding-bottom: 177.78%;
+}
+
+body.page-template-template-search-php .tab-content-grid .media-box img,
+body.search .tab-content-grid .media-box img,
+body.page-template-template-favorites-php .tab-content-grid .media-box img {
+    object-fit: cover;
+}
+
+body.page-template-template-search-php .tab-content-grid li:first-child,
+body.search .tab-content-grid li:first-child,
+body.page-template-template-favorites-php .tab-content-grid li:first-child {
+    grid-column: span 1;
+}
+
+body.page-template-template-search-php .tab-content-grid li:first-child .media-box,
+body.search .tab-content-grid li:first-child .media-box,
+body.page-template-template-favorites-php .tab-content-grid li:first-child .media-box {
+    padding-bottom: 177.78%;
+}
+
+/* Dark empty state */
+body.page-template-template-search-php .tab-content,
+body.search .tab-content,
+body.page-template-template-favorites-php .tab-content {
+    color: #aaa;
+}
+
+body.page-template-template-favorites-php .alert-info {
+    background-color: #111;
+    border-color: #222;
+    color: #aaa;
+}
+
+/* ========================================
+   Footer fix for search/favorites: proper position
+   ======================================== */
+body.page-template-template-search-php footer,
+body.search footer,
+body.page-template-template-favorites-php footer {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 100% !important;
+    max-width: 1200px !important;
+    z-index: 10 !important;
+    background-color: #000 !important;
+}
+
+body.page-template-template-search-php .footer-menu,
+body.search .footer-menu,
+body.page-template-template-favorites-php .footer-menu {
+    background-color: rgba(0, 0, 0, 0.95) !important;
+}
+
+/* Footer icons: use currentColor for proper dark/light */
+body.page-template-template-search-php .footer-menu svg path,
+body.search .footer-menu svg path,
+body.page-template-template-favorites-php .footer-menu svg path {
+    fill: currentColor;
+}
+
+body.page-template-template-search-php .footer-menu a,
+body.search .footer-menu a,
+body.page-template-template-favorites-php .footer-menu a {
+    color: #fff;
+}
+
+body.page-template-template-search-php .footer-menu #fav-menu svg path,
+body.search .footer-menu #fav-menu svg path,
+body.page-template-template-favorites-php .footer-menu #fav-menu svg path {
+    stroke: #fff;
+    fill: none;
+}
+
+body.page-template-template-search-php .footer-menu a small,
+body.search .footer-menu a small,
+body.page-template-template-favorites-php .footer-menu a small {
+    color: #fff;
+}
+
+body.page-template-template-favorites-php .remove-fav svg path {
+    fill: #fff;
+}
+
+/* ========================================
+   Search/Favorites: remove empty space, hide header area, smaller search
+   ======================================== */
+
+/* Remove empty space below logo (caused by header padding/margin) */
+body.page-template-template-search-php header,
+body.search header,
+body.page-template-template-favorites-php header {
+    display: none !important;
+}
+
+/* Hide progress bar on grid pages */
+body.page-template-template-search-php #wpst-global-progress,
+body.search #wpst-global-progress,
+body.page-template-template-favorites-php #wpst-global-progress {
+    display: none !important;
+}
+
+/* Compact search sizing */
+body.page-template-template-search-php #searchform input.form-control,
+body.search #searchform input.form-control {
+    height: 42px !important;
+    font-size: 14px !important;
+}
+
+body.page-template-template-search-php #searchform #searchsubmit,
+body.search #searchform #searchsubmit {
+    height: 42px !important;
+}
+
+/* Hide search pills (media/creators filter) */
+.search-pills {
+    display: none !important;
+}
+
+/* Hide tabs (vids/pics) on search and favorites */
+body.page-template-template-search-php .tab-wrapper,
+body.search .tab-wrapper,
+body.page-template-template-favorites-php .tab-wrapper {
+    display: none !important;
+}
+
+/* Favorites: no title, no extra spacing */
+body.page-template-template-favorites-php main h1 {
+    display: none !important;
+}
+
+body.page-template-template-favorites-php main {
+    padding-top: 0;
+}
+
+body.page-template-template-favorites-php .content-wrapper {
+    border-top: none !important;
+}
+
+body.page-template-template-favorites-php .tab-content-grid {
+    border-top: none !important;
+}
+
+body.page-template-template-search-php main,
+body.search main {
+    padding-top: 0;
+}
+
+/* ========================================
+   Grid: views count with border like categories
+   ======================================== */
+body.page-template-template-search-php .media-box .post-views,
+body.search .media-box .post-views,
+body.page-template-template-favorites-php .media-box .post-views {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+}
+
+/* ========================================
+   Fix white bar below bottom nav on search/favorites
+   ======================================== */
+body.page-template-template-search-php,
+body.search,
+body.page-template-template-favorites-php {
+    background-color: #000 !important;
+}
+
+body.page-template-template-search-php #content,
+body.search #content,
+body.page-template-template-favorites-php #content {
+    background-color: #000 !important;
+}
+
+body.page-template-template-search-php main,
+body.search main,
+body.page-template-template-favorites-php main {
+    padding-bottom: 60px !important;
+}
+
+/* ========================================
+   Lazy loading on grid thumbnails
+   ======================================== */
+.media-box img[loading="lazy"] {
+    background-color: #1a1a1a;
+}
