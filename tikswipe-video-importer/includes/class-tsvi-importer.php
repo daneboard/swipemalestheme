@@ -1,11 +1,24 @@
 <?php
 /**
  * Imports scraped video data into WordPress posts compatible with TikSwipe theme.
+ *
+ * Handles: Bunny.net upload, title cleaning, smart tag/category mapping,
+ * deduplication, and triggering save_post hooks for third-party plugins.
  */
 
 defined( 'ABSPATH' ) || exit;
 
 class TSVI_Importer {
+
+	/**
+	 * Sites and patterns to strip from titles.
+	 */
+	private static $strip_sites = array(
+		'xgroovy', 'xgaytube', 'gay4', 'pornhub', 'xvideos', 'xhamster',
+		'redtube', 'tube8', 'xtube', 'gaytube', 'xnxx', 'youporn',
+		'spankbang', 'eporner', 'tnaflix', 'drtuber', 'hclips', 'txxx',
+		'voyeurhit', 'nuvid', 'tubedupe', 'sleazyneasy', 'anyporn',
+	);
 
 	/**
 	 * Import a single video as a WordPress post.
@@ -14,6 +27,9 @@ class TSVI_Importer {
 	 * @return int|WP_Error Post ID or error.
 	 */
 	public static function import( $video ) {
+		// Clean the title first.
+		$video['title'] = self::clean_title( $video['title'] ?? '' );
+
 		// Deduplication: check if video_url already exists.
 		if ( ! empty( $video['video_url'] ) ) {
 			$existing = self::find_by_video_url( $video['video_url'] );
@@ -22,21 +38,35 @@ class TSVI_Importer {
 			}
 		}
 
-		$status   = get_option( 'tsvi_default_status', 'draft' );
-		$cat_id   = self::resolve_category( $video['category'] ?? '' );
-		$tag_ids  = self::resolve_tags( $video['tags'] ?? array() );
+		// Smart tag/category mapping.
+		$taxonomy   = self::map_tags_to_categories( $video['tags'] ?? array() );
+		$cat_ids    = $taxonomy['category_ids'];
+		$extra_tags = $taxonomy['tags'];
+
+		// Add AI/manual category if provided.
+		$ai_cat = self::resolve_category( $video['category'] ?? '' );
+		if ( $ai_cat && ! in_array( $ai_cat, $cat_ids, true ) ) {
+			$cat_ids[] = $ai_cat;
+		}
+
+		// Ensure at least one category.
+		if ( empty( $cat_ids ) ) {
+			$default = intval( get_option( 'tsvi_default_category', 0 ) );
+			if ( $default ) {
+				$cat_ids[] = $default;
+			}
+		}
+
+		$status = get_option( 'tsvi_default_status', 'draft' );
 
 		$post_data = array(
-			'post_title'   => $video['title'] ?: 'Untitled Video',
-			'post_content' => $video['description'] ?? '',
-			'post_status'  => $status,
-			'post_type'    => 'post',
-			'post_author'  => get_current_user_id(),
+			'post_title'    => $video['title'] ?: 'Untitled Video',
+			'post_content'  => sanitize_text_field( $video['description'] ?? '' ),
+			'post_status'   => $status,
+			'post_type'     => 'post',
+			'post_author'   => get_current_user_id(),
+			'post_category' => $cat_ids,
 		);
-
-		if ( $cat_id ) {
-			$post_data['post_category'] = array( $cat_id );
-		}
 
 		$post_id = wp_insert_post( $post_data, true );
 
@@ -47,14 +77,29 @@ class TSVI_Importer {
 		// Set post format to video.
 		set_post_format( $post_id, 'video' );
 
-		// Set tags.
-		if ( ! empty( $tag_ids ) ) {
-			wp_set_post_tags( $post_id, $tag_ids );
+		// Set tags (max 3 extra that don't match categories).
+		if ( ! empty( $extra_tags ) ) {
+			wp_set_post_tags( $post_id, $extra_tags );
 		}
 
-		// Set TikSwipe meta fields.
-		if ( ! empty( $video['video_url'] ) ) {
-			update_post_meta( $post_id, 'video_url', esc_url_raw( $video['video_url'] ) );
+		// --- Video URL: upload to Bunny or save external URL ---
+		$final_video_url = $video['video_url'] ?? '';
+
+		if ( ! empty( $final_video_url ) && TSVI_Bunny::is_enabled() ) {
+			$ext      = self::get_extension( $final_video_url );
+			$slug     = sanitize_title( $video['title'] ?: 'video-' . $post_id );
+			$filename = $post_id . '_' . mb_substr( $slug, 0, 60 ) . '.' . $ext;
+
+			$cdn_url = TSVI_Bunny::remote_upload( $final_video_url, $filename );
+
+			if ( ! is_wp_error( $cdn_url ) ) {
+				$final_video_url = $cdn_url;
+			}
+			// If Bunny upload fails, fall back to external URL.
+		}
+
+		if ( ! empty( $final_video_url ) ) {
+			update_post_meta( $post_id, 'video_url', esc_url_raw( $final_video_url ) );
 		}
 		if ( ! empty( $video['embed'] ) ) {
 			update_post_meta( $post_id, 'embed', $video['embed'] );
@@ -76,8 +121,8 @@ class TSVI_Importer {
 		}
 
 		// Video extension.
-		if ( ! empty( $video['video_url'] ) ) {
-			$ext = self::get_extension( $video['video_url'] );
+		if ( ! empty( $final_video_url ) ) {
+			$ext = self::get_extension( $final_video_url );
 			if ( $ext ) {
 				update_post_meta( $post_id, '_video_extension', $ext );
 			}
@@ -86,16 +131,108 @@ class TSVI_Importer {
 		// Initialize views.
 		update_post_meta( $post_id, 'post_views_count', '0' );
 
-		// Download and set thumbnail.
-		if ( ! empty( $video['thumbnail'] ) ) {
-			$thumb_id = self::sideload_image( $video['thumbnail'], $post_id, $video['title'] );
-			if ( $thumb_id && ! is_wp_error( $thumb_id ) ) {
-				set_post_thumbnail( $post_id, $thumb_id );
-			}
+		// Store original source URL for reference.
+		if ( ! empty( $video['source_url'] ) ) {
+			update_post_meta( $post_id, '_tsvi_source_url', esc_url_raw( $video['source_url'] ) );
 		}
+
+		// NO thumbnail download — user has a plugin that generates it on save.
+
+		// Trigger save_post hooks so third-party plugins (thumbnail generator, etc.) fire.
+		wp_update_post( array( 'ID' => $post_id ) );
 
 		return $post_id;
 	}
+
+	/* ------------------------------------------------------------------
+	   Title cleaning
+	   ------------------------------------------------------------------ */
+
+	/**
+	 * Clean a scraped title: remove sites, URLs, hyphens as separators, junk.
+	 */
+	public static function clean_title( $title ) {
+		if ( empty( $title ) ) {
+			return '';
+		}
+
+		// Remove URLs.
+		$title = preg_replace( '#https?://[^\s<>"\']+#i', '', $title );
+
+		// Remove site names (case insensitive, word boundaries).
+		foreach ( self::$strip_sites as $site ) {
+			$title = preg_replace( '/\b' . preg_quote( $site, '/' ) . '(?:\.com|\.net|\.org)?\b/i', '', $title );
+		}
+
+		// Remove common suffixes: "- SiteName", "| SiteName", "— SiteName".
+		$title = preg_replace( '/\s*[\-–—\|]\s*$/u', '', $title );
+
+		// Remove ".com", ".net" etc. leftovers.
+		$title = preg_replace( '/\.(com|net|org|xxx|tv)\b/i', '', $title );
+
+		// Replace hyphens between words with spaces (but keep hyphens in numbers).
+		$title = preg_replace( '/(?<=[a-zA-Z])-(?=[a-zA-Z])/', ' ', $title );
+
+		// Clean up multiple spaces.
+		$title = preg_replace( '/\s+/', ' ', $title );
+
+		// Trim junk characters from edges.
+		$title = trim( $title, " \t\n\r\0\x0B-–—|:,." );
+
+		return $title;
+	}
+
+	/* ------------------------------------------------------------------
+	   Smart tag/category mapping
+	   ------------------------------------------------------------------ */
+
+	/**
+	 * Map scraped tags to existing WP categories.
+	 * Tags that match a category → assign that category.
+	 * Remaining tags → keep max 3 as actual tags.
+	 *
+	 * @param array $tags Source tags from scraper/AI.
+	 * @return array { category_ids: int[], tags: string[] }
+	 */
+	private static function map_tags_to_categories( $tags ) {
+		$max_extra_tags = 3;
+
+		$all_cats   = get_categories( array( 'hide_empty' => false ) );
+		$cat_lookup = array();
+		foreach ( $all_cats as $cat ) {
+			$cat_lookup[ mb_strtolower( $cat->name ) ] = $cat->term_id;
+			// Also index by slug.
+			$cat_lookup[ $cat->slug ] = $cat->term_id;
+		}
+
+		$matched_cat_ids = array();
+		$remaining_tags  = array();
+
+		foreach ( $tags as $tag ) {
+			$tag_clean = sanitize_text_field( $tag );
+			$lower     = mb_strtolower( $tag_clean );
+
+			if ( isset( $cat_lookup[ $lower ] ) ) {
+				$cat_id = $cat_lookup[ $lower ];
+				if ( ! in_array( $cat_id, $matched_cat_ids, true ) ) {
+					$matched_cat_ids[] = $cat_id;
+				}
+			} else {
+				if ( count( $remaining_tags ) < $max_extra_tags && mb_strlen( $tag_clean ) > 1 ) {
+					$remaining_tags[] = $tag_clean;
+				}
+			}
+		}
+
+		return array(
+			'category_ids' => $matched_cat_ids,
+			'tags'         => $remaining_tags,
+		);
+	}
+
+	/* ------------------------------------------------------------------
+	   Helpers
+	   ------------------------------------------------------------------ */
 
 	/**
 	 * Check if a video_url already exists in any post.
@@ -111,67 +248,21 @@ class TSVI_Importer {
 	}
 
 	/**
-	 * Resolve category name to ID, create if needed.
+	 * Resolve category name to ID (case-insensitive match).
 	 */
 	private static function resolve_category( $name ) {
 		if ( empty( $name ) ) {
-			return intval( get_option( 'tsvi_default_category', 0 ) );
+			return 0;
 		}
 
-		$term = get_term_by( 'name', $name, 'category' );
-		if ( $term ) {
-			return $term->term_id;
-		}
-
-		// Try case-insensitive match.
 		$all_cats = get_categories( array( 'hide_empty' => false ) );
 		foreach ( $all_cats as $cat ) {
-			if ( strtolower( $cat->name ) === strtolower( $name ) ) {
+			if ( mb_strtolower( $cat->name ) === mb_strtolower( $name ) ) {
 				return $cat->term_id;
 			}
 		}
 
-		// Create new category.
-		$new = wp_insert_term( $name, 'category' );
-		if ( ! is_wp_error( $new ) ) {
-			return $new['term_id'];
-		}
-
-		return intval( get_option( 'tsvi_default_category', 0 ) );
-	}
-
-	/**
-	 * Resolve tag names to tag name strings for wp_set_post_tags.
-	 */
-	private static function resolve_tags( $tags ) {
-		return array_filter( array_map( 'sanitize_text_field', $tags ) );
-	}
-
-	/**
-	 * Download external image and attach to post.
-	 */
-	private static function sideload_image( $url, $post_id, $desc = '' ) {
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		require_once ABSPATH . 'wp-admin/includes/media.php';
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-
-		$tmp = download_url( $url, 10 );
-		if ( is_wp_error( $tmp ) ) {
-			return $tmp;
-		}
-
-		$file_array = array(
-			'name'     => sanitize_file_name( basename( wp_parse_url( $url, PHP_URL_PATH ) ) ),
-			'tmp_name' => $tmp,
-		);
-
-		$attach_id = media_handle_sideload( $file_array, $post_id, $desc );
-
-		if ( is_wp_error( $attach_id ) ) {
-			@unlink( $tmp );
-		}
-
-		return $attach_id;
+		return 0;
 	}
 
 	/**

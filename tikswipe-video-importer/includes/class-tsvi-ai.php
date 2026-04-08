@@ -30,12 +30,17 @@ class TSVI_AI {
 			"- Source tags: %s\n" .
 			"- Source URL: %s\n\n" .
 			"Available categories on the site: %s\n\n" .
+			"RULES:\n" .
+			"- title: Clean, natural, NO site names, NO URLs, NO hyphens as separators. Max 80 chars.\n" .
+			"- description: Short, max 160 chars.\n" .
+			"- tags: ONLY 3 tags that are NOT in the categories list above. Do NOT repeat category names as tags.\n" .
+			"- category: Pick the BEST matching category from the list above.\n\n" .
 			"Return ONLY valid JSON (no markdown, no explanation):\n" .
 			"{\n" .
-			"  \"title\": \"SEO-optimized title (max 80 chars)\",\n" .
-			"  \"description\": \"Short description (max 160 chars)\",\n" .
-			"  \"tags\": [\"tag1\", \"tag2\", \"tag3\", \"tag4\", \"tag5\"],\n" .
-			"  \"category\": \"best matching category from the list above\"\n" .
+			"  \"title\": \"clean title here\",\n" .
+			"  \"description\": \"short description\",\n" .
+			"  \"tags\": [\"tag1\", \"tag2\", \"tag3\"],\n" .
+			"  \"category\": \"best matching category\"\n" .
 			"}",
 			$video['title'] ?? '',
 			implode( ', ', (array) ( $video['source_tags'] ?? array() ) ),

@@ -18,6 +18,7 @@ define( 'TSVI_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TSVI_URL', plugin_dir_url( __FILE__ ) );
 
 require_once TSVI_PATH . 'includes/class-tsvi-ai.php';
+require_once TSVI_PATH . 'includes/class-tsvi-bunny.php';
 require_once TSVI_PATH . 'includes/class-tsvi-scraper.php';
 require_once TSVI_PATH . 'includes/class-tsvi-importer.php';
 require_once TSVI_PATH . 'includes/class-tsvi-admin.php';
@@ -27,3 +28,6 @@ add_action( 'plugins_loaded', function () {
 		TSVI_Admin::init();
 	}
 } );
+
+// Auto-sign Bunny CDN video URLs with Token Authentication on the frontend.
+add_action( 'init', array( 'TSVI_Bunny', 'init_token_filter' ) );

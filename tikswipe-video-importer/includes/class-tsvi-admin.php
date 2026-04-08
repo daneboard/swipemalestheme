@@ -79,6 +79,12 @@ class TSVI_Admin {
 		register_setting( 'tsvi_settings', 'tsvi_grok_model' );
 		register_setting( 'tsvi_settings', 'tsvi_default_status' );
 		register_setting( 'tsvi_settings', 'tsvi_default_category' );
+		// Bunny.net settings.
+		register_setting( 'tsvi_settings', 'tsvi_bunny_api_key' );
+		register_setting( 'tsvi_settings', 'tsvi_bunny_storage_zone' );
+		register_setting( 'tsvi_settings', 'tsvi_bunny_storage_region' );
+		register_setting( 'tsvi_settings', 'tsvi_bunny_cdn_hostname' );
+		register_setting( 'tsvi_settings', 'tsvi_bunny_token_key' );
 	}
 
 	public static function page_settings() {
@@ -87,11 +93,19 @@ class TSVI_Admin {
 		$status   = get_option( 'tsvi_default_status', 'draft' );
 		$cat_id   = get_option( 'tsvi_default_category', 0 );
 		$cats     = get_categories( array( 'hide_empty' => false ) );
+
+		$bunny_api     = get_option( 'tsvi_bunny_api_key', '' );
+		$bunny_zone    = get_option( 'tsvi_bunny_storage_zone', '' );
+		$bunny_region  = get_option( 'tsvi_bunny_storage_region', '' );
+		$bunny_cdn     = get_option( 'tsvi_bunny_cdn_hostname', '' );
+		$bunny_token   = get_option( 'tsvi_bunny_token_key', '' );
 		?>
 		<div class="wrap">
 			<h1>Video Importer Settings</h1>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'tsvi_settings' ); ?>
+
+				<h2>Grok AI</h2>
 				<table class="form-table">
 					<tr>
 						<th>Grok API Key</th>
@@ -132,6 +146,55 @@ class TSVI_Admin {
 						</td>
 					</tr>
 				</table>
+
+				<h2>Bunny.net CDN</h2>
+				<p class="description">Optional. If configured, videos are uploaded to Bunny Storage via remote fetch (no download to your server). Leave empty to save external URLs directly.</p>
+				<table class="form-table">
+					<tr>
+						<th>Storage API Key</th>
+						<td>
+							<input type="password" name="tsvi_bunny_api_key" value="<?php echo esc_attr( $bunny_api ); ?>" class="regular-text" autocomplete="off">
+							<p class="description">FTP & API Access password from your Storage Zone settings.</p>
+						</td>
+					</tr>
+					<tr>
+						<th>Storage Zone Name</th>
+						<td>
+							<input type="text" name="tsvi_bunny_storage_zone" value="<?php echo esc_attr( $bunny_zone ); ?>" class="regular-text" placeholder="my-videos">
+						</td>
+					</tr>
+					<tr>
+						<th>Storage Region</th>
+						<td>
+							<select name="tsvi_bunny_storage_region">
+								<option value="" <?php selected( $bunny_region, '' ); ?>>Falkenstein (default)</option>
+								<option value="ny" <?php selected( $bunny_region, 'ny' ); ?>>New York</option>
+								<option value="la" <?php selected( $bunny_region, 'la' ); ?>>Los Angeles</option>
+								<option value="sg" <?php selected( $bunny_region, 'sg' ); ?>>Singapore</option>
+								<option value="syd" <?php selected( $bunny_region, 'syd' ); ?>>Sydney</option>
+								<option value="uk" <?php selected( $bunny_region, 'uk' ); ?>>London</option>
+								<option value="se" <?php selected( $bunny_region, 'se' ); ?>>Stockholm</option>
+								<option value="br" <?php selected( $bunny_region, 'br' ); ?>>Sao Paulo</option>
+								<option value="jh" <?php selected( $bunny_region, 'jh' ); ?>>Johannesburg</option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th>CDN Hostname</th>
+						<td>
+							<input type="text" name="tsvi_bunny_cdn_hostname" value="<?php echo esc_attr( $bunny_cdn ); ?>" class="regular-text" placeholder="myzone.b-cdn.net">
+							<p class="description">Your Pull Zone hostname (e.g. myzone.b-cdn.net or custom domain).</p>
+						</td>
+					</tr>
+					<tr>
+						<th>Token Authentication Key</th>
+						<td>
+							<input type="password" name="tsvi_bunny_token_key" value="<?php echo esc_attr( $bunny_token ); ?>" class="regular-text" autocomplete="off">
+							<p class="description">Security token from Pull Zone > Security > Token Authentication. URLs are signed automatically. Also enable Hotlink Protection in the Bunny dashboard.</p>
+						</td>
+					</tr>
+				</table>
+
 				<?php submit_button(); ?>
 			</form>
 		</div>
