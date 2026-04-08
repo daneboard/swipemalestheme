@@ -30,11 +30,17 @@ class TSVI_Importer {
 		// Clean the title first.
 		$video['title'] = self::clean_title( $video['title'] ?? '' );
 
-		// Deduplication: check if video_url already exists.
+		// Deduplication: check video_url AND source page URL.
 		if ( ! empty( $video['video_url'] ) ) {
 			$existing = self::find_by_video_url( $video['video_url'] );
 			if ( $existing ) {
 				return new WP_Error( 'duplicate', 'Video already imported as post #' . $existing );
+			}
+		}
+		if ( ! empty( $video['source_url'] ) ) {
+			$existing = self::find_by_video_url( $video['source_url'] );
+			if ( $existing ) {
+				return new WP_Error( 'duplicate', 'Video page already imported as post #' . $existing );
 			}
 		}
 
@@ -235,13 +241,17 @@ class TSVI_Importer {
 	   ------------------------------------------------------------------ */
 
 	/**
-	 * Check if a video_url already exists in any post.
+	 * Check if a video URL already exists in any post (checks video_url,
+	 * pending Bunny queue, and original source URL).
 	 */
 	private static function find_by_video_url( $url ) {
 		global $wpdb;
 		return $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'video_url' AND meta_value = %s LIMIT 1",
+				"SELECT post_id FROM {$wpdb->postmeta}
+				 WHERE meta_key IN ('video_url', '_tsvi_bunny_pending', '_tsvi_source_url')
+				 AND meta_value = %s
+				 LIMIT 1",
 				$url
 			)
 		);

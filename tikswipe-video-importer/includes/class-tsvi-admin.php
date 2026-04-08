@@ -45,6 +45,15 @@ class TSVI_Admin {
 
 		add_submenu_page(
 			'tsvi-scrape',
+			'CDN Queue',
+			'CDN Queue',
+			'manage_options',
+			'tsvi-queue',
+			array( __CLASS__, 'page_queue' )
+		);
+
+		add_submenu_page(
+			'tsvi-scrape',
 			'Settings',
 			'Settings',
 			'manage_options',
@@ -68,6 +77,140 @@ class TSVI_Admin {
 				'nonce'    => wp_create_nonce( 'tsvi_nonce' ),
 			)
 		);
+	}
+
+	/* ------------------------------------------------------------------
+	   CDN Queue page
+	   ------------------------------------------------------------------ */
+
+	public static function page_queue() {
+		global $wpdb;
+
+		// Handle manual retry.
+		if ( isset( $_GET['tsvi_retry'] ) && wp_verify_nonce( $_GET['_wpnonce'] ?? '', 'tsvi_retry' ) ) {
+			$retry_id  = intval( $_GET['tsvi_retry'] );
+			$source    = get_post_meta( $retry_id, '_tsvi_source_url', true );
+			$video_url = get_post_meta( $retry_id, 'video_url', true );
+			$pending   = $source ?: $video_url;
+			if ( $pending ) {
+				update_post_meta( $retry_id, '_tsvi_bunny_pending', $pending );
+				delete_post_meta( $retry_id, '_tsvi_bunny_error' );
+				delete_post_meta( $retry_id, '_tsvi_bunny_status' );
+				TSVI_Bunny::schedule_upload( $retry_id );
+			}
+			wp_safe_redirect( admin_url( 'admin.php?page=tsvi-queue&retried=' . $retry_id ) );
+			exit;
+		}
+
+		// Fetch all posts with Bunny-related meta.
+		$pending_posts = $wpdb->get_results(
+			"SELECT p.ID, p.post_title, pm.meta_value as pending_url
+			 FROM {$wpdb->posts} p
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+			 WHERE pm.meta_key = '_tsvi_bunny_pending'
+			 AND pm.meta_value != ''
+			 ORDER BY p.ID DESC
+			 LIMIT 50"
+		);
+
+		$done_posts = $wpdb->get_results(
+			"SELECT p.ID, p.post_title, pm.meta_value as bunny_status
+			 FROM {$wpdb->posts} p
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+			 WHERE pm.meta_key = '_tsvi_bunny_status'
+			 AND pm.meta_value = 'uploaded'
+			 ORDER BY p.ID DESC
+			 LIMIT 50"
+		);
+
+		$failed_posts = $wpdb->get_results(
+			"SELECT p.ID, p.post_title, pm.meta_value as error_msg
+			 FROM {$wpdb->posts} p
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+			 WHERE pm.meta_key = '_tsvi_bunny_error'
+			 AND pm.meta_value != ''
+			 ORDER BY p.ID DESC
+			 LIMIT 50"
+		);
+
+		$pending_count = count( $pending_posts );
+		$done_count    = count( $done_posts );
+		$failed_count  = count( $failed_posts );
+
+		if ( isset( $_GET['retried'] ) ) {
+			echo '<div class="notice notice-success is-dismissible"><p>Post #' . intval( $_GET['retried'] ) . ' re-queued for CDN upload.</p></div>';
+		}
+		?>
+		<div class="wrap">
+			<h1>CDN Upload Queue</h1>
+
+			<!-- Pending -->
+			<div class="tsvi-card">
+				<h2>Pending <span class="tsvi-badge tsvi-badge-pending"><?php echo $pending_count; ?></span></h2>
+				<?php if ( $pending_posts ) : ?>
+					<table class="wp-list-table widefat striped">
+						<thead><tr><th>ID</th><th>Title</th><th>Source URL</th></tr></thead>
+						<tbody>
+						<?php foreach ( $pending_posts as $p ) : ?>
+							<tr>
+								<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
+								<td><?php echo esc_html( $p->post_title ); ?></td>
+								<td><small><?php echo esc_html( mb_substr( $p->pending_url, 0, 80 ) ); ?>...</small></td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php else : ?>
+					<p>No uploads pending.</p>
+				<?php endif; ?>
+			</div>
+
+			<!-- Failed -->
+			<div class="tsvi-card">
+				<h2>Failed <span class="tsvi-badge tsvi-badge-failed"><?php echo $failed_count; ?></span></h2>
+				<?php if ( $failed_posts ) : ?>
+					<table class="wp-list-table widefat striped">
+						<thead><tr><th>ID</th><th>Title</th><th>Error</th><th>Action</th></tr></thead>
+						<tbody>
+						<?php foreach ( $failed_posts as $p ) : ?>
+							<tr>
+								<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
+								<td><?php echo esc_html( $p->post_title ); ?></td>
+								<td><span class="tsvi-err"><?php echo esc_html( $p->error_msg ); ?></span></td>
+								<td>
+									<a class="button button-small" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_retry=' . $p->ID ), 'tsvi_retry' ); ?>">Retry</a>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php else : ?>
+					<p>No failed uploads.</p>
+				<?php endif; ?>
+			</div>
+
+			<!-- Done -->
+			<div class="tsvi-card">
+				<h2>Uploaded <span class="tsvi-badge tsvi-badge-done"><?php echo $done_count; ?></span></h2>
+				<?php if ( $done_posts ) : ?>
+					<table class="wp-list-table widefat striped">
+						<thead><tr><th>ID</th><th>Title</th><th>CDN URL</th></tr></thead>
+						<tbody>
+						<?php foreach ( $done_posts as $p ) : ?>
+							<tr>
+								<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
+								<td><?php echo esc_html( $p->post_title ); ?></td>
+								<td><small><?php echo esc_html( mb_substr( get_post_meta( $p->ID, 'video_url', true ), 0, 80 ) ); ?>...</small></td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php else : ?>
+					<p>No uploaded videos yet.</p>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
 	}
 
 	/* ------------------------------------------------------------------

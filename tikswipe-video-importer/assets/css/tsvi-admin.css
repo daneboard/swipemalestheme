@@ -78,6 +78,21 @@
     font-size: 12px;
 }
 
+/* Queue badges */
+.tsvi-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    vertical-align: middle;
+    margin-left: 6px;
+}
+.tsvi-badge-pending { background: #2271b1; }
+.tsvi-badge-failed { background: #d63638; }
+.tsvi-badge-done { background: #00a32a; }
+
 /* Checkbox column */
 .tsvi-card .check-column {
     width: 30px;
