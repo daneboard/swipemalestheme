@@ -2,6 +2,18 @@
    TikSwipe Child — Custom Overrides
    ======================================== */
 
+/* Desktop: constrain site to phone-like width */
+@media (min-width: 768px) {
+    .content {
+        max-width: 480px;
+        margin: 0 auto;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    }
+    body {
+        background: #000;
+    }
+}
+
 /* Font: Inter instead of Poppins */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -235,7 +247,7 @@ body.media-body footer .footer-menu {
     background-color: transparent !important;
 }
 
-body.media-body .swiper-slide::after {
+body.media-body .swiper-slide:not(.swiper-slide-happy)::after {
     content: '';
     position: absolute;
     bottom: 0;
