@@ -84,6 +84,7 @@ class TSVI_Importer {
 
 		// --- Video URL: upload to Bunny or save external URL ---
 		$final_video_url = $video['video_url'] ?? '';
+		$bunny_status    = 'disabled';
 
 		if ( ! empty( $final_video_url ) && TSVI_Bunny::is_enabled() ) {
 			$ext      = self::get_extension( $final_video_url );
@@ -92,10 +93,12 @@ class TSVI_Importer {
 
 			$cdn_url = TSVI_Bunny::remote_upload( $final_video_url, $filename );
 
-			if ( ! is_wp_error( $cdn_url ) ) {
+			if ( is_wp_error( $cdn_url ) ) {
+				$bunny_status = 'error: ' . $cdn_url->get_error_message();
+			} else {
 				$final_video_url = $cdn_url;
+				$bunny_status    = 'uploaded';
 			}
-			// If Bunny upload fails, fall back to external URL.
 		}
 
 		if ( ! empty( $final_video_url ) ) {
@@ -141,7 +144,11 @@ class TSVI_Importer {
 		// Trigger save_post hooks so third-party plugins (thumbnail generator, etc.) fire.
 		wp_update_post( array( 'ID' => $post_id ) );
 
-		return $post_id;
+		return array(
+			'post_id'      => $post_id,
+			'bunny_status' => $bunny_status,
+			'video_url'    => $final_video_url,
+		);
 	}
 
 	/* ------------------------------------------------------------------

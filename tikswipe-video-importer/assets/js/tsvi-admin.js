@@ -276,8 +276,15 @@
 			}, function (resp) {
 				if (resp.success) {
 					imported++;
-					$status.html('<span class="tsvi-ok">Imported #' + resp.data.post_id + '</span>');
-					// Uncheck imported item.
+					var bunnyBadge = '';
+					if (resp.data.bunny_status === 'uploaded') {
+						bunnyBadge = ' <span class="tsvi-ok">[CDN]</span>';
+					} else if (resp.data.bunny_status === 'disabled') {
+						bunnyBadge = ' <span class="tsvi-warn">[external]</span>';
+					} else {
+						bunnyBadge = ' <span class="tsvi-err">[' + escHtml(resp.data.bunny_status) + ']</span>';
+					}
+					$status.html('<span class="tsvi-ok">Imported #' + resp.data.post_id + '</span>' + bunnyBadge);
 					$('.tsvi-check[data-idx="' + idx + '"]').prop('checked', false);
 				} else {
 					$status.html('<span class="tsvi-err">' + escHtml(resp.data) + '</span>');

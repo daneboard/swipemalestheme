@@ -399,16 +399,18 @@ class TSVI_Admin {
 			}
 		}
 
-		$post_id = TSVI_Importer::import( $video );
+		$result = TSVI_Importer::import( $video );
 
-		if ( is_wp_error( $post_id ) ) {
-			wp_send_json_error( $post_id->get_error_message() );
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
 		}
 
 		wp_send_json_success(
 			array(
-				'post_id'  => $post_id,
-				'edit_url' => get_edit_post_link( $post_id, 'raw' ),
+				'post_id'      => $result['post_id'],
+				'edit_url'     => get_edit_post_link( $result['post_id'], 'raw' ),
+				'bunny_status' => $result['bunny_status'],
+				'video_url'    => $result['video_url'],
 			)
 		);
 	}
