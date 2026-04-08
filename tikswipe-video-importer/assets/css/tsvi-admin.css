@@ -93,6 +93,22 @@
 .tsvi-badge-failed { background: #d63638; }
 .tsvi-badge-done { background: #00a32a; }
 
+/* Danger button */
+.tsvi-btn-danger {
+    color: #d63638 !important;
+    border-color: #d63638 !important;
+}
+.tsvi-btn-danger:hover {
+    background: #d63638 !important;
+    color: #fff !important;
+}
+
+/* Queue heading actions */
+.tsvi-card h2 .button {
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
 /* Checkbox column */
 .tsvi-card .check-column {
     width: 30px;

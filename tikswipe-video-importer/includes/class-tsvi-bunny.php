@@ -53,6 +53,9 @@ class TSVI_Bunny {
 		set_time_limit( 900 );
 		ignore_user_abort( true );
 
+		// Mark which post is currently processing (for the queue UI).
+		set_transient( 'tsvi_currently_processing', $post_id, 600 );
+
 		$source_url = get_post_meta( $post_id, '_tsvi_bunny_pending', true );
 		if ( empty( $source_url ) ) {
 			delete_post_meta( $post_id, '_tsvi_bunny_pending' );
@@ -85,6 +88,9 @@ class TSVI_Bunny {
 
 		// Do the actual download + upload.
 		$cdn_url = self::remote_upload( $video_url, $filename );
+
+		// Clear processing indicator.
+		delete_transient( 'tsvi_currently_processing' );
 
 		if ( is_wp_error( $cdn_url ) ) {
 			// Mark as failed so we don't retry forever.

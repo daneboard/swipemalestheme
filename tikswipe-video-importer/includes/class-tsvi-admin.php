@@ -86,76 +86,133 @@ class TSVI_Admin {
 	public static function page_queue() {
 		global $wpdb;
 
-		// Handle manual retry.
-		if ( isset( $_GET['tsvi_retry'] ) && wp_verify_nonce( $_GET['_wpnonce'] ?? '', 'tsvi_retry' ) ) {
-			$retry_id  = intval( $_GET['tsvi_retry'] );
-			$source    = get_post_meta( $retry_id, '_tsvi_source_url', true );
-			$video_url = get_post_meta( $retry_id, 'video_url', true );
-			$pending   = $source ?: $video_url;
-			if ( $pending ) {
-				update_post_meta( $retry_id, '_tsvi_bunny_pending', $pending );
-				delete_post_meta( $retry_id, '_tsvi_bunny_error' );
-				delete_post_meta( $retry_id, '_tsvi_bunny_status' );
-				TSVI_Bunny::schedule_upload( $retry_id );
+		// Handle actions.
+		$action  = sanitize_text_field( $_GET['tsvi_action'] ?? '' );
+		$action_id = intval( $_GET['tsvi_id'] ?? 0 );
+
+		if ( $action && wp_verify_nonce( $_GET['_wpnonce'] ?? '', 'tsvi_queue_action' ) ) {
+			$redirect_args = array( 'page' => 'tsvi-queue' );
+
+			switch ( $action ) {
+				case 'retry': // Re-queue a single failed/uploaded post.
+					self::requeue_post( $action_id );
+					$redirect_args['msg'] = 'retried';
+					$redirect_args['ids'] = $action_id;
+					break;
+
+				case 'cancel': // Cancel a single pending post.
+					update_post_meta( $action_id, '_tsvi_bunny_pending', '' );
+					$redirect_args['msg'] = 'cancelled';
+					$redirect_args['ids'] = $action_id;
+					break;
+
+				case 'cancel_all': // Cancel all pending.
+					$ids = $wpdb->get_col( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_bunny_pending' AND meta_value != ''" );
+					foreach ( $ids as $id ) {
+						update_post_meta( $id, '_tsvi_bunny_pending', '' );
+					}
+					$redirect_args['msg'] = 'cancelled_all';
+					$redirect_args['ids'] = count( $ids );
+					break;
+
+				case 'retry_all_failed': // Re-queue all failed.
+					$ids = $wpdb->get_col( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_bunny_error' AND meta_value != ''" );
+					foreach ( $ids as $id ) {
+						self::requeue_post( $id );
+					}
+					$redirect_args['msg'] = 'retried_all';
+					$redirect_args['ids'] = count( $ids );
+					break;
+
+				case 'retry_uploaded': // Re-upload an already uploaded post (re-download + re-upload).
+					self::requeue_post( $action_id );
+					$redirect_args['msg'] = 'retried';
+					$redirect_args['ids'] = $action_id;
+					break;
 			}
-			wp_safe_redirect( admin_url( 'admin.php?page=tsvi-queue&retried=' . $retry_id ) );
+
+			wp_safe_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
 			exit;
 		}
+
+		// Detect which post is currently being processed by cron.
+		$processing_id = get_transient( 'tsvi_currently_processing' );
 
 		// Fetch all posts with Bunny-related meta.
 		$pending_posts = $wpdb->get_results(
 			"SELECT p.ID, p.post_title, pm.meta_value as pending_url
 			 FROM {$wpdb->posts} p
 			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-			 WHERE pm.meta_key = '_tsvi_bunny_pending'
-			 AND pm.meta_value != ''
-			 ORDER BY p.ID DESC
-			 LIMIT 50"
+			 WHERE pm.meta_key = '_tsvi_bunny_pending' AND pm.meta_value != ''
+			 ORDER BY p.ID ASC LIMIT 100"
 		);
 
 		$done_posts = $wpdb->get_results(
-			"SELECT p.ID, p.post_title, pm.meta_value as bunny_status
+			"SELECT p.ID, p.post_title
 			 FROM {$wpdb->posts} p
 			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-			 WHERE pm.meta_key = '_tsvi_bunny_status'
-			 AND pm.meta_value = 'uploaded'
-			 ORDER BY p.ID DESC
-			 LIMIT 50"
+			 WHERE pm.meta_key = '_tsvi_bunny_status' AND pm.meta_value = 'uploaded'
+			 ORDER BY p.ID DESC LIMIT 100"
 		);
 
 		$failed_posts = $wpdb->get_results(
 			"SELECT p.ID, p.post_title, pm.meta_value as error_msg
 			 FROM {$wpdb->posts} p
 			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-			 WHERE pm.meta_key = '_tsvi_bunny_error'
-			 AND pm.meta_value != ''
-			 ORDER BY p.ID DESC
-			 LIMIT 50"
+			 WHERE pm.meta_key = '_tsvi_bunny_error' AND pm.meta_value != ''
+			 ORDER BY p.ID DESC LIMIT 100"
 		);
 
 		$pending_count = count( $pending_posts );
 		$done_count    = count( $done_posts );
 		$failed_count  = count( $failed_posts );
 
-		if ( isset( $_GET['retried'] ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>Post #' . intval( $_GET['retried'] ) . ' re-queued for CDN upload.</p></div>';
+		// Flash messages.
+		$msg = sanitize_text_field( $_GET['msg'] ?? '' );
+		$msg_ids = sanitize_text_field( $_GET['ids'] ?? '' );
+		if ( $msg ) {
+			$notices = array(
+				'retried'       => 'Post #' . $msg_ids . ' re-queued for CDN upload.',
+				'cancelled'     => 'Post #' . $msg_ids . ' cancelled.',
+				'cancelled_all' => $msg_ids . ' pending uploads cancelled.',
+				'retried_all'   => $msg_ids . ' failed uploads re-queued.',
+			);
+			if ( isset( $notices[ $msg ] ) ) {
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $notices[ $msg ] ) . '</p></div>';
+			}
 		}
 		?>
 		<div class="wrap">
 			<h1>CDN Upload Queue</h1>
 
-			<!-- Pending -->
+			<!-- PENDING -->
 			<div class="tsvi-card">
-				<h2>Pending <span class="tsvi-badge tsvi-badge-pending"><?php echo $pending_count; ?></span></h2>
+				<h2>
+					Pending <span class="tsvi-badge tsvi-badge-pending"><?php echo $pending_count; ?></span>
+					<?php if ( $pending_count > 0 ) : ?>
+						<a class="button button-small tsvi-btn-danger" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=cancel_all' ), 'tsvi_queue_action' ); ?>" onclick="return confirm('Cancel all pending uploads?');">Cancel All</a>
+					<?php endif; ?>
+				</h2>
 				<?php if ( $pending_posts ) : ?>
 					<table class="wp-list-table widefat striped">
-						<thead><tr><th>ID</th><th>Title</th><th>Source URL</th></tr></thead>
+						<thead><tr><th>ID</th><th>Title</th><th>Status</th><th>Action</th></tr></thead>
 						<tbody>
-						<?php foreach ( $pending_posts as $p ) : ?>
+						<?php foreach ( $pending_posts as $i => $p ) : ?>
 							<tr>
 								<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
 								<td><?php echo esc_html( $p->post_title ); ?></td>
-								<td><small><?php echo esc_html( mb_substr( $p->pending_url, 0, 80 ) ); ?>...</small></td>
+								<td>
+									<?php if ( (int) $processing_id === (int) $p->ID ) : ?>
+										<span class="tsvi-loading">Downloading & uploading...</span>
+									<?php elseif ( $i === 0 && ! $processing_id ) : ?>
+										<span class="tsvi-loading">Next in queue</span>
+									<?php else : ?>
+										<span>Waiting (#<?php echo $i + 1; ?>)</span>
+									<?php endif; ?>
+								</td>
+								<td>
+									<a class="button button-small" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=cancel&tsvi_id=' . $p->ID ), 'tsvi_queue_action' ); ?>">Cancel</a>
+								</td>
 							</tr>
 						<?php endforeach; ?>
 						</tbody>
@@ -165,9 +222,14 @@ class TSVI_Admin {
 				<?php endif; ?>
 			</div>
 
-			<!-- Failed -->
+			<!-- FAILED -->
 			<div class="tsvi-card">
-				<h2>Failed <span class="tsvi-badge tsvi-badge-failed"><?php echo $failed_count; ?></span></h2>
+				<h2>
+					Failed <span class="tsvi-badge tsvi-badge-failed"><?php echo $failed_count; ?></span>
+					<?php if ( $failed_count > 0 ) : ?>
+						<a class="button button-small" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=retry_all_failed' ), 'tsvi_queue_action' ); ?>">Retry All</a>
+					<?php endif; ?>
+				</h2>
 				<?php if ( $failed_posts ) : ?>
 					<table class="wp-list-table widefat striped">
 						<thead><tr><th>ID</th><th>Title</th><th>Error</th><th>Action</th></tr></thead>
@@ -178,7 +240,7 @@ class TSVI_Admin {
 								<td><?php echo esc_html( $p->post_title ); ?></td>
 								<td><span class="tsvi-err"><?php echo esc_html( $p->error_msg ); ?></span></td>
 								<td>
-									<a class="button button-small" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_retry=' . $p->ID ), 'tsvi_retry' ); ?>">Retry</a>
+									<a class="button button-small" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=retry&tsvi_id=' . $p->ID ), 'tsvi_queue_action' ); ?>">Retry</a>
 								</td>
 							</tr>
 						<?php endforeach; ?>
@@ -189,18 +251,22 @@ class TSVI_Admin {
 				<?php endif; ?>
 			</div>
 
-			<!-- Done -->
+			<!-- UPLOADED -->
 			<div class="tsvi-card">
 				<h2>Uploaded <span class="tsvi-badge tsvi-badge-done"><?php echo $done_count; ?></span></h2>
 				<?php if ( $done_posts ) : ?>
 					<table class="wp-list-table widefat striped">
-						<thead><tr><th>ID</th><th>Title</th><th>CDN URL</th></tr></thead>
+						<thead><tr><th>ID</th><th>Title</th><th>CDN URL</th><th>Action</th></tr></thead>
 						<tbody>
 						<?php foreach ( $done_posts as $p ) : ?>
+							<?php $cdn_url = get_post_meta( $p->ID, 'video_url', true ); ?>
 							<tr>
 								<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
 								<td><?php echo esc_html( $p->post_title ); ?></td>
-								<td><small><?php echo esc_html( mb_substr( get_post_meta( $p->ID, 'video_url', true ), 0, 80 ) ); ?>...</small></td>
+								<td><small><?php echo esc_html( mb_substr( $cdn_url, 0, 80 ) ); ?>...</small></td>
+								<td>
+									<a class="button button-small" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=retry_uploaded&tsvi_id=' . $p->ID ), 'tsvi_queue_action' ); ?>">Re-upload</a>
+								</td>
 							</tr>
 						<?php endforeach; ?>
 						</tbody>
@@ -211,6 +277,22 @@ class TSVI_Admin {
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Re-queue a post for Bunny upload (works for failed and uploaded posts).
+	 */
+	private static function requeue_post( $post_id ) {
+		$source = get_post_meta( $post_id, '_tsvi_source_url', true );
+		if ( ! $source ) {
+			$source = get_post_meta( $post_id, 'video_url', true );
+		}
+		if ( $source ) {
+			update_post_meta( $post_id, '_tsvi_bunny_pending', $source );
+			delete_post_meta( $post_id, '_tsvi_bunny_error' );
+			delete_post_meta( $post_id, '_tsvi_bunny_status' );
+			TSVI_Bunny::schedule_upload( $post_id );
+		}
 	}
 
 	/* ------------------------------------------------------------------
