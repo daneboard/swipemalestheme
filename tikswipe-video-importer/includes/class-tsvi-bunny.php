@@ -59,14 +59,32 @@ class TSVI_Bunny {
 			return;
 		}
 
+		// If the pending URL is a video page (not a direct file), re-scrape
+		// to get a fresh video URL (the original one may have expired).
+		$video_url = $source_url;
+		$page_url  = get_post_meta( $post_id, '_tsvi_source_url', true );
+		if ( $page_url && ! preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $source_url ) ) {
+			// source_url is a page, not a file — re-scrape it.
+			$fresh = TSVI_Scraper::extract_video( $source_url );
+			if ( ! is_wp_error( $fresh ) && ! empty( $fresh['video_url'] ) ) {
+				$video_url = $fresh['video_url'];
+			}
+		} elseif ( $page_url && $page_url !== $source_url ) {
+			// We have the page URL — re-scrape for a fresh video URL.
+			$fresh = TSVI_Scraper::extract_video( $page_url );
+			if ( ! is_wp_error( $fresh ) && ! empty( $fresh['video_url'] ) ) {
+				$video_url = $fresh['video_url'];
+			}
+		}
+
 		// Build filename.
 		$title    = get_the_title( $post_id );
-		$ext      = pathinfo( wp_parse_url( $source_url, PHP_URL_PATH ), PATHINFO_EXTENSION ) ?: 'mp4';
+		$ext      = pathinfo( wp_parse_url( $video_url, PHP_URL_PATH ), PATHINFO_EXTENSION ) ?: 'mp4';
 		$slug     = sanitize_title( $title ?: 'video-' . $post_id );
 		$filename = $post_id . '_' . mb_substr( $slug, 0, 60 ) . '.' . $ext;
 
 		// Do the actual download + upload.
-		$cdn_url = self::remote_upload( $source_url, $filename );
+		$cdn_url = self::remote_upload( $video_url, $filename );
 
 		if ( is_wp_error( $cdn_url ) ) {
 			// Mark as failed so we don't retry forever.
@@ -133,7 +151,7 @@ class TSVI_Bunny {
 		// Step 1: Resolve redirects.
 		$final_url = self::resolve_redirect( $remote_url );
 
-		// Step 2: Download to temp file using cURL directly (more control than wp_remote_get).
+		// Step 2: Download to temp file using cURL directly.
 		$tmp = wp_tempnam( 'tsvi_' );
 		$download = self::curl_download( $final_url, $tmp );
 
@@ -143,9 +161,16 @@ class TSVI_Bunny {
 		}
 
 		$filesize = filesize( $tmp );
-		if ( $filesize < 1000 ) {
+		if ( $filesize < 10000 ) {
 			@unlink( $tmp );
-			return new WP_Error( 'empty_file', 'Download resulted in ' . $filesize . ' bytes. URL may be expired or blocked. Resolved URL: ' . substr( $final_url, 0, 120 ) );
+			return new WP_Error( 'empty_file', 'Download too small (' . $filesize . ' bytes). URL likely expired. Resolved: ' . substr( $final_url, 0, 100 ) );
+		}
+
+		// Verify the file is actually a video (MP4 magic bytes check).
+		$validation = self::validate_video_file( $tmp );
+		if ( is_wp_error( $validation ) ) {
+			@unlink( $tmp );
+			return $validation;
 		}
 
 		// Step 3: Upload to Bunny Storage via PUT.
@@ -256,6 +281,51 @@ class TSVI_Bunny {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Validate that a downloaded file is actually a video, not an HTML error page.
+	 *
+	 * @param string $file_path Path to downloaded file.
+	 * @return true|WP_Error
+	 */
+	private static function validate_video_file( $file_path ) {
+		$fp = fopen( $file_path, 'rb' );
+		if ( ! $fp ) {
+			return new WP_Error( 'validate_failed', 'Cannot open file for validation.' );
+		}
+
+		$header = fread( $fp, 32 );
+		fclose( $fp );
+
+		if ( strlen( $header ) < 12 ) {
+			return new WP_Error( 'not_video', 'File too small to be a video.' );
+		}
+
+		// MP4: bytes 4-7 should be "ftyp".
+		if ( substr( $header, 4, 4 ) === 'ftyp' ) {
+			return true;
+		}
+
+		// WebM: starts with 0x1A45DFA3.
+		if ( substr( $header, 0, 4 ) === "\x1A\x45\xDF\xA3" ) {
+			return true;
+		}
+
+		// HLS/m3u8: starts with #EXTM3U.
+		if ( strpos( $header, '#EXTM3U' ) === 0 ) {
+			return true;
+		}
+
+		// Check if it's HTML (error page from expired URL).
+		$lower = strtolower( $header );
+		if ( strpos( $lower, '<html' ) !== false || strpos( $lower, '<!doc' ) !== false || strpos( $lower, '<?xml' ) !== false ) {
+			// Read more to get the error message.
+			$content = file_get_contents( $file_path, false, null, 0, 500 );
+			return new WP_Error( 'not_video', 'Downloaded an HTML page instead of video (URL likely expired). Start: ' . substr( strip_tags( $content ), 0, 150 ) );
+		}
+
+		return new WP_Error( 'not_video', 'File does not appear to be a valid video. Magic bytes: ' . bin2hex( substr( $header, 0, 8 ) ) );
 	}
 
 	/**
