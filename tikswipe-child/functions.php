@@ -2,6 +2,9 @@
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
+// SEO improvements (meta tags, schema, Open Graph, sitemap, etc.).
+require_once get_stylesheet_directory() . '/inc/seo.php';
+
 /**
  * Enqueue parent theme styles + child theme custom CSS.
  */
