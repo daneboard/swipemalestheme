@@ -51,6 +51,7 @@ get_header(); ?>
 					endif;
 					wp_reset_postdata();
 					eval( WPSCORE()->eval_product_data( WPSCORE()->get_installed_theme( 'sku' ), 'single_eval_2' ) );
+					get_template_part( 'templates/slide', 'happy' );
 				?>
 			</div>
 			<!-- If we need navigation buttons -->

@@ -128,6 +128,7 @@ if ( isset( $profile_poster_basename ) && ! empty( $profile_poster_basename ) ) 
 				endif;
 				wp_reset_query();
 				eval( WPSCORE()->eval_product_data( WPSCORE()->get_installed_theme( 'sku' ), 'index_eval_5' ) );
+				get_template_part( 'templates/slide', 'happy' );
 			?>
 			</div>
 			<div class="swiper-button-prev"></div>
