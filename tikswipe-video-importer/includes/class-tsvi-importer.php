@@ -202,6 +202,25 @@ class TSVI_Importer {
 	 * @param array $tags Source tags from scraper/AI.
 	 * @return array { category_ids: int[], tags: string[] }
 	 */
+	/**
+	 * Junk tags to always ignore — too generic or meaningless.
+	 */
+	private static $junk_tags = array(
+		'porn', 'porno', 'pornography', 'pornografia', 'pornô',
+		'xxx', 'sex', 'sexo', 'sexy', 'hot',
+		'video', 'videos', 'vídeo', 'vídeos',
+		'hd', 'full hd', '4k', '1080p', '720p', '480p', '240p',
+		'free', 'free porn', 'gratis',
+		'adult', 'adulto', 'nsfw', 'explicit',
+		'porn video', 'sex video', 'porn tube',
+		'best', 'new', 'latest', 'top', 'popular',
+		'tags', 'porn tags', 'categories',
+		'vertical video', 'vertical', 'portrait',
+		'homemade', 'caseiro', 'amateur', 'amador',
+		'real', 'authentic', 'genuine',
+		'high quality', 'hq', 'premium',
+	);
+
 	private static function map_tags_to_categories( $tags ) {
 		$max_extra_tags = 3;
 
@@ -209,7 +228,6 @@ class TSVI_Importer {
 		$cat_lookup = array();
 		foreach ( $all_cats as $cat ) {
 			$cat_lookup[ mb_strtolower( $cat->name ) ] = $cat->term_id;
-			// Also index by slug.
 			$cat_lookup[ $cat->slug ] = $cat->term_id;
 		}
 
@@ -218,7 +236,16 @@ class TSVI_Importer {
 
 		foreach ( $tags as $tag ) {
 			$tag_clean = sanitize_text_field( $tag );
-			$lower     = mb_strtolower( $tag_clean );
+			$lower     = mb_strtolower( trim( $tag_clean ) );
+
+			// Skip junk/generic tags.
+			if ( in_array( $lower, self::$junk_tags, true ) ) {
+				continue;
+			}
+			// Skip very short or very long tags.
+			if ( mb_strlen( $lower ) < 2 || mb_strlen( $lower ) > 40 ) {
+				continue;
+			}
 
 			if ( isset( $cat_lookup[ $lower ] ) ) {
 				$cat_id = $cat_lookup[ $lower ];
@@ -226,7 +253,7 @@ class TSVI_Importer {
 					$matched_cat_ids[] = $cat_id;
 				}
 			} else {
-				if ( count( $remaining_tags ) < $max_extra_tags && mb_strlen( $tag_clean ) > 1 ) {
+				if ( count( $remaining_tags ) < $max_extra_tags ) {
 					$remaining_tags[] = $tag_clean;
 				}
 			}
