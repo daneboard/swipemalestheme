@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
 <html <?php language_attributes(); ?>>
 <head>
 <meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 	<!-- PWA -->
 	<link rel="manifest" href="<?php echo get_stylesheet_directory_uri(); ?>/manifest.json">
 	<meta name="apple-mobile-web-app-capable" content="yes">
