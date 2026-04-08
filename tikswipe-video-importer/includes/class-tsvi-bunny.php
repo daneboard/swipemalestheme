@@ -18,11 +18,14 @@ class TSVI_Bunny {
 	}
 
 	/**
-	 * Upload a video to Bunny Storage by fetching from a remote URL.
-	 * The video is transferred directly from the source to Bunny — never touches your server.
+	 * Upload a video to Bunny Storage.
 	 *
-	 * @param string $remote_url  Source video URL (temporary, e.g. from xgroovy).
-	 * @param string $filename    Destination filename (e.g. "my-video.mp4").
+	 * Downloads the video to a temp file first (with proper browser headers to
+	 * bypass CDN protections), then uploads the actual bytes to Bunny via PUT.
+	 * The temp file is deleted immediately after upload.
+	 *
+	 * @param string $remote_url  Source video URL.
+	 * @param string $filename    Destination filename.
 	 * @param string $folder      Subfolder in storage (default: "videos").
 	 * @return string|WP_Error    CDN URL on success.
 	 */
@@ -35,17 +38,37 @@ class TSVI_Bunny {
 			return new WP_Error( 'not_configured', 'Bunny.net API key or storage zone not set.' );
 		}
 
-		// Resolve redirects first — some sites (xgroovy, etc.) return a 302
-		// to the real CDN URL. Bunny won't follow redirects on fetch.
-		$remote_url = self::resolve_redirect( $remote_url );
+		// Step 1: Resolve redirects to get the real CDN URL.
+		$final_url = self::resolve_redirect( $remote_url );
 
-		// Build storage API hostname.
+		// Step 2: Download video to a temp file with browser-like headers.
+		$tmp_file = self::download_video( $final_url );
+		if ( is_wp_error( $tmp_file ) ) {
+			return $tmp_file;
+		}
+
+		// Verify the file is not empty.
+		$filesize = filesize( $tmp_file );
+		if ( $filesize < 1000 ) {
+			@unlink( $tmp_file );
+			return new WP_Error( 'empty_download', 'Downloaded file is empty or too small (' . $filesize . ' bytes). Source may have blocked the request.' );
+		}
+
+		// Step 3: Upload to Bunny Storage.
 		$host = 'storage.bunnycdn.com';
 		if ( $region && $region !== 'default' ) {
 			$host = $region . '.' . $host;
 		}
 
-		$path = '/' . $storage_zone . '/' . trim( $folder, '/' ) . '/' . $filename;
+		$path         = '/' . $storage_zone . '/' . trim( $folder, '/' ) . '/' . $filename;
+		$file_content = file_get_contents( $tmp_file );
+
+		// Clean up temp file immediately.
+		@unlink( $tmp_file );
+
+		if ( $file_content === false ) {
+			return new WP_Error( 'read_failed', 'Could not read downloaded temp file.' );
+		}
 
 		$response = wp_remote_request(
 			'https://' . $host . $path,
@@ -53,13 +76,15 @@ class TSVI_Bunny {
 				'method'  => 'PUT',
 				'timeout' => 120,
 				'headers' => array(
-					'AccessKey'        => $api_key,
-					'Content-Type'     => 'application/octet-stream',
-					'X-Bunny-Fetch-Url' => $remote_url,
+					'AccessKey'    => $api_key,
+					'Content-Type' => 'application/octet-stream',
 				),
-				'body'    => '',
+				'body'    => $file_content,
 			)
 		);
+
+		// Free memory.
+		unset( $file_content );
 
 		if ( is_wp_error( $response ) ) {
 			return $response;
@@ -71,8 +96,47 @@ class TSVI_Bunny {
 			return new WP_Error( 'upload_failed', 'Bunny upload HTTP ' . $code . ': ' . $body );
 		}
 
-		// Return the public CDN URL.
 		return self::get_cdn_url( trim( $folder, '/' ) . '/' . $filename );
+	}
+
+	/**
+	 * Download a video file to a temp path with browser-like headers.
+	 *
+	 * @param string $url Video URL (already resolved, no redirects).
+	 * @return string|WP_Error Temp file path on success.
+	 */
+	private static function download_video( $url ) {
+		$tmp = wp_tempnam( 'tsvi_' );
+
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout'     => 120,
+				'stream'      => true,
+				'filename'    => $tmp,
+				'sslverify'   => false,
+				'redirection' => 5,
+				'user-agent'  => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+				'headers'     => array(
+					'Accept'          => '*/*',
+					'Accept-Language' => 'en-US,en;q=0.9',
+					'Referer'         => wp_parse_url( $url, PHP_URL_SCHEME ) . '://' . wp_parse_url( $url, PHP_URL_HOST ) . '/',
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			@unlink( $tmp );
+			return $response;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code >= 400 ) {
+			@unlink( $tmp );
+			return new WP_Error( 'download_failed', 'Download HTTP ' . $code . ' from ' . wp_parse_url( $url, PHP_URL_HOST ) );
+		}
+
+		return $tmp;
 	}
 
 	/**
