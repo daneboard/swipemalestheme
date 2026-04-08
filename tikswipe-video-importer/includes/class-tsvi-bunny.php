@@ -49,6 +49,10 @@ class TSVI_Bunny {
 			return; // Nothing to process.
 		}
 
+		// Allow enough time for large downloads.
+		set_time_limit( 900 );
+		ignore_user_abort( true );
+
 		$source_url = get_post_meta( $post_id, '_tsvi_bunny_pending', true );
 		if ( empty( $source_url ) ) {
 			delete_post_meta( $post_id, '_tsvi_bunny_pending' );
@@ -69,11 +73,20 @@ class TSVI_Bunny {
 			update_post_meta( $post_id, '_tsvi_bunny_pending', '' );
 			update_post_meta( $post_id, '_tsvi_bunny_error', $cdn_url->get_error_message() );
 		} else {
-			// Success: update the video URL to CDN.
+			// Success: update the video URL to CDN and publish.
 			update_post_meta( $post_id, 'video_url', esc_url_raw( $cdn_url ) );
 			delete_post_meta( $post_id, '_tsvi_bunny_pending' );
 			delete_post_meta( $post_id, '_tsvi_bunny_error' );
 			update_post_meta( $post_id, '_tsvi_bunny_status', 'uploaded' );
+
+			// Auto-publish: draft → publish now that CDN URL is set.
+			$post = get_post( $post_id );
+			if ( $post && 'draft' === $post->post_status ) {
+				wp_update_post( array(
+					'ID'          => $post_id,
+					'post_status' => 'publish',
+				) );
+			}
 		}
 
 		// If more items pending, schedule next run.
@@ -179,7 +192,7 @@ class TSVI_Bunny {
 				CURLOPT_FILE           => $fp,
 				CURLOPT_FOLLOWLOCATION => true,
 				CURLOPT_MAXREDIRS      => 5,
-				CURLOPT_TIMEOUT        => 300,
+				CURLOPT_TIMEOUT        => 600,
 				CURLOPT_CONNECTTIMEOUT => 15,
 				CURLOPT_SSL_VERIFYPEER => false,
 				CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -220,7 +233,7 @@ class TSVI_Bunny {
 		$response = wp_remote_get(
 			$url,
 			array(
-				'timeout'     => 300,
+				'timeout'     => 600,
 				'stream'      => true,
 				'filename'    => $dest_path,
 				'sslverify'   => false,
@@ -269,7 +282,7 @@ class TSVI_Bunny {
 					CURLOPT_UPLOAD         => true,
 					CURLOPT_INFILE         => $fp,
 					CURLOPT_INFILESIZE     => $filesize,
-					CURLOPT_TIMEOUT        => 300,
+					CURLOPT_TIMEOUT        => 600,
 					CURLOPT_CONNECTTIMEOUT => 15,
 					CURLOPT_RETURNTRANSFER => true,
 					CURLOPT_HTTPHEADER     => array(
@@ -305,7 +318,7 @@ class TSVI_Bunny {
 			$storage_url,
 			array(
 				'method'  => 'PUT',
-				'timeout' => 300,
+				'timeout' => 600,
 				'headers' => array(
 					'AccessKey'    => $api_key,
 					'Content-Type' => 'application/octet-stream',

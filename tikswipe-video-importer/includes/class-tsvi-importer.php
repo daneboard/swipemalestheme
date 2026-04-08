@@ -63,7 +63,9 @@ class TSVI_Importer {
 			}
 		}
 
-		$status = get_option( 'tsvi_default_status', 'draft' );
+		// If Bunny is enabled, always start as draft → publish after upload.
+		// Otherwise use the configured default status.
+		$status = TSVI_Bunny::is_enabled() ? 'draft' : get_option( 'tsvi_default_status', 'draft' );
 
 		$post_data = array(
 			'post_title'    => $video['title'] ?: 'Untitled Video',
