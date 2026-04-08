@@ -177,14 +177,15 @@ function mtg_generate_thumb_for_post($post_id, $force = false) {
 }
 
 // Auto-generate on save_post (silent — logs to debug.log).
-add_action('save_post', function ($post_id) {
+function mtg_on_save_post($post_id) {
     $result = mtg_generate_thumb_for_post($post_id);
     if (!$result['success']) {
         foreach ($result['steps'] as $step) {
             mtg_log($step);
         }
     }
-}, 20);
+}
+add_action('save_post', 'mtg_on_save_post', 20);
 
 // Admin page.
 function mtg_admin_menu() {
