@@ -31,6 +31,3 @@ add_action( 'plugins_loaded', function () {
 
 // Auto-sign Bunny CDN video URLs with Token Authentication on the frontend.
 add_action( 'init', array( 'TSVI_Bunny', 'init_token_filter' ) );
-
-// Register the streaming proxy endpoint for Bunny uploads.
-TSVI_Bunny::init_proxy();
