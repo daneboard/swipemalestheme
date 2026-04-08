@@ -246,14 +246,45 @@ class TSVI_Scraper {
 	   ------------------------------------------------------------------ */
 
 	private static function extract_video_url( $doc, $xpath, $html, $base_url ) {
-		// A) <video> / <source> elements.
-		$sources = $xpath->query( '//video/source[@src]|//video[@src]' );
-		foreach ( $sources as $el ) {
-			$src  = $el->getAttribute( 'src' );
-			$type = $el->getAttribute( 'type' );
+		// A) Collect ALL <video src=""> and <source src=""> candidates.
+		$candidates = array();
+
+		// <video src="..."> direct attribute.
+		$videos = $xpath->query( '//video[@src]' );
+		foreach ( $videos as $v ) {
+			$src = $v->getAttribute( 'src' );
 			if ( $src && self::is_video_file( $src ) ) {
-				return self::absolute_url( $src, $base_url );
+				$candidates[] = array(
+					'url'     => self::absolute_url( $src, $base_url ),
+					'quality' => self::detect_quality( $src ),
+				);
 			}
+		}
+
+		// <source src="..."> inside <video>.
+		$sources = $xpath->query( '//video/source[@src]' );
+		foreach ( $sources as $s ) {
+			$src   = $s->getAttribute( 'src' );
+			$title = $s->getAttribute( 'title' ); // e.g., "1080p", "720p".
+			$type  = $s->getAttribute( 'type' );
+			if ( ! $src || ( $type && strpos( $type, 'video' ) === false && $type !== '' ) ) {
+				continue;
+			}
+			if ( self::is_video_file( $src ) ) {
+				$q = $title ? self::detect_quality( $title ) : self::detect_quality( $src );
+				$candidates[] = array(
+					'url'     => self::absolute_url( $src, $base_url ),
+					'quality' => $q,
+				);
+			}
+		}
+
+		// Pick highest quality from candidates.
+		if ( ! empty( $candidates ) ) {
+			usort( $candidates, function ( $a, $b ) {
+				return $b['quality'] - $a['quality'];
+			} );
+			return $candidates[0]['url'];
 		}
 
 		// B) og:video meta with direct file URL.
@@ -273,10 +304,21 @@ class TSVI_Scraper {
 		}
 
 		// D) Scan all href/src attributes for direct video files.
-		$all_attrs = array();
-		preg_match_all( '/(?:src|href|data-src|data-video-url|data-video|content)=["\']([^"\']*\.(?:mp4|m3u8|webm)[^"\']*)/i', $html, $all_attrs );
+		preg_match_all( '/(?:src|href|data-src|data-video-url|data-video|content)=["\']([^"\']*\.(?:mp4|m3u8|webm)[^\s"\']*)/i', $html, $all_attrs );
 		if ( ! empty( $all_attrs[1] ) ) {
-			return self::absolute_url( html_entity_decode( $all_attrs[1][0] ), $base_url );
+			// Score all matches and pick best quality.
+			$best     = '';
+			$best_q   = -1;
+			foreach ( $all_attrs[1] as $match ) {
+				$q = self::detect_quality( $match );
+				if ( $q > $best_q ) {
+					$best_q = $q;
+					$best   = $match;
+				}
+			}
+			if ( $best ) {
+				return self::absolute_url( html_entity_decode( $best ), $base_url );
+			}
 		}
 
 		return '';
@@ -422,7 +464,22 @@ class TSVI_Scraper {
 	}
 
 	private static function is_video_file( $url ) {
-		return (bool) preg_match( '/\.(mp4|m3u8|webm)(\?|$)/i', $url );
+		// Match .mp4, .m3u8, .webm followed by /, ?, or end of string.
+		return (bool) preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $url );
+	}
+
+	/**
+	 * Detect video quality score from URL or title string.
+	 * Higher score = better quality.
+	 */
+	private static function detect_quality( $str ) {
+		if ( preg_match( '/2160|4k/i', $str ) )  return 2160;
+		if ( preg_match( '/1080/i', $str ) )      return 1080;
+		if ( preg_match( '/720/i', $str ) )       return 720;
+		if ( preg_match( '/480/i', $str ) )       return 480;
+		if ( preg_match( '/360/i', $str ) )       return 360;
+		if ( preg_match( '/240/i', $str ) )       return 240;
+		return 0; // Unknown quality.
 	}
 
 	/**
