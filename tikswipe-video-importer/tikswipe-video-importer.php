@@ -1,11 +1,14 @@
 <?php
 /**
  * Plugin Name: TikSwipe Video Importer
+ * Plugin URI:  https://github.com/daneboard/swipemalestheme
  * Description: Scrape and import videos from external URLs into TikSwipe theme posts.
  * Version:     1.0.0
  * Author:      TikSwipe
- * Text Domain: tsvi
+ * Text Domain: tikswipe-video-importer
+ * Requires at least: 5.5
  * Requires PHP: 7.4
+ * Update URI:  false
  */
 
 defined( 'ABSPATH' ) || exit;
