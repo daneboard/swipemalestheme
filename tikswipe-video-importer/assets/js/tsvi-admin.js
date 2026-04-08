@@ -265,6 +265,7 @@
 				title:             v.title,
 				description:       v.description || '',
 				video_url:         v.video_url || '',
+				source_url:        v.source_url || '',
 				embed:             v.embed || '',
 				thumbnail:         v.thumbnail || '',
 				duration:          v.duration || 0,

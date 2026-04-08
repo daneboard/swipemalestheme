@@ -30,17 +30,23 @@ class TSVI_Importer {
 		// Clean the title first.
 		$video['title'] = self::clean_title( $video['title'] ?? '' );
 
-		// Deduplication: check video_url AND source page URL.
+		// Deduplication: check video_url, source page URL, AND title.
 		if ( ! empty( $video['video_url'] ) ) {
 			$existing = self::find_by_video_url( $video['video_url'] );
 			if ( $existing ) {
-				return new WP_Error( 'duplicate', 'Video already imported as post #' . $existing );
+				return new WP_Error( 'duplicate', 'Video URL already imported as post #' . $existing );
 			}
 		}
 		if ( ! empty( $video['source_url'] ) ) {
 			$existing = self::find_by_video_url( $video['source_url'] );
 			if ( $existing ) {
-				return new WP_Error( 'duplicate', 'Video page already imported as post #' . $existing );
+				return new WP_Error( 'duplicate', 'Source page already imported as post #' . $existing );
+			}
+		}
+		if ( ! empty( $video['title'] ) ) {
+			$existing = self::find_by_title( $video['title'] );
+			if ( $existing ) {
+				return new WP_Error( 'duplicate', 'Title already exists as post #' . $existing );
 			}
 		}
 
@@ -282,6 +288,23 @@ class TSVI_Importer {
 				 AND meta_value = %s
 				 LIMIT 1",
 				$url
+			)
+		);
+	}
+
+	/**
+	 * Check if a post with the same title already exists.
+	 */
+	private static function find_by_title( $title ) {
+		global $wpdb;
+		return $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT ID FROM {$wpdb->posts}
+				 WHERE post_title = %s
+				 AND post_type = 'post'
+				 AND post_status IN ('publish', 'draft', 'pending')
+				 LIMIT 1",
+				$title
 			)
 		);
 	}

@@ -606,6 +606,7 @@ class TSVI_Admin {
 			'title'       => sanitize_text_field( $_POST['title'] ?? '' ),
 			'description' => sanitize_text_field( $_POST['description'] ?? '' ),
 			'video_url'   => esc_url_raw( $_POST['video_url'] ?? '' ),
+			'source_url'  => esc_url_raw( $_POST['source_url'] ?? '' ),
 			'embed'       => wp_kses_post( $_POST['embed'] ?? '' ),
 			'thumbnail'   => esc_url_raw( $_POST['thumbnail'] ?? '' ),
 			'duration'    => intval( $_POST['duration'] ?? 0 ),
