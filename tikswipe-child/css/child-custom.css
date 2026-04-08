@@ -476,7 +476,7 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
    ======================================== */
 .wpst-progress-bar {
     position: fixed;
-    bottom: 62px;
+    bottom: 68px;
     left: 0;
     right: 0;
     height: 4px;
