@@ -462,12 +462,16 @@ class TSVI_Bunny {
 
 	/**
 	 * Generate a token-authenticated (signed) URL.
+	 * Strips any existing token/expires params first to prevent accumulation.
 	 */
 	public static function sign_url( $url, $expires_in = 14400 ) {
 		$token_key = get_option( 'tsvi_bunny_token_key', '' );
 		if ( empty( $token_key ) ) {
 			return $url;
 		}
+
+		// Strip existing token/expires params to prevent accumulation.
+		$url = self::strip_token_params( $url );
 
 		$parsed  = wp_parse_url( $url );
 		$path    = $parsed['path'] ?? '/';
@@ -479,8 +483,17 @@ class TSVI_Bunny {
 		$token    = strtr( $token, '+/', '-_' );
 		$token    = rtrim( $token, '=' );
 
-		$separator = ( strpos( $url, '?' ) !== false ) ? '&' : '?';
-		return $url . $separator . 'token=' . $token . '&expires=' . $expires;
+		return $url . '?token=' . $token . '&expires=' . $expires;
+	}
+
+	/**
+	 * Remove token and expires parameters from a URL.
+	 */
+	private static function strip_token_params( $url ) {
+		$url = preg_replace( '/[?&](token|expires)=[^&]*/', '', $url );
+		$url = preg_replace( '/\?&/', '?', $url );
+		$url = rtrim( $url, '?&' );
+		return $url;
 	}
 
 	/**
@@ -499,6 +512,7 @@ class TSVI_Bunny {
 
 	/**
 	 * Intercept video_url meta reads and sign Bunny URLs.
+	 * Also cleans accumulated tokens from the stored value.
 	 */
 	public static function filter_video_url( $value, $object_id, $meta_key, $single ) {
 		if ( 'video_url' !== $meta_key || ! $single ) {
@@ -518,6 +532,14 @@ class TSVI_Bunny {
 			return $value;
 		}
 
-		return array( self::sign_url( $raw ) );
+		// If the stored URL has accumulated tokens, clean and re-save.
+		$clean = self::strip_token_params( $raw );
+		if ( $clean !== $raw ) {
+			remove_filter( 'get_post_metadata', array( __CLASS__, 'filter_video_url' ), 10 );
+			update_post_meta( $object_id, 'video_url', $clean );
+			add_filter( 'get_post_metadata', array( __CLASS__, 'filter_video_url' ), 10, 4 );
+		}
+
+		return array( self::sign_url( $clean ) );
 	}
 }
