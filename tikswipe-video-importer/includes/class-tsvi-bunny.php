@@ -103,7 +103,11 @@ class TSVI_Bunny {
 			delete_post_meta( $post_id, '_tsvi_bunny_error' );
 			update_post_meta( $post_id, '_tsvi_bunny_status', 'uploaded' );
 
+			// Reset thumb generator flag so it retries with the new CDN URL.
+			delete_post_meta( $post_id, '_mtg_thumb_done' );
+
 			// Auto-publish: draft → publish now that CDN URL is set.
+			// This also triggers save_post → thumb generator runs with CDN URL.
 			$post = get_post( $post_id );
 			if ( $post && 'draft' === $post->post_status ) {
 				wp_update_post( array(

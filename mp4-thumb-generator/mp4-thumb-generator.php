@@ -19,8 +19,9 @@ function mtg_find_mp4_url_in_postmeta($post_id) {
             if ($v === '') continue;
             if (stripos($v, '.mp4') === false) continue;
 
-            if (preg_match('~^https?://.+\.mp4(\?.*)?$~i', $v)) return $v;
-            if (preg_match('~^/.*\.mp4(\?.*)?$~i', $v)) return $v;
+            // Match .mp4 followed by /, ?, or end of string.
+            if (preg_match('~^https?://.+\.mp4([/\?].*)?$~i', $v)) return $v;
+            if (preg_match('~^/.+\.mp4([/\?].*)?$~i', $v)) return $v;
         }
     }
     return '';
@@ -71,8 +72,14 @@ function mtg_generate_thumb_for_post($post_id) {
     $filename = 'thumb_post_' . $post_id . '_' . time() . '.jpg';
     $dest = trailingslashit($upload['path']) . $filename;
 
+    // Build FFmpeg command with browser-like headers for Hotlink Protection.
+    $referer = home_url('/');
+    $ua      = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+
     $cmd = escapeshellcmd($ffmpeg) .
-        ' -y -ss 00:00:02 -i ' . escapeshellarg($mp4) .
+        ' -y -ss 00:00:02' .
+        ' -headers ' . escapeshellarg("Referer: {$referer}\r\nUser-Agent: {$ua}\r\n") .
+        ' -i ' . escapeshellarg($mp4) .
         ' -frames:v 1 -update 1 -vf "scale=640:-1" ' . escapeshellarg($dest) .
         ' 2>&1';
 
