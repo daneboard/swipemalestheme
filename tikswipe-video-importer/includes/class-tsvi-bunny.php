@@ -35,6 +35,10 @@ class TSVI_Bunny {
 			return new WP_Error( 'not_configured', 'Bunny.net API key or storage zone not set.' );
 		}
 
+		// Resolve redirects first — some sites (xgroovy, etc.) return a 302
+		// to the real CDN URL. Bunny won't follow redirects on fetch.
+		$remote_url = self::resolve_redirect( $remote_url );
+
 		// Build storage API hostname.
 		$host = 'storage.bunnycdn.com';
 		if ( $region && $region !== 'default' ) {
@@ -69,6 +73,49 @@ class TSVI_Bunny {
 
 		// Return the public CDN URL.
 		return self::get_cdn_url( trim( $folder, '/' ) . '/' . $filename );
+	}
+
+	/**
+	 * Follow redirects to get the final URL.
+	 * Many tube sites return a 302 redirect from their get_file URL to the
+	 * actual CDN URL. Bunny's X-Bunny-Fetch-URL doesn't follow redirects,
+	 * so we resolve them here first.
+	 *
+	 * @param string $url           Starting URL.
+	 * @param int    $max_redirects Max redirect hops.
+	 * @return string Final URL after redirects.
+	 */
+	private static function resolve_redirect( $url, $max_redirects = 5 ) {
+		for ( $i = 0; $i < $max_redirects; $i++ ) {
+			$response = wp_remote_head(
+				$url,
+				array(
+					'timeout'     => 10,
+					'redirection' => 0, // Don't auto-follow — we do it manually.
+					'sslverify'   => false,
+					'user-agent'  => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+				)
+			);
+
+			if ( is_wp_error( $response ) ) {
+				return $url;
+			}
+
+			$code = wp_remote_retrieve_response_code( $response );
+
+			if ( $code >= 300 && $code < 400 ) {
+				$location = wp_remote_retrieve_header( $response, 'location' );
+				if ( $location ) {
+					$url = $location;
+					continue;
+				}
+			}
+
+			// No more redirects — this is the final URL.
+			break;
+		}
+
+		return $url;
 	}
 
 	/**
