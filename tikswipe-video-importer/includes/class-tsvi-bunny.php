@@ -1,7 +1,10 @@
 <?php
 /**
  * Bunny.net Storage + CDN integration.
- * Remote upload via X-Bunny-Fetch-URL and Token Authentication for URLs.
+ *
+ * Uses a streaming proxy approach: your server acts as a bridge between the
+ * source CDN and Bunny, streaming data through without saving to disk.
+ * Bunny fetches from a proxy URL on your site that streams from the source.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -18,11 +21,20 @@ class TSVI_Bunny {
 	}
 
 	/**
-	 * Upload a video to Bunny Storage.
+	 * Register the proxy endpoint for Bunny to fetch from.
+	 */
+	public static function init_proxy() {
+		add_action( 'wp_ajax_tsvi_video_proxy', array( __CLASS__, 'handle_proxy' ) );
+		add_action( 'wp_ajax_nopriv_tsvi_video_proxy', array( __CLASS__, 'handle_proxy' ) );
+	}
+
+	/**
+	 * Upload a video to Bunny Storage via streaming proxy.
 	 *
-	 * Downloads the video to a temp file first (with proper browser headers to
-	 * bypass CDN protections), then uploads the actual bytes to Bunny via PUT.
-	 * The temp file is deleted immediately after upload.
+	 * 1. Resolves redirects to get the real video URL.
+	 * 2. Creates a temporary proxy URL on your site.
+	 * 3. Tells Bunny to fetch from your proxy URL.
+	 * 4. Your proxy streams from the source CDN with proper headers.
 	 *
 	 * @param string $remote_url  Source video URL.
 	 * @param string $filename    Destination filename.
@@ -41,34 +53,19 @@ class TSVI_Bunny {
 		// Step 1: Resolve redirects to get the real CDN URL.
 		$final_url = self::resolve_redirect( $remote_url );
 
-		// Step 2: Download video to a temp file with browser-like headers.
-		$tmp_file = self::download_video( $final_url );
-		if ( is_wp_error( $tmp_file ) ) {
-			return $tmp_file;
-		}
+		// Step 2: Create a proxy token so Bunny can fetch through our server.
+		$token = wp_generate_password( 32, false );
+		set_transient( 'tsvi_proxy_' . $token, $final_url, 300 ); // Valid 5 min.
 
-		// Verify the file is not empty.
-		$filesize = filesize( $tmp_file );
-		if ( $filesize < 1000 ) {
-			@unlink( $tmp_file );
-			return new WP_Error( 'empty_download', 'Downloaded file is empty or too small (' . $filesize . ' bytes). Source may have blocked the request.' );
-		}
+		$proxy_url = admin_url( 'admin-ajax.php' ) . '?action=tsvi_video_proxy&t=' . $token;
 
-		// Step 3: Upload to Bunny Storage.
+		// Step 3: Tell Bunny to fetch from our proxy.
 		$host = 'storage.bunnycdn.com';
 		if ( $region && $region !== 'default' ) {
 			$host = $region . '.' . $host;
 		}
 
-		$path         = '/' . $storage_zone . '/' . trim( $folder, '/' ) . '/' . $filename;
-		$file_content = file_get_contents( $tmp_file );
-
-		// Clean up temp file immediately.
-		@unlink( $tmp_file );
-
-		if ( $file_content === false ) {
-			return new WP_Error( 'read_failed', 'Could not read downloaded temp file.' );
-		}
+		$path = '/' . $storage_zone . '/' . trim( $folder, '/' ) . '/' . $filename;
 
 		$response = wp_remote_request(
 			'https://' . $host . $path,
@@ -76,15 +73,16 @@ class TSVI_Bunny {
 				'method'  => 'PUT',
 				'timeout' => 120,
 				'headers' => array(
-					'AccessKey'    => $api_key,
-					'Content-Type' => 'application/octet-stream',
+					'AccessKey'         => $api_key,
+					'Content-Type'      => 'application/octet-stream',
+					'X-Bunny-Fetch-Url' => $proxy_url,
 				),
-				'body'    => $file_content,
+				'body'    => '',
 			)
 		);
 
-		// Free memory.
-		unset( $file_content );
+		// Clean up transient.
+		delete_transient( 'tsvi_proxy_' . $token );
 
 		if ( is_wp_error( $response ) ) {
 			return $response;
@@ -100,62 +98,108 @@ class TSVI_Bunny {
 	}
 
 	/**
-	 * Download a video file to a temp path with browser-like headers.
-	 *
-	 * @param string $url Video URL (already resolved, no redirects).
-	 * @return string|WP_Error Temp file path on success.
+	 * Handle proxy requests from Bunny.
+	 * Streams video data from the source CDN to the response with proper headers.
+	 * No temp files, no memory buffering — pure streaming.
 	 */
-	private static function download_video( $url ) {
-		$tmp = wp_tempnam( 'tsvi_' );
-
-		$response = wp_remote_get(
-			$url,
-			array(
-				'timeout'     => 120,
-				'stream'      => true,
-				'filename'    => $tmp,
-				'sslverify'   => false,
-				'redirection' => 5,
-				'user-agent'  => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-				'headers'     => array(
-					'Accept'          => '*/*',
-					'Accept-Language' => 'en-US,en;q=0.9',
-					'Referer'         => wp_parse_url( $url, PHP_URL_SCHEME ) . '://' . wp_parse_url( $url, PHP_URL_HOST ) . '/',
-				),
-			)
-		);
-
-		if ( is_wp_error( $response ) ) {
-			@unlink( $tmp );
-			return $response;
+	public static function handle_proxy() {
+		$token = sanitize_text_field( $_GET['t'] ?? '' );
+		if ( empty( $token ) ) {
+			status_header( 403 );
+			exit( 'Forbidden' );
 		}
 
-		$code = wp_remote_retrieve_response_code( $response );
-		if ( $code >= 400 ) {
-			@unlink( $tmp );
-			return new WP_Error( 'download_failed', 'Download HTTP ' . $code . ' from ' . wp_parse_url( $url, PHP_URL_HOST ) );
+		$url = get_transient( 'tsvi_proxy_' . $token );
+		if ( ! $url ) {
+			status_header( 410 );
+			exit( 'Token expired' );
 		}
 
-		return $tmp;
+		// One-time use: delete immediately.
+		delete_transient( 'tsvi_proxy_' . $token );
+
+		// Disable PHP output buffering and time limit.
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		set_time_limit( 300 );
+		ignore_user_abort( true );
+
+		// Use cURL to stream from source directly to output.
+		if ( function_exists( 'curl_init' ) ) {
+			header( 'Content-Type: application/octet-stream' );
+
+			$ch = curl_init();
+			curl_setopt_array(
+				$ch,
+				array(
+					CURLOPT_URL            => $url,
+					CURLOPT_FOLLOWLOCATION => true,
+					CURLOPT_MAXREDIRS      => 5,
+					CURLOPT_TIMEOUT        => 300,
+					CURLOPT_SSL_VERIFYPEER => false,
+					CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+					CURLOPT_HTTPHEADER     => array(
+						'Accept: */*',
+						'Referer: ' . wp_parse_url( $url, PHP_URL_SCHEME ) . '://' . wp_parse_url( $url, PHP_URL_HOST ) . '/',
+					),
+					CURLOPT_WRITEFUNCTION  => function ( $ch, $data ) {
+						echo $data;
+						flush();
+						return strlen( $data );
+					},
+				)
+			);
+
+			curl_exec( $ch );
+			$http_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+			curl_close( $ch );
+
+			if ( $http_code >= 400 ) {
+				status_header( 502 );
+			}
+		} else {
+			// Fallback without cURL: download to temp and readfile.
+			$tmp = wp_tempnam( 'tsvi_proxy_' );
+			$dl  = wp_remote_get(
+				$url,
+				array(
+					'timeout'     => 120,
+					'stream'      => true,
+					'filename'    => $tmp,
+					'sslverify'   => false,
+					'redirection' => 5,
+					'user-agent'  => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+					'headers'     => array(
+						'Accept'  => '*/*',
+						'Referer' => wp_parse_url( $url, PHP_URL_SCHEME ) . '://' . wp_parse_url( $url, PHP_URL_HOST ) . '/',
+					),
+				)
+			);
+
+			if ( ! is_wp_error( $dl ) && file_exists( $tmp ) && filesize( $tmp ) > 0 ) {
+				header( 'Content-Type: application/octet-stream' );
+				header( 'Content-Length: ' . filesize( $tmp ) );
+				readfile( $tmp );
+			} else {
+				status_header( 502 );
+			}
+			@unlink( $tmp );
+		}
+
+		exit;
 	}
 
 	/**
 	 * Follow redirects to get the final URL.
-	 * Many tube sites return a 302 redirect from their get_file URL to the
-	 * actual CDN URL. Bunny's X-Bunny-Fetch-URL doesn't follow redirects,
-	 * so we resolve them here first.
-	 *
-	 * @param string $url           Starting URL.
-	 * @param int    $max_redirects Max redirect hops.
-	 * @return string Final URL after redirects.
 	 */
-	private static function resolve_redirect( $url, $max_redirects = 5 ) {
+	public static function resolve_redirect( $url, $max_redirects = 5 ) {
 		for ( $i = 0; $i < $max_redirects; $i++ ) {
 			$response = wp_remote_head(
 				$url,
 				array(
 					'timeout'     => 10,
-					'redirection' => 0, // Don't auto-follow — we do it manually.
+					'redirection' => 0,
 					'sslverify'   => false,
 					'user-agent'  => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 				)
@@ -175,7 +219,6 @@ class TSVI_Bunny {
 				}
 			}
 
-			// No more redirects — this is the final URL.
 			break;
 		}
 
@@ -198,16 +241,15 @@ class TSVI_Bunny {
 
 	/**
 	 * Generate a token-authenticated (signed) URL.
-	 * Bunny CDN validates the token and expiration server-side.
 	 *
 	 * @param string $url        Full CDN URL.
 	 * @param int    $expires_in Seconds until expiration (default 4 hours).
-	 * @return string Signed URL with token and expires parameters.
+	 * @return string Signed URL.
 	 */
 	public static function sign_url( $url, $expires_in = 14400 ) {
 		$token_key = get_option( 'tsvi_bunny_token_key', '' );
 		if ( empty( $token_key ) ) {
-			return $url; // No token key = return unsigned.
+			return $url;
 		}
 
 		$parsed  = wp_parse_url( $url );
@@ -226,7 +268,6 @@ class TSVI_Bunny {
 
 	/**
 	 * Filter: auto-sign Bunny CDN video URLs when served to the player.
-	 * Hooks into get_post_metadata to intercept video_url reads.
 	 */
 	public static function init_token_filter() {
 		$token_key = get_option( 'tsvi_bunny_token_key', '' );
@@ -247,7 +288,6 @@ class TSVI_Bunny {
 			return $value;
 		}
 
-		// Prevent infinite loop — temporarily remove filter.
 		remove_filter( 'get_post_metadata', array( __CLASS__, 'filter_video_url' ), 10 );
 		$raw = get_post_meta( $object_id, 'video_url', true );
 		add_filter( 'get_post_metadata', array( __CLASS__, 'filter_video_url' ), 10, 4 );
@@ -258,7 +298,7 @@ class TSVI_Bunny {
 
 		$hostname = get_option( 'tsvi_bunny_cdn_hostname', '' );
 		if ( ! $hostname || strpos( $raw, $hostname ) === false ) {
-			return $value; // Not a Bunny URL — don't touch.
+			return $value;
 		}
 
 		return array( self::sign_url( $raw ) );
