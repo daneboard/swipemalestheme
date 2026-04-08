@@ -333,25 +333,6 @@ function tikswipe_child_force_rand_on_ajax( $query ) {
 add_action( 'pre_get_posts', 'tikswipe_child_force_rand_on_ajax', 999 );
 
 /**
- * Inject ad slide after the parent's AJAX loadmore response via output buffering.
- * Hooks at priority 1 (before the parent handler at default 10) to start buffering.
- * When the parent calls die(), the buffer flushes and our callback appends the ad HTML.
- */
-function tikswipe_child_inject_ad_on_ajax_loadmore() {
-	ob_start( function ( $buffer ) {
-		if ( ! empty( trim( $buffer ) ) ) {
-			ob_start();
-			get_template_part( 'templates/slide', 'happy' );
-			$ad_html = ob_get_clean();
-			return $buffer . $ad_html;
-		}
-		return $buffer;
-	} );
-}
-add_action( 'wp_ajax_loadmore_swipe', 'tikswipe_child_inject_ad_on_ajax_loadmore', 1 );
-add_action( 'wp_ajax_nopriv_loadmore_swipe', 'tikswipe_child_inject_ad_on_ajax_loadmore', 1 );
-
-/**
  * Add lazy loading to grid thumbnails — only on search/favorites pages.
  */
 function tikswipe_child_lazy_load_thumbs( $attr, $attachment, $size ) {
