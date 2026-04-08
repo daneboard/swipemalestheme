@@ -309,54 +309,25 @@ function tikswipe_child_searchform( $form ) {
 add_filter( 'get_search_form', 'tikswipe_child_searchform' );
 
 /**
- * Override the parent's loadmore_swipe AJAX handler.
- * The parent's handler ignores category__in and resets orderby based on customizer.
- * Our handler preserves the full query_vars we passed (including category__in and RAND).
+ * Instead of replacing the parent's AJAX handler (which breaks eval hooks for ads),
+ * we modify the query args via pre_get_posts during AJAX requests.
+ * This preserves the parent's ad injection mechanism completely.
  */
-function tikswipe_child_ajax_load_more_swipe() {
-	if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'ajax-nonce' ) ) {
-		exit;
+function tikswipe_child_force_rand_on_ajax( $query ) {
+	// Only run during AJAX loadmore requests.
+	if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
+		return;
 	}
 
-	$ads_displaying_frequency = get_theme_mod( 'wpst_ads_displaying_frequency', 5 );
-	$args                     = json_decode( stripslashes( $_POST['query'] ), true );
-	$args['paged']            = intval( $_POST['page'] ) + 1;
-	$args['max_page']         = $_POST['maxpage'];
-	$args['post_type']        = 'post';
-	$args['post_status']      = 'publish';
-	$args['posts_per_page']   = $ads_displaying_frequency;
-	$args['orderby']          = 'RAND(' . get_random_seed() . ')';
-	$args['order']            = 'DESC';
-
-	$query = new WP_Query( $args );
-
-	// If category filter returns no results, retry without it.
-	if ( ! $query->have_posts() && ! empty( $args['category__in'] ) ) {
-		unset( $args['category__in'] );
-		unset( $args['tag__in'] );
-		$query = new WP_Query( $args );
+	if ( ! isset( $_POST['action'] ) || $_POST['action'] !== 'loadmore_swipe' ) {
+		return;
 	}
 
-	if ( $query->have_posts() ) :
-		while ( $query->have_posts() ) :
-			$query->the_post();
-			eval( WPSCORE()->eval_product_data( WPSCORE()->get_installed_theme( 'sku' ), 'ajax_load_more_swipe_eval_1' ) );
-		endwhile;
-		eval( WPSCORE()->eval_product_data( WPSCORE()->get_installed_theme( 'sku' ), 'ajax_load_more_swipe_eval_2' ) );
-	endif;
-
-	wp_reset_postdata();
-	die;
+	// Force random ordering regardless of customizer setting.
+	$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
+	$query->set( 'order', 'DESC' );
 }
-
-// Remove parent handler and register ours (must run after parent registers theirs).
-function tikswipe_child_replace_loadmore_swipe_handler() {
-	remove_action( 'wp_ajax_loadmore_swipe', 'wpst_ajax_load_more_swipe' );
-	remove_action( 'wp_ajax_nopriv_loadmore_swipe', 'wpst_ajax_load_more_swipe' );
-	add_action( 'wp_ajax_loadmore_swipe', 'tikswipe_child_ajax_load_more_swipe' );
-	add_action( 'wp_ajax_nopriv_loadmore_swipe', 'tikswipe_child_ajax_load_more_swipe' );
-}
-add_action( 'init', 'tikswipe_child_replace_loadmore_swipe_handler', 20 );
+add_action( 'pre_get_posts', 'tikswipe_child_force_rand_on_ajax', 999 );
 
 /**
  * Add lazy loading to grid thumbnails — only on search/favorites pages.
