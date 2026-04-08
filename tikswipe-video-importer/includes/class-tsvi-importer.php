@@ -82,28 +82,21 @@ class TSVI_Importer {
 			wp_set_post_tags( $post_id, $extra_tags );
 		}
 
-		// --- Video URL: upload to Bunny or save external URL ---
+		// --- Video URL: save external URL now, queue Bunny upload for background ---
 		$final_video_url = $video['video_url'] ?? '';
 		$bunny_status    = 'disabled';
-
-		if ( ! empty( $final_video_url ) && TSVI_Bunny::is_enabled() ) {
-			$ext      = self::get_extension( $final_video_url );
-			$slug     = sanitize_title( $video['title'] ?: 'video-' . $post_id );
-			$filename = $post_id . '_' . mb_substr( $slug, 0, 60 ) . '.' . $ext;
-
-			$cdn_url = TSVI_Bunny::remote_upload( $final_video_url, $filename );
-
-			if ( is_wp_error( $cdn_url ) ) {
-				$bunny_status = 'error: ' . $cdn_url->get_error_message();
-			} else {
-				$final_video_url = $cdn_url;
-				$bunny_status    = 'uploaded';
-			}
-		}
 
 		if ( ! empty( $final_video_url ) ) {
 			update_post_meta( $post_id, 'video_url', esc_url_raw( $final_video_url ) );
 		}
+
+		if ( ! empty( $final_video_url ) && TSVI_Bunny::is_enabled() ) {
+			// Queue for background upload instead of blocking here.
+			update_post_meta( $post_id, '_tsvi_bunny_pending', $final_video_url );
+			TSVI_Bunny::schedule_upload( $post_id );
+			$bunny_status = 'queued';
+		}
+
 		if ( ! empty( $video['embed'] ) ) {
 			update_post_meta( $post_id, 'embed', $video['embed'] );
 		}

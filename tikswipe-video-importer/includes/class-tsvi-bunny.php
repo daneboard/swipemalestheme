@@ -10,6 +10,85 @@ defined( 'ABSPATH' ) || exit;
 
 class TSVI_Bunny {
 
+	const CRON_HOOK = 'tsvi_bunny_process_queue';
+
+	/**
+	 * Register the background cron hook.
+	 */
+	public static function init_cron() {
+		add_action( self::CRON_HOOK, array( __CLASS__, 'process_queue' ) );
+	}
+
+	/**
+	 * Schedule a background upload for a post.
+	 */
+	public static function schedule_upload( $post_id ) {
+		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
+			wp_schedule_single_event( time(), self::CRON_HOOK );
+		}
+		// Kick cron immediately.
+		spawn_cron();
+	}
+
+	/**
+	 * Background cron handler: process ONE pending Bunny upload per run.
+	 * Schedules itself again if more items remain.
+	 */
+	public static function process_queue() {
+		global $wpdb;
+
+		// Find one post with pending Bunny upload.
+		$post_id = $wpdb->get_var(
+			"SELECT post_id FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_tsvi_bunny_pending'
+			 AND meta_value != ''
+			 LIMIT 1"
+		);
+
+		if ( ! $post_id ) {
+			return; // Nothing to process.
+		}
+
+		$source_url = get_post_meta( $post_id, '_tsvi_bunny_pending', true );
+		if ( empty( $source_url ) ) {
+			delete_post_meta( $post_id, '_tsvi_bunny_pending' );
+			return;
+		}
+
+		// Build filename.
+		$title    = get_the_title( $post_id );
+		$ext      = pathinfo( wp_parse_url( $source_url, PHP_URL_PATH ), PATHINFO_EXTENSION ) ?: 'mp4';
+		$slug     = sanitize_title( $title ?: 'video-' . $post_id );
+		$filename = $post_id . '_' . mb_substr( $slug, 0, 60 ) . '.' . $ext;
+
+		// Do the actual download + upload.
+		$cdn_url = self::remote_upload( $source_url, $filename );
+
+		if ( is_wp_error( $cdn_url ) ) {
+			// Mark as failed so we don't retry forever.
+			update_post_meta( $post_id, '_tsvi_bunny_pending', '' );
+			update_post_meta( $post_id, '_tsvi_bunny_error', $cdn_url->get_error_message() );
+		} else {
+			// Success: update the video URL to CDN.
+			update_post_meta( $post_id, 'video_url', esc_url_raw( $cdn_url ) );
+			delete_post_meta( $post_id, '_tsvi_bunny_pending' );
+			delete_post_meta( $post_id, '_tsvi_bunny_error' );
+			update_post_meta( $post_id, '_tsvi_bunny_status', 'uploaded' );
+		}
+
+		// If more items pending, schedule next run.
+		$remaining = $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_tsvi_bunny_pending'
+			 AND meta_value != ''"
+		);
+
+		if ( $remaining > 0 ) {
+			wp_schedule_single_event( time() + 5, self::CRON_HOOK );
+			spawn_cron();
+		}
+	}
+
 	/**
 	 * Check if Bunny integration is configured.
 	 */

@@ -277,7 +277,9 @@
 				if (resp.success) {
 					imported++;
 					var bunnyBadge = '';
-					if (resp.data.bunny_status === 'uploaded') {
+					if (resp.data.bunny_status === 'queued') {
+						bunnyBadge = ' <span class="tsvi-loading">[CDN queued]</span>';
+					} else if (resp.data.bunny_status === 'uploaded') {
 						bunnyBadge = ' <span class="tsvi-ok">[CDN]</span>';
 					} else if (resp.data.bunny_status === 'disabled') {
 						bunnyBadge = ' <span class="tsvi-warn">[external]</span>';
