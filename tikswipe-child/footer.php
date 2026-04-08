@@ -37,7 +37,7 @@ if ( get_theme_mod( 'wpst_enable_creators', '' ) === true ) {
 			</a>
 
 			<a id="fav-menu" <?php if ( is_page_template( 'template-favorites.php' ) ) echo 'class="active"'; ?> href="<?php echo esc_url( wpst_get_page_url( 'favorites' ) ); ?>">
-				<svg xmlns="http://www.w3.org/2000/svg" fill="none" width="24" height="24" viewBox="0 0 24 24"><path d="M16.5 3C14.76 3 13.09 3.81 12 5.09 10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5 18.5 5 20 6.5 20 8.5c0 2.89-3.14 5.74-7.9 10.05z" stroke="currentColor" stroke-width="0.5"/></svg>
+				<svg xmlns="http://www.w3.org/2000/svg" fill="none" width="24" height="24" viewBox="3.9 4.9 17.2 16.2"><path d="M17 16C15.8 17.3235 12.5 20.5 12.5 20.5C12.5 20.5 9.2 17.3235 8 16C5.2 12.9118 4.5 11.7059 4.5 9.5C4.5 7.29412 6.1 5.5 8.5 5.5C10.5 5.5 11.7 6.82353 12.5 8.14706C13.3 6.82353 14.5 5.5 16.5 5.5C18.9 5.5 20.5 7.29412 20.5 9.5C20.5 11.7059 19.8 12.9118 17 16Z" stroke="currentColor" stroke-width="1.2"/></svg>
 				<small><?php esc_html_e( 'Favorites', 'wpst' ); ?></small>
 			</a>
 

@@ -12,6 +12,17 @@
     body {
         background: #000;
     }
+    /* Progress bar must follow container width */
+    #wpst-global-progress {
+        max-width: 480px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        right: auto !important;
+    }
+    /* Footer must follow container width */
+    footer {
+        max-width: 480px !important;
+    }
 }
 
 /* Font: Inter instead of Poppins */
@@ -105,10 +116,10 @@ select,
 .wpst-fullscreen-controls {
     display: none;
     position: absolute;
-    bottom: 80px;
+    top: 15px;
     right: 15px;
     z-index: 3;
-    flex-direction: row;
+    flex-direction: column;
     gap: 10px;
 }
 
@@ -346,12 +357,26 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
 }
 
 /* ========================================
-   Hide swiper nav arrows on mobile
+   Swiper nav arrows: hide on mobile, resize on desktop
    ======================================== */
 @media (max-width: 1024px) {
     .swiper-button-prev,
     .swiper-button-next {
         display: none !important;
+    }
+}
+
+/* Desktop: match arrow size to sidebar buttons (40px circles) */
+@media (min-width: 1025px) {
+    .swiper-button-prev,
+    .swiper-button-next {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    .swiper-button-prev:after,
+    .swiper-button-next:after {
+        width: 22px !important;
+        height: 22px !important;
     }
 }
 
