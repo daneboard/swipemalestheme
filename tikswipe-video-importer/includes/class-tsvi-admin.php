@@ -17,6 +17,7 @@ class TSVI_Admin {
 		add_action( 'wp_ajax_tsvi_extract', array( __CLASS__, 'ajax_extract' ) );
 		add_action( 'wp_ajax_tsvi_enrich', array( __CLASS__, 'ajax_enrich' ) );
 		add_action( 'wp_ajax_tsvi_import', array( __CLASS__, 'ajax_import' ) );
+		add_action( 'wp_ajax_tsvi_process_tick', array( __CLASS__, 'ajax_process_tick' ) );
 	}
 
 	/* ------------------------------------------------------------------
@@ -244,11 +245,13 @@ class TSVI_Admin {
 		$cron_next    = wp_next_scheduled( TSVI_Bunny::CRON_HOOK );
 		$queue_locked = get_transient( 'tsvi_queue_lock' );
 		?>
-		<div class="wrap">
+		<div class="wrap" id="tsvi-queue-page" data-pending="<?php echo $pending_count; ?>">
 			<h1>
 				CDN Upload Queue
 				<a class="button button-primary" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=force_start' ), 'tsvi_queue_action' ); ?>">Force Start</a>
 			</h1>
+
+			<p id="tsvi-auto-status"></p>
 
 			<?php if ( $pending_count > 0 ) : ?>
 			<p class="description">
@@ -713,5 +716,53 @@ class TSVI_Admin {
 				'video_url'    => $result['video_url'],
 			)
 		);
+	}
+
+	/* ------------------------------------------------------------------
+	   AJAX: Process one pending CDN upload (browser-driven, no wp-cron)
+	   ------------------------------------------------------------------ */
+
+	public static function ajax_process_tick() {
+		check_ajax_referer( 'tsvi_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized.' );
+		}
+
+		global $wpdb;
+
+		// Pick the next pending item (shortest video first).
+		$post_id = $wpdb->get_var(
+			"SELECT pm.post_id FROM {$wpdb->postmeta} pm
+			 LEFT JOIN {$wpdb->postmeta} dur ON pm.post_id = dur.post_id AND dur.meta_key = 'duration'
+			 WHERE pm.meta_key = '_tsvi_bunny_pending'
+			 AND pm.meta_value != ''
+			 ORDER BY CAST(COALESCE(dur.meta_value, '999999') AS UNSIGNED) ASC
+			 LIMIT 1"
+		);
+
+		if ( ! $post_id ) {
+			wp_send_json_success( array( 'done' => true ) );
+		}
+
+		set_time_limit( 1200 );
+		ignore_user_abort( true );
+
+		// Clear any stale lock so processing can proceed.
+		delete_transient( 'tsvi_queue_lock' );
+
+		TSVI_Bunny::process_single( intval( $post_id ) );
+
+		// Count remaining.
+		$remaining = $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_tsvi_bunny_pending'
+			 AND meta_value != ''"
+		);
+
+		wp_send_json_success( array(
+			'processed' => intval( $post_id ),
+			'remaining' => intval( $remaining ),
+		) );
 	}
 }

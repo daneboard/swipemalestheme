@@ -337,4 +337,46 @@
 		return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 	}
 
+	/* ==========================================================
+	   CDN Queue: auto-process items via browser AJAX (no wp-cron)
+	   ========================================================== */
+
+	var $queuePage = $('#tsvi-queue-page');
+	if ($queuePage.length && parseInt($queuePage.data('pending'), 10) > 0) {
+		var $autoStatus = $('#tsvi-auto-status');
+
+		function processTick() {
+			$autoStatus.html('<span class="tsvi-loading">⏳ Processing next video... (do not close this tab)</span>');
+
+			$.ajax({
+				url:     tsvi.ajax_url,
+				method:  'POST',
+				timeout: 0, // No browser timeout — let the server work.
+				data:    {
+					action: 'tsvi_process_tick',
+					nonce:  tsvi.nonce
+				}
+			}).done(function (resp) {
+				if (resp.success && resp.data.done) {
+					$autoStatus.html('<span class="tsvi-ok">✅ All items processed!</span>');
+					setTimeout(function () { location.reload(); }, 2000);
+				} else if (resp.success) {
+					$autoStatus.html('<span class="tsvi-ok">✅ Processed #' + resp.data.processed + ' — ' + resp.data.remaining + ' remaining</span>');
+					// Reload page to update the queue list, then auto-continue.
+					setTimeout(function () { location.reload(); }, 1500);
+				} else {
+					$autoStatus.html('<span class="tsvi-err">❌ Error: ' + escHtml(resp.data) + '</span>');
+					setTimeout(processTick, 10000);
+				}
+			}).fail(function () {
+				// Server might still be processing (timeout). Reload to check.
+				$autoStatus.html('<span class="tsvi-warn">⏳ Request timed out — reloading...</span>');
+				setTimeout(function () { location.reload(); }, 5000);
+			});
+		}
+
+		// Start processing after 2 seconds.
+		setTimeout(processTick, 2000);
+	}
+
 })(jQuery);

@@ -112,7 +112,7 @@ class TSVI_Bunny {
 	/**
 	 * Process a single pending Bunny upload.
 	 */
-	private static function process_single( $post_id ) {
+	public static function process_single( $post_id ) {
 		// Mark which post is currently processing (for the queue UI).
 		set_transient( 'tsvi_currently_processing', $post_id, 600 );
 
