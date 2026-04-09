@@ -17,6 +17,21 @@ class TSVI_Bunny {
 	 */
 	public static function init_cron() {
 		add_action( self::CRON_HOOK, array( __CLASS__, 'process_queue' ) );
+		add_action( 'wp_ajax_tsvi_force_process', array( __CLASS__, 'ajax_force_process' ) );
+		add_action( 'wp_ajax_nopriv_tsvi_force_process', array( __CLASS__, 'ajax_force_process' ) );
+	}
+
+	/**
+	 * AJAX handler: run process_queue directly (bypasses wp-cron).
+	 * Used by Force Start as a fallback when spawn_cron() doesn't work.
+	 */
+	public static function ajax_force_process() {
+		$token = sanitize_text_field( $_POST['token'] ?? '' );
+		if ( $token !== wp_hash( 'tsvi_force_process' ) ) {
+			wp_die( 'Unauthorized' );
+		}
+		self::process_queue();
+		wp_die();
 	}
 
 	/**

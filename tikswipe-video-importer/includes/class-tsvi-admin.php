@@ -131,12 +131,23 @@ class TSVI_Admin {
 					break;
 
 				case 'force_start': // Force start the cron queue immediately.
-					// Clear any stale lock that may be blocking the queue.
+					// Clear any stale state that may be blocking the queue.
 					delete_transient( 'tsvi_queue_lock' );
 					delete_transient( 'tsvi_currently_processing' );
 					wp_clear_scheduled_hook( TSVI_Bunny::CRON_HOOK );
+					// Method 1: schedule via wp-cron.
 					wp_schedule_single_event( time(), TSVI_Bunny::CRON_HOOK );
 					spawn_cron();
+					// Method 2: direct loopback (bypasses wp-cron entirely).
+					wp_remote_post( admin_url( 'admin-ajax.php' ), array(
+						'timeout'   => 0.01,
+						'blocking'  => false,
+						'sslverify' => false,
+						'body'      => array(
+							'action' => 'tsvi_force_process',
+							'token'  => wp_hash( 'tsvi_force_process' ),
+						),
+					) );
 					$redirect_args['msg'] = 'force_started';
 					break;
 			}
@@ -148,16 +159,37 @@ class TSVI_Admin {
 		// Detect which post is currently being processed by cron.
 		$processing_id = get_transient( 'tsvi_currently_processing' );
 
-		// Auto-heal: if there are pending items but no cron scheduled and no lock,
-		// the queue is stuck from a previous crash. Re-schedule automatically.
+		// Auto-heal: detect stalled queue and restart it.
 		$has_pending = $wpdb->get_var(
 			"SELECT COUNT(*) FROM {$wpdb->postmeta}
 			 WHERE meta_key = '_tsvi_bunny_pending' AND meta_value != ''"
 		);
-		if ( $has_pending > 0 && ! wp_next_scheduled( TSVI_Bunny::CRON_HOOK ) && ! get_transient( 'tsvi_queue_lock' ) ) {
+		$scheduled_time = wp_next_scheduled( TSVI_Bunny::CRON_HOOK );
+		$is_stalled     = false;
+		if ( $has_pending > 0 && ! get_transient( 'tsvi_queue_lock' ) ) {
+			if ( ! $scheduled_time ) {
+				// No cron scheduled at all — definitely stalled.
+				$is_stalled = true;
+			} elseif ( $scheduled_time < time() - 120 ) {
+				// Cron is overdue by 2+ minutes — wp-cron likely broken.
+				$is_stalled = true;
+			}
+		}
+		if ( $is_stalled ) {
 			delete_transient( 'tsvi_currently_processing' );
+			wp_clear_scheduled_hook( TSVI_Bunny::CRON_HOOK );
 			wp_schedule_single_event( time(), TSVI_Bunny::CRON_HOOK );
 			spawn_cron();
+			// Direct loopback as backup.
+			wp_remote_post( admin_url( 'admin-ajax.php' ), array(
+				'timeout'   => 0.01,
+				'blocking'  => false,
+				'sslverify' => false,
+				'body'      => array(
+					'action' => 'tsvi_force_process',
+					'token'  => wp_hash( 'tsvi_force_process' ),
+				),
+			) );
 			echo '<div class="notice notice-warning is-dismissible"><p>Queue was stalled — automatically restarted processing.</p></div>';
 		}
 
@@ -207,11 +239,25 @@ class TSVI_Admin {
 			}
 		}
 		?>
+		<?php
+		// Diagnostic info.
+		$cron_next    = wp_next_scheduled( TSVI_Bunny::CRON_HOOK );
+		$queue_locked = get_transient( 'tsvi_queue_lock' );
+		?>
 		<div class="wrap">
 			<h1>
 				CDN Upload Queue
 				<a class="button button-primary" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=force_start' ), 'tsvi_queue_action' ); ?>">Force Start</a>
 			</h1>
+
+			<?php if ( $pending_count > 0 ) : ?>
+			<p class="description">
+				Cron: <?php echo $cron_next ? 'scheduled for ' . date( 'H:i:s', $cron_next ) . ( $cron_next <= time() ? ' (overdue)' : '' ) : '<strong>not scheduled</strong>'; ?>
+				&nbsp;|&nbsp; Lock: <?php echo $queue_locked ? '<strong>active</strong>' : 'none'; ?>
+				&nbsp;|&nbsp; Processing: <?php echo $processing_id ? '#' . $processing_id : 'idle'; ?>
+				&nbsp;|&nbsp; v<?php echo TSVI_VERSION; ?>
+			</p>
+			<?php endif; ?>
 
 			<!-- PENDING -->
 			<div class="tsvi-card">
