@@ -15,6 +15,11 @@ class TSVI_Scraper {
 	 * @return array|WP_Error Array of absolute URLs.
 	 */
 	public static function discover_links( $url, $limit = 20 ) {
+		// RedGifs: extract IDs from tiles and build watch URLs.
+		if ( self::is_redgifs_url( $url ) ) {
+			return self::redgifs_discover( $url, $limit );
+		}
+
 		$html = self::fetch( $url );
 		if ( is_wp_error( $html ) ) {
 			return $html;
@@ -156,6 +161,15 @@ class TSVI_Scraper {
 	 * @return array|WP_Error Video data array.
 	 */
 	public static function extract_video( $url ) {
+		// RedGifs: use API to get video data directly.
+		if ( self::is_redgifs_url( $url ) ) {
+			$result = self::redgifs_extract( $url );
+			if ( ! is_wp_error( $result ) ) {
+				return $result;
+			}
+			// Fallback to normal scraping if API fails.
+		}
+
 		$html = self::fetch( $url );
 		if ( is_wp_error( $html ) ) {
 			return $html;
@@ -536,5 +550,240 @@ class TSVI_Scraper {
 			return ( intval( $m[1] ?? 0 ) * 3600 ) + ( intval( $m[2] ?? 0 ) * 60 ) + intval( $m[3] ?? 0 );
 		}
 		return 0;
+	}
+
+	/* ------------------------------------------------------------------
+	   RedGifs support — API-based discovery and extraction
+	   ------------------------------------------------------------------ */
+
+	private static function is_redgifs_url( $url ) {
+		return (bool) preg_match( '/redgifs\.com/i', $url );
+	}
+
+	/**
+	 * Extract GIF ID from a RedGifs URL.
+	 * Handles: /watch/id, /ifr/id, and bare ID in path.
+	 */
+	private static function redgifs_parse_id( $url ) {
+		if ( preg_match( '#redgifs\.com/(?:watch|ifr)/([a-zA-Z]+)#i', $url, $m ) ) {
+			return strtolower( $m[1] );
+		}
+		// Bare path like /gifid
+		$path = trim( wp_parse_url( $url, PHP_URL_PATH ), '/' );
+		if ( preg_match( '/^[a-zA-Z]{10,}$/', $path ) ) {
+			return strtolower( $path );
+		}
+		return '';
+	}
+
+	/**
+	 * Get a temporary RedGifs API token (cached for 1 hour).
+	 */
+	private static function redgifs_get_token() {
+		$cached = get_transient( 'tsvi_redgifs_token' );
+		if ( $cached ) {
+			return $cached;
+		}
+
+		$response = wp_remote_get( 'https://api.redgifs.com/v2/auth/temporary', array(
+			'timeout'   => 15,
+			'sslverify' => false,
+			'headers'   => array(
+				'Accept'     => 'application/json',
+				'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+			),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( empty( $body['token'] ) ) {
+			return new WP_Error( 'redgifs_auth', 'Failed to get RedGifs API token.' );
+		}
+
+		set_transient( 'tsvi_redgifs_token', $body['token'], HOUR_IN_SECONDS );
+		return $body['token'];
+	}
+
+	/**
+	 * Call RedGifs API for a single GIF.
+	 *
+	 * @return array|WP_Error  Raw API gif object or error.
+	 */
+	private static function redgifs_api_gif( $gif_id ) {
+		$token = self::redgifs_get_token();
+		if ( is_wp_error( $token ) ) {
+			return $token;
+		}
+
+		$response = wp_remote_get( 'https://api.redgifs.com/v2/gifs/' . $gif_id, array(
+			'timeout'   => 15,
+			'sslverify' => false,
+			'headers'   => array(
+				'Accept'        => 'application/json',
+				'Authorization' => 'Bearer ' . $token,
+				'User-Agent'    => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+			),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code >= 400 ) {
+			// Token may have expired — clear cache and retry once.
+			delete_transient( 'tsvi_redgifs_token' );
+			if ( $code === 401 ) {
+				$token = self::redgifs_get_token();
+				if ( is_wp_error( $token ) ) {
+					return $token;
+				}
+				$response = wp_remote_get( 'https://api.redgifs.com/v2/gifs/' . $gif_id, array(
+					'timeout'   => 15,
+					'sslverify' => false,
+					'headers'   => array(
+						'Accept'        => 'application/json',
+						'Authorization' => 'Bearer ' . $token,
+						'User-Agent'    => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+					),
+				) );
+				if ( is_wp_error( $response ) ) {
+					return $response;
+				}
+			} else {
+				return new WP_Error( 'redgifs_api', 'RedGifs API error HTTP ' . $code );
+			}
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( empty( $body['gif'] ) ) {
+			return new WP_Error( 'redgifs_api', 'Invalid RedGifs API response.' );
+		}
+
+		return $body['gif'];
+	}
+
+	/**
+	 * Discover video links from a RedGifs listing page.
+	 * Extracts tile IDs from HTML, builds watch URLs, uses thumbnails from HTML.
+	 */
+	private static function redgifs_discover( $url, $limit ) {
+		$html = self::fetch( $url );
+		if ( is_wp_error( $html ) ) {
+			return $html;
+		}
+
+		$links = array();
+
+		// Extract all data-feed-item-id attributes.
+		if ( ! preg_match_all( '/data-feed-item-id=["\']([a-zA-Z]+)["\']/i', $html, $matches ) ) {
+			return new WP_Error( 'no_links', 'No RedGifs video tiles found on this page.' );
+		}
+
+		libxml_use_internal_errors( true );
+		$doc = new DOMDocument();
+		$doc->loadHTML( '<?xml encoding="utf-8"?>' . $html );
+		libxml_clear_errors();
+		$xpath = new DOMXPath( $doc );
+
+		foreach ( $matches[1] as $gif_id ) {
+			if ( count( $links ) >= $limit ) {
+				break;
+			}
+
+			$gif_id_lower = strtolower( $gif_id );
+			$watch_url    = 'https://www.redgifs.com/watch/' . $gif_id_lower;
+
+			if ( isset( $links[ $watch_url ] ) ) {
+				continue;
+			}
+
+			// Get thumbnail and tags from the tile's img alt attribute.
+			$thumb = '';
+			$tags  = '';
+			$tile  = $xpath->query( '//div[@data-feed-item-id="' . $gif_id . '"]' );
+			if ( $tile->length ) {
+				$imgs = $xpath->query( './/img', $tile->item( 0 ) );
+				if ( $imgs->length ) {
+					$img   = $imgs->item( 0 );
+					$thumb = $img->getAttribute( 'src' );
+					$alt   = $img->getAttribute( 'alt' );
+					// Alt format: "Tag1, Tag2, Tag3 porn gifid uploaded by user on date"
+					if ( $alt && preg_match( '/^(.+?)\s+porn\s+/i', $alt, $am ) ) {
+						$tags = $am[1];
+					}
+				}
+			}
+
+			$links[ $watch_url ] = array(
+				'url'       => $watch_url,
+				'title'     => $tags ? sanitize_text_field( mb_substr( $tags, 0, 200 ) ) : $gif_id_lower,
+				'thumbnail' => $thumb,
+				'duration'  => '',
+			);
+		}
+
+		if ( empty( $links ) ) {
+			return new WP_Error( 'no_links', 'No RedGifs videos found.' );
+		}
+
+		return array_values( $links );
+	}
+
+	/**
+	 * Extract video data from a RedGifs page using the API.
+	 * Returns direct HD mp4 URL, duration, dimensions, tags.
+	 */
+	private static function redgifs_extract( $url ) {
+		$gif_id = self::redgifs_parse_id( $url );
+		if ( ! $gif_id ) {
+			return new WP_Error( 'redgifs_id', 'Could not parse RedGifs ID from URL.' );
+		}
+
+		$gif = self::redgifs_api_gif( $gif_id );
+		if ( is_wp_error( $gif ) ) {
+			return $gif;
+		}
+
+		$urls = $gif['urls'] ?? array();
+
+		// Prefer HD, fallback to SD.
+		$video_url = $urls['hd'] ?? $urls['sd'] ?? '';
+
+		$tags = array();
+		if ( ! empty( $gif['tags'] ) && is_array( $gif['tags'] ) ) {
+			$tags = array_map( 'sanitize_text_field', $gif['tags'] );
+		}
+
+		$title = '';
+		if ( ! empty( $tags ) ) {
+			$title = implode( ', ', array_slice( $tags, 0, 5 ) );
+		}
+		if ( ! $title ) {
+			$title = $gif_id;
+		}
+
+		$thumb = $urls['poster'] ?? $urls['thumbnail'] ?? '';
+		if ( ! $thumb ) {
+			// Build thumbnail URL from known pattern.
+			$camel = ucfirst( $gif_id );
+			$thumb = 'https://media.redgifs.com/' . $camel . '-mobile.jpg';
+		}
+
+		return array(
+			'source_url'  => $url,
+			'title'       => sanitize_text_field( mb_substr( $title, 0, 200 ) ),
+			'description' => sanitize_text_field( $gif['description'] ?? '' ),
+			'video_url'   => $video_url,
+			'thumbnail'   => $thumb,
+			'duration'    => intval( $gif['duration'] ?? 0 ),
+			'width'       => intval( $gif['width'] ?? 0 ),
+			'height'      => intval( $gif['height'] ?? 0 ),
+			'source_tags' => $tags,
+			'embed'       => '',
+		);
 	}
 }
