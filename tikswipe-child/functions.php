@@ -355,31 +355,34 @@ function tikswipe_child_force_rand_on_ajax( $query ) {
 add_action( 'pre_get_posts', 'tikswipe_child_force_rand_on_ajax', 999 );
 
 /**
- * Random order on search page AJAX load-more (when no search query).
+ * Random order on search page — initial load AND AJAX load-more (when no search query).
  */
-function tikswipe_child_force_rand_on_search_ajax( $query ) {
-	if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
+function tikswipe_child_force_rand_on_search( $query ) {
+	if ( is_admin() ) {
 		return;
 	}
 
-	if ( ! isset( $_POST['action'] ) ) {
+	// Case 1: AJAX load-more for search
+	$is_ajax_search = defined( 'DOING_AJAX' ) && DOING_AJAX
+		&& isset( $_POST['action'] )
+		&& in_array( $_POST['action'], array( 'load_more_search_vids', 'load_more_search_pics' ), true );
+
+	if ( $is_ajax_search ) {
+		if ( ! empty( $_POST['query'] ) ) {
+			return;
+		}
+		$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
+		$query->set( 'order', 'DESC' );
 		return;
 	}
 
-	$search_actions = array( 'load_more_search_vids', 'load_more_search_pics' );
-	if ( ! in_array( $_POST['action'], $search_actions, true ) ) {
-		return;
+	// Case 2: Initial page load on search page (no search term)
+	if ( ( is_search() || is_page_template( 'template-search.php' ) ) && empty( get_search_query() ) ) {
+		$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
+		$query->set( 'order', 'DESC' );
 	}
-
-	// Only randomize when there's no search term (discovery mode).
-	if ( ! empty( $_POST['query'] ) ) {
-		return;
-	}
-
-	$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
-	$query->set( 'order', 'DESC' );
 }
-add_action( 'pre_get_posts', 'tikswipe_child_force_rand_on_search_ajax', 999 );
+add_action( 'pre_get_posts', 'tikswipe_child_force_rand_on_search', 999 );
 
 /**
  * Add lazy loading to grid thumbnails — only on search/favorites pages.
