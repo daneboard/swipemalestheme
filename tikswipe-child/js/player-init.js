@@ -184,6 +184,11 @@ jQuery(document).ready(function () {
 				var slide = document.getElementsByClassName('swiper-slide')[index];
 				var slideVideo = slide.getElementsByTagName('video-js')[0];
 
+				// Skip ad slides entirely (no video to play).
+				if (jQuery(slide).hasClass('swiper-slide-happy')) {
+					return;
+				}
+
 				// Apply global mute state and sync icon on slide change
 				if (slideVideo && slideVideo.id) {
 					var p = videojs.getPlayer(slideVideo.id);
@@ -195,6 +200,19 @@ jQuery(document).ready(function () {
 
 				// Reset global progress bar on slide change
 				if (globalBar) globalBar.style.width = '0%';
+
+				// VAST pre-roll ad check.
+				if (window.TikSwipeVAST && TikSwipeVAST.shouldShowAd()) {
+					swiper.disable();
+					TikSwipeVAST.showAd(slide, globalMuted, function () {
+						swiper.enable();
+						if (autoplay && slideVideo) {
+							var cv = jQuery(slideVideo).find('video').get(0);
+							if (cv) cv.play();
+						}
+					});
+					return;
+				}
 
 				if (autoplay == false) {
 					return;

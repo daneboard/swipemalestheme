@@ -56,13 +56,11 @@ $is_fav = in_array( $post->ID, $user_fav_posts );
 ?>
 
 <div class="wpst-fullscreen-controls">
-	<button class="wpst-zoom-toggle">
-		<!-- Arrows out (expand) — shown by default -->
-		<svg class="wpst-zoom-expand" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="#ffffff" d="M21 3h-6l2.29 2.29-4.29 4.3V12h2.41l4.3-4.29L21 9V3zM3 3v6l2.29-2.29 4.3 4.29H12V8.59L7.71 4.29 10 2H4a1 1 0 0 0-1 1zm0 18a1 1 0 0 0 1 1h6l-2.29-2.29 4.29-4.3V13H9.59l-4.3 4.29L3 15v6zm18 0v-6l-2.29 2.29-4.3-4.29H12v2.41l4.29 4.3L14 22h6a1 1 0 0 0 1-1z"/></svg>
-		<!-- Arrows in (compress) — shown when zoomed -->
-		<svg class="wpst-zoom-compress" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" style="display:none;"><path fill="#ffffff" d="M22 3.41L16.71 8.7 19 11h-6V5l2.29 2.29L20.59 2 22 3.41zM3.41 22l5.29-5.29L11 19v-6H5l2.29 2.29L2 20.59 3.41 22zM13 5v6h6l-2.29-2.29L22 3.41 20.59 2l-5.29 5.29L13 5zM5 13h6v6l-2.29-2.29L3.41 22 2 20.59l5.29-5.29L5 13z"/></svg>
-	</button>
 	<button class="close-fullscreen"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="#ffffff" d="m12 10.93 5.719-5.72c.146-.146.339-.219.531-.219.404 0 .75.324.75.749 0 .193-.073.385-.219.532l-5.72 5.719 5.719 5.719c.147.147.22.339.22.531 0 .427-.349.75-.75.75-.192 0-.385-.073-.531-.219l-5.719-5.719-5.719 5.719c-.146.146-.339.219-.531.219-.401 0-.75-.323-.75-.75 0-.192.073-.384.22-.531l5.719-5.719-5.72-5.719c-.146-.147-.219-.339-.219-.532 0-.425.346-.749.75-.749.192 0 .385.073.531.219z"/></svg></button>
+	<button class="wpst-zoom-toggle">
+		<svg class="wpst-zoom-expand" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="#ffffff" d="M24 9h-2v-7h-7v-2h9v9zm-9 15v-2h7v-7h2v9h-9zm-15-9h2v7h7v2h-9v-9zm9-15v2h-7v7h-2v-9h9z"/></svg>
+		<svg class="wpst-zoom-compress" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" style="display:none;"><path fill="#ffffff" d="M15 2h2v7h7v2h-9V2zM2 15h9v9H9v-7H2v-2zm7-13v9H0V9h7V2h2zm13 13v2h-7v7h-2v-9h9z"/></svg>
+	</button>
 </div>
 
 <div class="single-content-infos">

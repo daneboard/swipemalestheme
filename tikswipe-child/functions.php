@@ -2,6 +2,9 @@
 // Exit if accessed directly.
 defined( 'ABSPATH' ) || exit;
 
+// SEO improvements (meta tags, schema, Open Graph, sitemap, etc.).
+require_once get_stylesheet_directory() . '/inc/seo.php';
+
 /**
  * Enqueue parent theme styles + child theme custom CSS.
  */
@@ -54,6 +57,28 @@ function tikswipe_child_enqueue_scripts() {
 				'mute_videos_by_default' => get_theme_mod( 'wpst_mute_videos_by_default', true ),
 			)
 		);
+
+		// VAST ad handler.
+		$vast_enabled = get_theme_mod( 'wpst_vast_enabled', false );
+		if ( $vast_enabled ) {
+			wp_enqueue_script(
+				'tikswipe-vast-js',
+				get_stylesheet_directory_uri() . '/js/vast-handler.js',
+				array(),
+				$js_version . '.' . filemtime( get_stylesheet_directory() . '/js/vast-handler.js' ),
+				true
+			);
+
+			wp_add_inline_script( 'tikswipe-vast-js', '
+				if (window.TikSwipeVAST) {
+					TikSwipeVAST.config.enabled   = true;
+					TikSwipeVAST.config.tagUrl     = ' . wp_json_encode( get_theme_mod( 'wpst_vast_tag_url', '' ) ) . ';
+					TikSwipeVAST.config.proxyUrl   = ' . wp_json_encode( admin_url( 'admin-ajax.php?action=tikswipe_vast_proxy' ) ) . ';
+					TikSwipeVAST.config.frequency  = ' . intval( get_theme_mod( 'wpst_vast_frequency', 3 ) ) . ';
+					TikSwipeVAST.config.skipAfter   = ' . intval( get_theme_mod( 'wpst_vast_skip_after', 5 ) ) . ';
+				}
+			', 'after' );
+		}
 	}
 
 	// Replace loadmore.js.
@@ -339,3 +364,131 @@ function tikswipe_child_lazy_load_thumbs( $attr, $attachment, $size ) {
 	return $attr;
 }
 add_filter( 'wp_get_attachment_image_attributes', 'tikswipe_child_lazy_load_thumbs', 10, 3 );
+
+/**
+ * =========================================================================
+ * VAST VIDEO ADS — Customizer settings + CORS proxy
+ * =========================================================================
+ */
+
+/**
+ * Register VAST customizer fields (uses Kirki from parent theme).
+ */
+function tikswipe_child_vast_customizer_fields() {
+	if ( ! class_exists( 'Kirki' ) ) {
+		return;
+	}
+
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'     => 'toggle',
+			'settings' => 'wpst_vast_enabled',
+			'label'    => esc_html__( 'Enable VAST Video Ads', 'tikswipe-child' ),
+			'section'  => 'wpst_advertising_section',
+			'default'  => false,
+			'priority' => 50,
+		)
+	);
+
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'text',
+			'settings'        => 'wpst_vast_tag_url',
+			'label'           => esc_html__( 'VAST Tag URL', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Paste the VAST tag URL from your ad network (e.g. Exoclick).', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => '',
+			'priority'        => 51,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'slider',
+			'settings'        => 'wpst_vast_frequency',
+			'label'           => esc_html__( 'VAST ad frequency', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Show a VAST video ad every N videos.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => 3,
+			'choices'         => array(
+				'min'  => 1,
+				'max'  => 10,
+				'step' => 1,
+			),
+			'priority'        => 52,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'slider',
+			'settings'        => 'wpst_vast_skip_after',
+			'label'           => esc_html__( 'Allow skip after (seconds)', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Set to 0 for instant skip. Set higher to force longer ad viewing.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => 5,
+			'choices'         => array(
+				'min'  => 0,
+				'max'  => 30,
+				'step' => 1,
+			),
+			'priority'        => 53,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+}
+add_action( 'init', 'tikswipe_child_vast_customizer_fields', 20 );
+
+/**
+ * CORS proxy for VAST tag requests.
+ * Fetches the VAST XML server-side to avoid cross-origin issues.
+ */
+function tikswipe_child_vast_proxy() {
+	$url = get_theme_mod( 'wpst_vast_tag_url', '' );
+	if ( ! $url ) {
+		wp_die( '' );
+	}
+
+	$response = wp_remote_get(
+		$url,
+		array(
+			'timeout'    => 5,
+			'user-agent' => 'Mozilla/5.0 (compatible; TikSwipeVAST/1.0)',
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		wp_die( '' );
+	}
+
+	header( 'Content-Type: application/xml; charset=utf-8' );
+	header( 'Access-Control-Allow-Origin: *' );
+	echo wp_remote_retrieve_body( $response );
+	wp_die();
+}
+add_action( 'wp_ajax_tikswipe_vast_proxy', 'tikswipe_child_vast_proxy' );
+add_action( 'wp_ajax_nopriv_tikswipe_vast_proxy', 'tikswipe_child_vast_proxy' );
