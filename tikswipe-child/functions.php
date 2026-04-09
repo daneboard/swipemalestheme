@@ -355,6 +355,33 @@ function tikswipe_child_force_rand_on_ajax( $query ) {
 add_action( 'pre_get_posts', 'tikswipe_child_force_rand_on_ajax', 999 );
 
 /**
+ * Random order on search page AJAX load-more (when no search query).
+ */
+function tikswipe_child_force_rand_on_search_ajax( $query ) {
+	if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
+		return;
+	}
+
+	if ( ! isset( $_POST['action'] ) ) {
+		return;
+	}
+
+	$search_actions = array( 'load_more_search_vids', 'load_more_search_pics' );
+	if ( ! in_array( $_POST['action'], $search_actions, true ) ) {
+		return;
+	}
+
+	// Only randomize when there's no search term (discovery mode).
+	if ( ! empty( $_POST['query'] ) ) {
+		return;
+	}
+
+	$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
+	$query->set( 'order', 'DESC' );
+}
+add_action( 'pre_get_posts', 'tikswipe_child_force_rand_on_search_ajax', 999 );
+
+/**
  * Add lazy loading to grid thumbnails — only on search/favorites pages.
  */
 function tikswipe_child_lazy_load_thumbs( $attr, $attachment, $size ) {
