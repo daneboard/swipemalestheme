@@ -151,6 +151,12 @@ class TSVI_Importer {
 		// Trigger save_post hooks so third-party plugins (thumbnail generator, etc.) fire.
 		wp_update_post( array( 'ID' => $post_id ) );
 
+		TSVI_Log::import( 'Imported #' . $post_id . ': ' . ( $video['title'] ?: 'Untitled' ), array(
+			'bunny'  => $bunny_status,
+			'cats'   => count( $cat_ids ),
+			'source' => mb_substr( $video['source_url'] ?? '', 0, 80 ),
+		) );
+
 		return array(
 			'post_id'      => $post_id,
 			'bunny_status' => $bunny_status,
@@ -211,6 +217,24 @@ class TSVI_Importer {
 	/**
 	 * Junk tags to always ignore — too generic or meaningless.
 	 */
+	/**
+	 * Cached category lookup (avoids repeated DB queries).
+	 */
+	private static $cat_cache = null;
+
+	private static function get_cat_lookup() {
+		if ( self::$cat_cache !== null ) {
+			return self::$cat_cache;
+		}
+		self::$cat_cache = array();
+		$all_cats = get_categories( array( 'hide_empty' => false ) );
+		foreach ( $all_cats as $cat ) {
+			self::$cat_cache[ mb_strtolower( $cat->name ) ] = $cat->term_id;
+			self::$cat_cache[ $cat->slug ] = $cat->term_id;
+		}
+		return self::$cat_cache;
+	}
+
 	private static $junk_tags = array(
 		'porn', 'porno', 'pornography', 'pornografia', 'pornô',
 		'xxx', 'sex', 'sexo', 'sexy', 'hot',
@@ -229,13 +253,7 @@ class TSVI_Importer {
 
 	private static function map_tags_to_categories( $tags ) {
 		$max_extra_tags = 3;
-
-		$all_cats   = get_categories( array( 'hide_empty' => false ) );
-		$cat_lookup = array();
-		foreach ( $all_cats as $cat ) {
-			$cat_lookup[ mb_strtolower( $cat->name ) ] = $cat->term_id;
-			$cat_lookup[ $cat->slug ] = $cat->term_id;
-		}
+		$cat_lookup     = self::get_cat_lookup();
 
 		$matched_cat_ids = array();
 		$remaining_tags  = array();
@@ -316,15 +334,9 @@ class TSVI_Importer {
 		if ( empty( $name ) ) {
 			return 0;
 		}
-
-		$all_cats = get_categories( array( 'hide_empty' => false ) );
-		foreach ( $all_cats as $cat ) {
-			if ( mb_strtolower( $cat->name ) === mb_strtolower( $name ) ) {
-				return $cat->term_id;
-			}
-		}
-
-		return 0;
+		$lookup = self::get_cat_lookup();
+		$lower  = mb_strtolower( trim( $name ) );
+		return $lookup[ $lower ] ?? 0;
 	}
 
 	/**

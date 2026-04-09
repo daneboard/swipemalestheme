@@ -73,7 +73,19 @@ class TSVI_Scraper {
 
 		// Strategy 2: Article/div items with duration text (generic tube sites).
 		if ( empty( $links ) ) {
-			$containers = $xpath->query( '//article[contains(@class,"thumb")]|//div[contains(@class,"thumb")]|//div[contains(@class,"video-item")]|//div[contains(@class,"video_block")]|//li[contains(@class,"video")]' );
+			$containers = $xpath->query(
+				'//article[contains(@class,"thumb")]' .
+				'|//div[contains(@class,"thumb")]' .
+				'|//div[contains(@class,"video-item")]' .
+				'|//div[contains(@class,"video_block")]' .
+				'|//div[contains(@class,"video-card")]' .
+				'|//div[contains(@class,"mozaique")]//div[contains(@class,"thumb")]' .  // xvideos
+				'|//li[contains(@class,"video")]' .
+				'|//li[contains(@class,"pcVideoListItem")]' .                            // pornhub
+				'|//div[contains(@class,"phimage")]' .                                   // pornhub
+				'|//div[contains(@class,"nf-videos")]//div[contains(@class,"content")]' . // xnxx
+				'|//div[contains(@class,"gallery")]//div[contains(@class,"item")]'        // generic gallery
+			);
 			foreach ( $containers as $item ) {
 				if ( count( $links ) >= $limit ) {
 					break;
@@ -128,8 +140,8 @@ class TSVI_Scraper {
 				if ( isset( $links[ $abs ] ) ) {
 					continue;
 				}
-				// Must match strict video URL pattern.
-				if ( ! preg_match( '#/(video|watch|view|play|clip)s?/\d+#i', $abs ) ) {
+				// Must match video URL pattern.
+				if ( ! preg_match( '#/(video|watch|view|play|clip|embed|scene)s?[/_-](\d+|[a-z0-9-]{8,})#i', $abs ) ) {
 					continue;
 				}
 				// Must have an img child.
@@ -213,6 +225,16 @@ class TSVI_Scraper {
 
 		// 4. Video URL — try multiple strategies.
 		$video['video_url'] = self::extract_video_url( $doc, $xpath, $html, $base_url );
+
+		// 4b. Pre-resolve redirects so the stored URL is the final direct one.
+		// This avoids re-scraping later when the original redirect link expires.
+		if ( ! empty( $video['video_url'] ) && preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $video['video_url'] ) ) {
+			$resolved = TSVI_Bunny::resolve_redirect( $video['video_url'] );
+			if ( $resolved && $resolved !== $video['video_url'] ) {
+				$video['video_url_original'] = $video['video_url'];
+				$video['video_url']          = $resolved;
+			}
+		}
 
 		// 5. Duration — og:video:duration, JSON-LD, or itemprop.
 		$dur = self::extract_meta( $xpath, 'video:duration' )

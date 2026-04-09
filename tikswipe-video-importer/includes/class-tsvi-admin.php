@@ -71,6 +71,15 @@ class TSVI_Admin {
 			'tsvi-settings',
 			array( __CLASS__, 'page_settings' )
 		);
+
+		add_submenu_page(
+			'tsvi-scrape',
+			'Activity Log',
+			'Activity Log',
+			'manage_options',
+			'tsvi-log',
+			array( __CLASS__, 'page_log' )
+		);
 	}
 
 	public static function enqueue_assets( $hook ) {
@@ -574,6 +583,77 @@ class TSVI_Admin {
 
 				<?php submit_button(); ?>
 			</form>
+
+			<h2>CLI Worker (recommended)</h2>
+			<p class="description">The CLI worker processes uploads in the background without web server timeouts. Add this line to your server crontab (<code>crontab -e</code>):</p>
+			<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;">* * * * * php <?php echo esc_html( TSVI_PATH . 'worker.php' ); ?> >> /dev/null 2>&amp;1</pre>
+			<p class="description">
+				<?php
+				$cli_lock = get_transient( 'tsvi_cli_lock' );
+				if ( $cli_lock ) {
+					echo '<span class="tsvi-ok">CLI Worker: active (PID ' . esc_html( $cli_lock ) . ')</span>';
+				} else {
+					echo '<span class="tsvi-warn">CLI Worker: not detected — set up the crontab above for reliable uploads.</span>';
+				}
+				?>
+				<br>Manual check: <code>php <?php echo esc_html( TSVI_PATH . 'worker.php' ); ?> --status</code>
+			</p>
+		</div>
+		<?php
+	}
+
+	/* ------------------------------------------------------------------
+	   Activity Log page
+	   ------------------------------------------------------------------ */
+
+	public static function page_log() {
+		$files   = TSVI_Log::get_log_files();
+		$current = sanitize_file_name( $_GET['log_file'] ?? '' );
+		$content = '';
+
+		if ( $current && in_array( $current, $files, true ) ) {
+			$content = TSVI_Log::read_file( $current, 300 );
+		} elseif ( ! empty( $files ) ) {
+			$current = end( $files );
+			$content = TSVI_Log::read_file( $current, 300 );
+		}
+		?>
+		<div class="wrap">
+			<h1>Activity Log</h1>
+
+			<?php if ( ! empty( $files ) ) : ?>
+			<p>
+				<?php foreach ( $files as $f ) : ?>
+					<?php if ( $f === $current ) : ?>
+						<strong><?php echo esc_html( $f ); ?></strong>
+					<?php else : ?>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=tsvi-log&log_file=' . $f ) ); ?>"><?php echo esc_html( $f ); ?></a>
+					<?php endif; ?>
+					&nbsp;
+				<?php endforeach; ?>
+			</p>
+			<?php endif; ?>
+
+			<div class="tsvi-card">
+				<?php if ( $content ) : ?>
+					<pre style="max-height:600px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap;"><?php echo esc_html( $content ); ?></pre>
+				<?php else : ?>
+					<p>No log entries yet. Logs are created when imports, uploads, or errors occur.</p>
+				<?php endif; ?>
+			</div>
+
+			<?php
+			// Also show worker.log if it exists.
+			$worker_log = TSVI_PATH . 'worker.log';
+			if ( file_exists( $worker_log ) ) :
+				$wlines = file( $worker_log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+				$wlines = $wlines ? array_slice( $wlines, -100 ) : array();
+			?>
+			<div class="tsvi-card">
+				<h2>CLI Worker Log</h2>
+				<pre style="max-height:400px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap;"><?php echo esc_html( implode( "\n", array_reverse( $wlines ) ) ); ?></pre>
+			</div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}

@@ -219,6 +219,7 @@ class TSVI_Bunny {
 		if ( is_wp_error( $cdn_url ) ) {
 			update_post_meta( $post_id, '_tsvi_bunny_pending', '' );
 			update_post_meta( $post_id, '_tsvi_bunny_error', $cdn_url->get_error_message() );
+			TSVI_Log::error( 'Upload failed #' . $post_id, array( 'error' => $cdn_url->get_error_message() ) );
 		} else {
 			update_post_meta( $post_id, 'video_url', esc_url_raw( $cdn_url ) );
 			delete_post_meta( $post_id, '_tsvi_bunny_pending' );
@@ -234,6 +235,8 @@ class TSVI_Bunny {
 					'post_status' => 'publish',
 				) );
 			}
+
+			TSVI_Log::upload( 'Uploaded #' . $post_id . ' to CDN', array( 'cdn' => mb_substr( $cdn_url, 0, 80 ) ) );
 		}
 	}
 
