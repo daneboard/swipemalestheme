@@ -148,6 +148,19 @@ class TSVI_Admin {
 		// Detect which post is currently being processed by cron.
 		$processing_id = get_transient( 'tsvi_currently_processing' );
 
+		// Auto-heal: if there are pending items but no cron scheduled and no lock,
+		// the queue is stuck from a previous crash. Re-schedule automatically.
+		$has_pending = $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_tsvi_bunny_pending' AND meta_value != ''"
+		);
+		if ( $has_pending > 0 && ! wp_next_scheduled( TSVI_Bunny::CRON_HOOK ) && ! get_transient( 'tsvi_queue_lock' ) ) {
+			delete_transient( 'tsvi_currently_processing' );
+			wp_schedule_single_event( time(), TSVI_Bunny::CRON_HOOK );
+			spawn_cron();
+			echo '<div class="notice notice-warning is-dismissible"><p>Queue was stalled — automatically restarted processing.</p></div>';
+		}
+
 		// Fetch all posts with Bunny-related meta.
 		$pending_posts = $wpdb->get_results(
 			"SELECT p.ID, p.post_title, pm.meta_value as pending_url,
@@ -197,9 +210,7 @@ class TSVI_Admin {
 		<div class="wrap">
 			<h1>
 				CDN Upload Queue
-				<?php if ( $pending_count > 0 ) : ?>
-					<a class="button button-primary" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=force_start' ), 'tsvi_queue_action' ); ?>">Force Start</a>
-				<?php endif; ?>
+				<a class="button button-primary" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=force_start' ), 'tsvi_queue_action' ); ?>">Force Start</a>
 			</h1>
 
 			<!-- PENDING -->
