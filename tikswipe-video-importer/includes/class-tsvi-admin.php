@@ -129,6 +129,14 @@ class TSVI_Admin {
 					$redirect_args['msg'] = 'retried';
 					$redirect_args['ids'] = $action_id;
 					break;
+
+				case 'force_start': // Force start the cron queue immediately.
+					if ( ! wp_next_scheduled( TSVI_Bunny::CRON_HOOK ) ) {
+						wp_schedule_single_event( time(), TSVI_Bunny::CRON_HOOK );
+					}
+					spawn_cron();
+					$redirect_args['msg'] = 'force_started';
+					break;
 			}
 
 			wp_safe_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
@@ -140,11 +148,12 @@ class TSVI_Admin {
 
 		// Fetch all posts with Bunny-related meta.
 		$pending_posts = $wpdb->get_results(
-			"SELECT p.ID, p.post_title, pm.meta_value as pending_url
+			"SELECT p.ID, p.post_title, pm.meta_value as pending_url,
+			        CAST(COALESCE(dur.meta_value, '999999') AS UNSIGNED) as duration
 			 FROM {$wpdb->posts} p
-			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-			 WHERE pm.meta_key = '_tsvi_bunny_pending' AND pm.meta_value != ''
-			 ORDER BY p.ID ASC LIMIT 100"
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_tsvi_bunny_pending' AND pm.meta_value != ''
+			 LEFT JOIN {$wpdb->postmeta} dur ON p.ID = dur.post_id AND dur.meta_key = 'duration'
+			 ORDER BY duration ASC LIMIT 100"
 		);
 
 		$done_posts = $wpdb->get_results(
@@ -176,6 +185,7 @@ class TSVI_Admin {
 				'cancelled'     => 'Post #' . $msg_ids . ' cancelled.',
 				'cancelled_all' => $msg_ids . ' pending uploads cancelled.',
 				'retried_all'   => $msg_ids . ' failed uploads re-queued.',
+				'force_started' => 'CDN queue processing triggered.',
 			);
 			if ( isset( $notices[ $msg ] ) ) {
 				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $notices[ $msg ] ) . '</p></div>';
@@ -183,7 +193,12 @@ class TSVI_Admin {
 		}
 		?>
 		<div class="wrap">
-			<h1>CDN Upload Queue</h1>
+			<h1>
+				CDN Upload Queue
+				<?php if ( $pending_count > 0 ) : ?>
+					<a class="button button-primary" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=force_start' ), 'tsvi_queue_action' ); ?>">Force Start</a>
+				<?php endif; ?>
+			</h1>
 
 			<!-- PENDING -->
 			<div class="tsvi-card">

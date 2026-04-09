@@ -31,28 +31,51 @@ class TSVI_Bunny {
 	}
 
 	/**
-	 * Background cron handler: process ONE pending Bunny upload per run.
-	 * Schedules itself again if more items remain.
+	 * Background cron handler: process up to 3 pending Bunny uploads per run.
+	 * Shorter videos are uploaded first. Schedules itself again if more items remain.
 	 */
 	public static function process_queue() {
 		global $wpdb;
 
-		// Find one post with pending Bunny upload.
-		$post_id = $wpdb->get_var(
-			"SELECT post_id FROM {$wpdb->postmeta}
-			 WHERE meta_key = '_tsvi_bunny_pending'
-			 AND meta_value != ''
-			 LIMIT 1"
+		// Find up to 3 posts with pending Bunny upload, shorter videos first.
+		$post_ids = $wpdb->get_col(
+			"SELECT pm.post_id FROM {$wpdb->postmeta} pm
+			 LEFT JOIN {$wpdb->postmeta} dur ON pm.post_id = dur.post_id AND dur.meta_key = 'duration'
+			 WHERE pm.meta_key = '_tsvi_bunny_pending'
+			 AND pm.meta_value != ''
+			 ORDER BY CAST(COALESCE(dur.meta_value, '999999') AS UNSIGNED) ASC
+			 LIMIT 3"
 		);
 
-		if ( ! $post_id ) {
+		if ( empty( $post_ids ) ) {
 			return; // Nothing to process.
 		}
 
-		// Allow enough time for large downloads.
-		set_time_limit( 900 );
+		// Allow enough time for multiple large downloads.
+		set_time_limit( 3600 );
 		ignore_user_abort( true );
 
+		foreach ( $post_ids as $post_id ) {
+			self::process_single( $post_id );
+		}
+
+		// If more items pending, schedule next run.
+		$remaining = $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_tsvi_bunny_pending'
+			 AND meta_value != ''"
+		);
+
+		if ( $remaining > 0 ) {
+			wp_schedule_single_event( time() + 5, self::CRON_HOOK );
+			spawn_cron();
+		}
+	}
+
+	/**
+	 * Process a single pending Bunny upload.
+	 */
+	private static function process_single( $post_id ) {
 		// Mark which post is currently processing (for the queue UI).
 		set_transient( 'tsvi_currently_processing', $post_id, 600 );
 
@@ -67,13 +90,11 @@ class TSVI_Bunny {
 		$video_url = $source_url;
 		$page_url  = get_post_meta( $post_id, '_tsvi_source_url', true );
 		if ( $page_url && ! preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $source_url ) ) {
-			// source_url is a page, not a file — re-scrape it.
 			$fresh = TSVI_Scraper::extract_video( $source_url );
 			if ( ! is_wp_error( $fresh ) && ! empty( $fresh['video_url'] ) ) {
 				$video_url = $fresh['video_url'];
 			}
 		} elseif ( $page_url && $page_url !== $source_url ) {
-			// We have the page URL — re-scrape for a fresh video URL.
 			$fresh = TSVI_Scraper::extract_video( $page_url );
 			if ( ! is_wp_error( $fresh ) && ! empty( $fresh['video_url'] ) ) {
 				$video_url = $fresh['video_url'];
@@ -93,21 +114,16 @@ class TSVI_Bunny {
 		delete_transient( 'tsvi_currently_processing' );
 
 		if ( is_wp_error( $cdn_url ) ) {
-			// Mark as failed so we don't retry forever.
 			update_post_meta( $post_id, '_tsvi_bunny_pending', '' );
 			update_post_meta( $post_id, '_tsvi_bunny_error', $cdn_url->get_error_message() );
 		} else {
-			// Success: update the video URL to CDN and publish.
 			update_post_meta( $post_id, 'video_url', esc_url_raw( $cdn_url ) );
 			delete_post_meta( $post_id, '_tsvi_bunny_pending' );
 			delete_post_meta( $post_id, '_tsvi_bunny_error' );
 			update_post_meta( $post_id, '_tsvi_bunny_status', 'uploaded' );
 
-			// Reset thumb generator flag so it retries with the new CDN URL.
 			delete_post_meta( $post_id, '_mtg_thumb_done' );
 
-			// Auto-publish: draft → publish now that CDN URL is set.
-			// This also triggers save_post → thumb generator runs with CDN URL.
 			$post = get_post( $post_id );
 			if ( $post && 'draft' === $post->post_status ) {
 				wp_update_post( array(
@@ -115,18 +131,6 @@ class TSVI_Bunny {
 					'post_status' => 'publish',
 				) );
 			}
-		}
-
-		// If more items pending, schedule next run.
-		$remaining = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->postmeta}
-			 WHERE meta_key = '_tsvi_bunny_pending'
-			 AND meta_value != ''"
-		);
-
-		if ( $remaining > 0 ) {
-			wp_schedule_single_event( time() + 5, self::CRON_HOOK );
-			spawn_cron();
 		}
 	}
 
@@ -227,7 +231,7 @@ class TSVI_Bunny {
 				CURLOPT_FILE           => $fp,
 				CURLOPT_FOLLOWLOCATION => true,
 				CURLOPT_MAXREDIRS      => 5,
-				CURLOPT_TIMEOUT        => 600,
+				CURLOPT_TIMEOUT        => 1000,
 				CURLOPT_CONNECTTIMEOUT => 15,
 				CURLOPT_SSL_VERIFYPEER => false,
 				CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -268,7 +272,7 @@ class TSVI_Bunny {
 		$response = wp_remote_get(
 			$url,
 			array(
-				'timeout'     => 600,
+				'timeout'     => 1000,
 				'stream'      => true,
 				'filename'    => $dest_path,
 				'sslverify'   => false,
@@ -362,7 +366,7 @@ class TSVI_Bunny {
 					CURLOPT_UPLOAD         => true,
 					CURLOPT_INFILE         => $fp,
 					CURLOPT_INFILESIZE     => $filesize,
-					CURLOPT_TIMEOUT        => 600,
+					CURLOPT_TIMEOUT        => 1000,
 					CURLOPT_CONNECTTIMEOUT => 15,
 					CURLOPT_RETURNTRANSFER => true,
 					CURLOPT_HTTPHEADER     => array(
@@ -398,7 +402,7 @@ class TSVI_Bunny {
 			$storage_url,
 			array(
 				'method'  => 'PUT',
-				'timeout' => 600,
+				'timeout' => 1000,
 				'headers' => array(
 					'AccessKey'    => $api_key,
 					'Content-Type' => 'application/octet-stream',
