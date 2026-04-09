@@ -356,6 +356,12 @@ add_action( 'pre_get_posts', 'tikswipe_child_force_rand_on_ajax', 999 );
 
 /**
  * Random order on search page — initial load AND AJAX load-more (when no search query).
+ *
+ * Two cases:
+ * 1. Initial page load: template-search.php sets $tikswipe_search_discovery = true.
+ *    This flag reliably tells us to randomize ALL queries during that page render
+ *    (including the parent's eval-invoked rendering function).
+ * 2. AJAX load-more: $_POST['action'] identifies the request, empty 'query' = discovery.
  */
 function tikswipe_child_force_rand_on_search( $query ) {
 	if ( is_admin() ) {
@@ -363,21 +369,18 @@ function tikswipe_child_force_rand_on_search( $query ) {
 	}
 
 	// Case 1: AJAX load-more for search
-	$is_ajax_search = defined( 'DOING_AJAX' ) && DOING_AJAX
-		&& isset( $_POST['action'] )
-		&& in_array( $_POST['action'], array( 'load_more_search_vids', 'load_more_search_pics' ), true );
-
-	if ( $is_ajax_search ) {
-		if ( ! empty( $_POST['query'] ) ) {
-			return;
+	if ( defined( 'DOING_AJAX' ) && DOING_AJAX && isset( $_POST['action'] ) ) {
+		$search_actions = array( 'load_more_search_vids', 'load_more_search_pics' );
+		if ( in_array( $_POST['action'], $search_actions, true ) && empty( $_POST['query'] ) ) {
+			$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
+			$query->set( 'order', 'DESC' );
 		}
-		$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
-		$query->set( 'order', 'DESC' );
 		return;
 	}
 
-	// Case 2: Initial page load on search page (no search term)
-	if ( ( is_search() || is_page_template( 'template-search.php' ) ) && empty( get_search_query() ) ) {
+	// Case 2: Initial page load — flag set by template-search.php / search.php
+	global $tikswipe_search_discovery;
+	if ( ! empty( $tikswipe_search_discovery ) ) {
 		$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
 		$query->set( 'order', 'DESC' );
 	}

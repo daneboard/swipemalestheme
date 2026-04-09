@@ -4,11 +4,16 @@
  */
 defined( 'ABSPATH' ) || exit;
 get_header();
+
+// Flag: tells pre_get_posts to randomize all search queries on this page
+global $tikswipe_search_discovery;
+$tikswipe_search_discovery = true;
+
 $paged             = ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1;
 $vids_args         = array(
 	'post_type'      => 'post',
 	'post_status'    => 'publish',
-	'orderby'        => 'ID',
+	'orderby'        => 'RAND(' . get_random_seed() . ')',
 	'order'          => 'DESC',
 	'posts_per_page' => 12,
 	'tax_query'      => array(

@@ -4,7 +4,13 @@
 	$paged             = ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1;
 
 	// Random order when no search query (discovery mode)
-	$orderby = empty( $search_query ) ? 'RAND(' . get_random_seed() . ')' : 'ID';
+	$orderby = 'ID';
+	if ( empty( $search_query ) ) {
+		$orderby = 'RAND(' . get_random_seed() . ')';
+		// Flag: tells pre_get_posts to randomize parent's rendering queries too
+		global $tikswipe_search_discovery;
+		$tikswipe_search_discovery = true;
+	}
 
 	$vids_args         = array(
 		'post_type'      => 'post',
