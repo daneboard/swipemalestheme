@@ -19,6 +19,73 @@ class TSVI_Bunny {
 	public static function init_cron() {
 		add_action( self::CRON_HOOK, array( __CLASS__, 'process_queue' ) );
 		add_action( self::DIRECT_CRON_HOOK, array( __CLASS__, 'process_direct_queue' ) );
+		add_action( 'wp_ajax_tsvi_worker', array( __CLASS__, 'ajax_worker' ) );
+		add_action( 'wp_ajax_nopriv_tsvi_worker', array( __CLASS__, 'ajax_worker' ) );
+		add_action( 'wp_ajax_tsvi_direct_worker', array( __CLASS__, 'ajax_direct_worker' ) );
+		add_action( 'wp_ajax_nopriv_tsvi_direct_worker', array( __CLASS__, 'ajax_direct_worker' ) );
+	}
+
+	/**
+	 * AJAX handler: process a single post in a background worker.
+	 */
+	public static function ajax_worker() {
+		$post_id = intval( $_POST['post_id'] ?? 0 );
+		$token   = sanitize_text_field( $_POST['token'] ?? '' );
+		if ( ! $post_id || $token !== wp_hash( 'tsvi_worker_' . $post_id ) ) {
+			wp_die();
+		}
+		set_time_limit( 1200 );
+		ignore_user_abort( true );
+		self::process_single( $post_id );
+		wp_die();
+	}
+
+	/**
+	 * AJAX handler: process a single direct upload in a background worker.
+	 */
+	public static function ajax_direct_worker() {
+		$url   = esc_url_raw( $_POST['url'] ?? '' );
+		$token = sanitize_text_field( $_POST['token'] ?? '' );
+		if ( ! $url || $token !== wp_hash( 'tsvi_dw_' . md5( $url ) ) ) {
+			wp_die();
+		}
+		set_time_limit( 1200 );
+		ignore_user_abort( true );
+		self::process_single_direct( $url );
+		wp_die();
+	}
+
+	/**
+	 * Spawn a background worker (non-blocking, like spawn_cron).
+	 * If the server can't do loopback, this silently fails — no harm done.
+	 */
+	private static function spawn_worker( $post_id ) {
+		wp_remote_post( admin_url( 'admin-ajax.php' ), array(
+			'timeout'   => 0.01,
+			'blocking'  => false,
+			'sslverify' => false,
+			'body'      => array(
+				'action'  => 'tsvi_worker',
+				'post_id' => $post_id,
+				'token'   => wp_hash( 'tsvi_worker_' . $post_id ),
+			),
+		) );
+	}
+
+	/**
+	 * Spawn a background worker for a direct upload URL.
+	 */
+	private static function spawn_direct_worker( $url ) {
+		wp_remote_post( admin_url( 'admin-ajax.php' ), array(
+			'timeout'   => 0.01,
+			'blocking'  => false,
+			'sslverify' => false,
+			'body'      => array(
+				'action' => 'tsvi_direct_worker',
+				'url'    => $url,
+				'token'  => wp_hash( 'tsvi_dw_' . md5( $url ) ),
+			),
+		) );
 	}
 
 	/**
@@ -69,23 +136,28 @@ class TSVI_Bunny {
 			return;
 		}
 
-		// Allow enough time for multiple large downloads.
-		set_time_limit( 3600 );
+		set_time_limit( 1500 );
 		ignore_user_abort( true );
 
-		// Pre-schedule the next run as a safety net. If this process crashes
-		// (fatal error, timeout), the queue will still resume after 60s.
+		// Pre-schedule the next run as a safety net.
 		wp_schedule_single_event( time() + 60, self::CRON_HOOK );
 
-		foreach ( $post_ids as $post_id ) {
-			try {
-				self::process_single( $post_id );
-			} catch ( \Throwable $e ) {
-				// Catch fatal errors so the loop continues to the next item.
-				update_post_meta( $post_id, '_tsvi_bunny_pending', '' );
-				update_post_meta( $post_id, '_tsvi_bunny_error', 'Fatal: ' . $e->getMessage() );
-				delete_transient( 'tsvi_currently_processing' );
-			}
+		// Process first item directly in this process.
+		$first = intval( array_shift( $post_ids ) );
+
+		// Spawn parallel background workers for items 2 and 3 (non-blocking).
+		// If loopback fails, they'll be picked up in the next cron batch.
+		foreach ( $post_ids as $pid ) {
+			self::spawn_worker( intval( $pid ) );
+		}
+
+		// Process item 1 here.
+		try {
+			self::process_single( $first );
+		} catch ( \Throwable $e ) {
+			update_post_meta( $first, '_tsvi_bunny_pending', '' );
+			update_post_meta( $first, '_tsvi_bunny_error', 'Fatal: ' . $e->getMessage() );
+			delete_transient( 'tsvi_currently_processing' );
 		}
 
 		// Check if more items remain.
@@ -168,7 +240,8 @@ class TSVI_Bunny {
 	}
 
 	/**
-	 * Background cron handler: process pending direct uploads (3 per run).
+	 * Background cron handler: process pending direct uploads (up to 3 parallel).
+	 * Processes 1 directly + spawns 2 background workers.
 	 */
 	public static function process_direct_queue() {
 		$queue = get_option( 'tsvi_direct_upload_queue', array() );
@@ -176,50 +249,22 @@ class TSVI_Bunny {
 			return;
 		}
 
-		set_time_limit( 3600 );
+		set_time_limit( 1500 );
 		ignore_user_abort( true );
 
 		// Pre-schedule safety net.
 		wp_schedule_single_event( time() + 60, self::DIRECT_CRON_HOOK );
 
-		// Process up to 3 items.
+		// Take up to 3 items from queue.
 		$batch = array_splice( $queue, 0, 3 );
 		update_option( 'tsvi_direct_upload_queue', $queue, false );
 
+		// Process first directly, spawn workers for the rest.
+		$first = array_shift( $batch );
 		foreach ( $batch as $item ) {
-			$url = $item['url'];
-
-			// Build filename.
-			$parsed   = wp_parse_url( $url, PHP_URL_PATH );
-			$basename = $parsed ? basename( $parsed ) : '';
-			$ext      = pathinfo( $basename, PATHINFO_EXTENSION ) ?: 'mp4';
-			$name     = pathinfo( $basename, PATHINFO_FILENAME );
-			$slug     = $name ? sanitize_title( mb_substr( $name, 0, 60 ) ) : 'direct-' . time();
-			$filename = $slug . '-' . wp_rand( 1000, 9999 ) . '.' . $ext;
-
-			$cdn_url = self::remote_upload( $url, $filename, 'direct' );
-
-			// Save to history.
-			$entry = array(
-				'date'    => current_time( 'Y-m-d H:i' ),
-				'source'  => $url,
-				'cdn_url' => '',
-				'error'   => '',
-			);
-
-			if ( is_wp_error( $cdn_url ) ) {
-				$entry['error'] = $cdn_url->get_error_message();
-			} else {
-				$entry['cdn_url'] = $cdn_url;
-			}
-
-			$history   = get_option( 'tsvi_direct_upload_history', array() );
-			$history[] = $entry;
-			if ( count( $history ) > 200 ) {
-				$history = array_slice( $history, -200 );
-			}
-			update_option( 'tsvi_direct_upload_history', $history, false );
+			self::spawn_direct_worker( $item['url'] );
 		}
+		self::process_single_direct( $first['url'] );
 
 		// Replace safety schedule.
 		wp_clear_scheduled_hook( self::DIRECT_CRON_HOOK );
@@ -228,6 +273,40 @@ class TSVI_Bunny {
 			wp_schedule_single_event( time() + 5, self::DIRECT_CRON_HOOK );
 			spawn_cron();
 		}
+	}
+
+	/**
+	 * Process a single direct upload URL: download, upload to Bunny, save to history.
+	 */
+	public static function process_single_direct( $url ) {
+		$parsed   = wp_parse_url( $url, PHP_URL_PATH );
+		$basename = $parsed ? basename( $parsed ) : '';
+		$ext      = pathinfo( $basename, PATHINFO_EXTENSION ) ?: 'mp4';
+		$name     = pathinfo( $basename, PATHINFO_FILENAME );
+		$slug     = $name ? sanitize_title( mb_substr( $name, 0, 60 ) ) : 'direct-' . time();
+		$filename = $slug . '-' . wp_rand( 1000, 9999 ) . '.' . $ext;
+
+		$cdn_url = self::remote_upload( $url, $filename, 'direct' );
+
+		$entry = array(
+			'date'    => current_time( 'Y-m-d H:i' ),
+			'source'  => $url,
+			'cdn_url' => '',
+			'error'   => '',
+		);
+
+		if ( is_wp_error( $cdn_url ) ) {
+			$entry['error'] = $cdn_url->get_error_message();
+		} else {
+			$entry['cdn_url'] = $cdn_url;
+		}
+
+		$history   = get_option( 'tsvi_direct_upload_history', array() );
+		$history[] = $entry;
+		if ( count( $history ) > 200 ) {
+			$history = array_slice( $history, -200 );
+		}
+		update_option( 'tsvi_direct_upload_history', $history, false );
 	}
 
 	/**
