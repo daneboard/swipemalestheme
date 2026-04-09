@@ -731,15 +731,19 @@ class TSVI_Admin {
 
 		global $wpdb;
 
-		// Pick the next pending item (shortest video first).
-		$post_id = $wpdb->get_var(
+		// Each parallel worker gets a different slot (0, 1, 2) to pick a different item.
+		$slot = max( 0, min( 2, intval( $_POST['slot'] ?? 0 ) ) );
+
+		// Pick the next pending item for this slot (shortest videos first).
+		$post_id = $wpdb->get_var( $wpdb->prepare(
 			"SELECT pm.post_id FROM {$wpdb->postmeta} pm
 			 LEFT JOIN {$wpdb->postmeta} dur ON pm.post_id = dur.post_id AND dur.meta_key = 'duration'
 			 WHERE pm.meta_key = '_tsvi_bunny_pending'
 			 AND pm.meta_value != ''
 			 ORDER BY CAST(COALESCE(dur.meta_value, '999999') AS UNSIGNED) ASC
-			 LIMIT 1"
-		);
+			 LIMIT 1 OFFSET %d",
+			$slot
+		) );
 
 		if ( ! $post_id ) {
 			wp_send_json_success( array( 'done' => true ) );

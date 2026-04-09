@@ -338,45 +338,52 @@
 	}
 
 	/* ==========================================================
-	   CDN Queue: auto-process items via browser AJAX (no wp-cron)
+	   CDN Queue: auto-process 3 items in parallel via browser AJAX
 	   ========================================================== */
 
+	var PARALLEL_WORKERS = 3;
 	var $queuePage = $('#tsvi-queue-page');
+
 	if ($queuePage.length && parseInt($queuePage.data('pending'), 10) > 0) {
 		var $autoStatus = $('#tsvi-auto-status');
+		var pending     = parseInt($queuePage.data('pending'), 10);
+		var slots       = Math.min(PARALLEL_WORKERS, pending);
+		var completed   = 0;
+		var results     = [];
 
-		function processTick() {
-			$autoStatus.html('<span class="tsvi-loading">⏳ Processing next video... (do not close this tab)</span>');
+		$autoStatus.html('<span class="tsvi-loading">⏳ Processing ' + slots + ' videos in parallel... (do not close this tab)</span>');
 
-			$.ajax({
-				url:     tsvi.ajax_url,
-				method:  'POST',
-				timeout: 0, // No browser timeout — let the server work.
-				data:    {
-					action: 'tsvi_process_tick',
-					nonce:  tsvi.nonce
-				}
-			}).done(function (resp) {
-				if (resp.success && resp.data.done) {
-					$autoStatus.html('<span class="tsvi-ok">✅ All items processed!</span>');
-					setTimeout(function () { location.reload(); }, 2000);
-				} else if (resp.success) {
-					$autoStatus.html('<span class="tsvi-ok">✅ Processed #' + resp.data.processed + ' — ' + resp.data.remaining + ' remaining</span>');
-					// Reload page to update the queue list, then auto-continue.
-					setTimeout(function () { location.reload(); }, 1500);
-				} else {
-					$autoStatus.html('<span class="tsvi-err">❌ Error: ' + escHtml(resp.data) + '</span>');
-					setTimeout(processTick, 10000);
-				}
-			}).fail(function () {
-				// Server might still be processing (timeout). Reload to check.
-				$autoStatus.html('<span class="tsvi-warn">⏳ Request timed out — reloading...</span>');
-				setTimeout(function () { location.reload(); }, 5000);
-			});
+		for (var s = 0; s < slots; s++) {
+			(function (slot) {
+				$.ajax({
+					url:     tsvi.ajax_url,
+					method:  'POST',
+					timeout: 0,
+					data:    {
+						action: 'tsvi_process_tick',
+						nonce:  tsvi.nonce,
+						slot:   slot
+					}
+				}).done(function (resp) {
+					if (resp.success && resp.data.processed) {
+						results.push('<span class="tsvi-ok">#' + resp.data.processed + ' ✅</span>');
+					} else if (resp.success && resp.data.done) {
+						results.push('<span class="tsvi-warn">empty slot</span>');
+					} else {
+						results.push('<span class="tsvi-err">error</span>');
+					}
+				}).fail(function () {
+					results.push('<span class="tsvi-warn">timeout</span>');
+				}).always(function () {
+					completed++;
+					$autoStatus.html('<span class="tsvi-loading">⏳ ' + completed + '/' + slots + ' workers done... ' + results.join(' ') + '</span>');
+					if (completed >= slots) {
+						$autoStatus.html('<span class="tsvi-ok">Batch done: ' + results.join(' ') + ' — reloading...</span>');
+						setTimeout(function () { location.reload(); }, 1500);
+					}
+				});
+			})(s);
 		}
-
-		// Start processing after 2 seconds.
-		setTimeout(processTick, 2000);
 	}
 
 })(jQuery);
