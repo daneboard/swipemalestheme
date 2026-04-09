@@ -18,6 +18,8 @@ class TSVI_Admin {
 		add_action( 'wp_ajax_tsvi_enrich', array( __CLASS__, 'ajax_enrich' ) );
 		add_action( 'wp_ajax_tsvi_import', array( __CLASS__, 'ajax_import' ) );
 		add_action( 'wp_ajax_tsvi_process_tick', array( __CLASS__, 'ajax_process_tick' ) );
+		add_action( 'wp_ajax_tsvi_direct_upload', array( __CLASS__, 'ajax_direct_upload' ) );
+		add_action( 'wp_ajax_tsvi_direct_clear_history', array( __CLASS__, 'ajax_direct_clear_history' ) );
 	}
 
 	/* ------------------------------------------------------------------
@@ -42,6 +44,15 @@ class TSVI_Admin {
 			'manage_options',
 			'tsvi-scrape',
 			array( __CLASS__, 'page_scrape' )
+		);
+
+		add_submenu_page(
+			'tsvi-scrape',
+			'Direct Upload',
+			'Direct Upload',
+			'manage_options',
+			'tsvi-direct',
+			array( __CLASS__, 'page_direct_upload' )
 		);
 
 		add_submenu_page(
@@ -78,6 +89,79 @@ class TSVI_Admin {
 				'nonce'    => wp_create_nonce( 'tsvi_nonce' ),
 			)
 		);
+	}
+
+	/* ------------------------------------------------------------------
+	   Direct Upload page
+	   ------------------------------------------------------------------ */
+
+	public static function page_direct_upload() {
+		$history = get_option( 'tsvi_direct_upload_history', array() );
+		$history = array_reverse( $history ); // Newest first.
+		?>
+		<div class="wrap">
+			<h1>Direct Upload to Bunny CDN</h1>
+
+			<?php if ( ! TSVI_Bunny::is_enabled() ) : ?>
+				<div class="notice notice-error"><p>Bunny CDN is not configured. Go to <a href="<?php echo admin_url( 'admin.php?page=tsvi-settings' ); ?>">Settings</a> first.</p></div>
+			<?php endif; ?>
+
+			<div class="tsvi-card">
+				<h2>Upload by URL</h2>
+				<p class="description">Paste one URL per line. Videos are downloaded and uploaded to Bunny CDN. No posts are created.</p>
+				<textarea id="tsvi-direct-urls" rows="6" class="large-text" placeholder="https://example.com/video1.mp4&#10;https://example.com/video2.mp4&#10;https://example.com/video3.mp4"></textarea>
+				<p>
+					<button class="button button-primary button-hero" id="tsvi-btn-direct-upload">Upload to CDN</button>
+				</p>
+			</div>
+
+			<!-- Upload progress -->
+			<div class="tsvi-card tsvi-hidden" id="tsvi-direct-progress">
+				<h2>Uploading...</h2>
+				<div id="tsvi-direct-results"></div>
+			</div>
+
+			<!-- History -->
+			<div class="tsvi-card">
+				<h2>
+					Upload History
+					<span class="tsvi-badge tsvi-badge-done"><?php echo count( $history ); ?></span>
+					<?php if ( $history ) : ?>
+						<button class="button button-small tsvi-btn-danger" id="tsvi-btn-clear-history" onclick="return confirm('Clear all upload history?');">Clear History</button>
+					<?php endif; ?>
+				</h2>
+				<?php if ( $history ) : ?>
+					<table class="wp-list-table widefat striped">
+						<thead><tr><th>Date</th><th>Source URL</th><th>CDN URL</th><th>Status</th></tr></thead>
+						<tbody>
+						<?php foreach ( $history as $h ) : ?>
+							<tr>
+								<td><small><?php echo esc_html( $h['date'] ); ?></small></td>
+								<td><small><?php echo esc_html( mb_substr( $h['source'], 0, 60 ) ); ?>...</small></td>
+								<td>
+									<?php if ( ! empty( $h['cdn_url'] ) ) : ?>
+										<input type="text" readonly value="<?php echo esc_attr( $h['cdn_url'] ); ?>" class="regular-text tsvi-copy-field" onclick="this.select();document.execCommand('copy');" title="Click to copy">
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+								<td>
+									<?php if ( ! empty( $h['error'] ) ) : ?>
+										<span class="tsvi-err"><?php echo esc_html( $h['error'] ); ?></span>
+									<?php else : ?>
+										<span class="tsvi-ok">OK</span>
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php else : ?>
+					<p>No uploads yet.</p>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
 	}
 
 	/* ------------------------------------------------------------------
@@ -768,5 +852,78 @@ class TSVI_Admin {
 			'processed' => intval( $post_id ),
 			'remaining' => intval( $remaining ),
 		) );
+	}
+
+	/* ------------------------------------------------------------------
+	   AJAX: Direct upload a single URL to Bunny (no post created)
+	   ------------------------------------------------------------------ */
+
+	public static function ajax_direct_upload() {
+		check_ajax_referer( 'tsvi_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized.' );
+		}
+
+		$url = esc_url_raw( $_POST['url'] ?? '' );
+		if ( empty( $url ) ) {
+			wp_send_json_error( 'URL is required.' );
+		}
+
+		set_time_limit( 1200 );
+		ignore_user_abort( true );
+
+		// Build filename from URL.
+		$parsed   = wp_parse_url( $url, PHP_URL_PATH );
+		$basename = $parsed ? basename( $parsed ) : '';
+		$ext      = pathinfo( $basename, PATHINFO_EXTENSION ) ?: 'mp4';
+		$name     = pathinfo( $basename, PATHINFO_FILENAME );
+		$slug     = $name ? sanitize_title( mb_substr( $name, 0, 60 ) ) : 'direct-' . time();
+		$filename = $slug . '-' . wp_rand( 1000, 9999 ) . '.' . $ext;
+
+		$cdn_url = TSVI_Bunny::remote_upload( $url, $filename, 'direct' );
+
+		// Save to history.
+		$entry = array(
+			'date'    => current_time( 'Y-m-d H:i' ),
+			'source'  => $url,
+			'cdn_url' => '',
+			'error'   => '',
+		);
+
+		if ( is_wp_error( $cdn_url ) ) {
+			$entry['error'] = $cdn_url->get_error_message();
+		} else {
+			$entry['cdn_url'] = $cdn_url;
+		}
+
+		$history = get_option( 'tsvi_direct_upload_history', array() );
+		$history[] = $entry;
+		// Keep last 200 entries.
+		if ( count( $history ) > 200 ) {
+			$history = array_slice( $history, -200 );
+		}
+		update_option( 'tsvi_direct_upload_history', $history, false );
+
+		if ( is_wp_error( $cdn_url ) ) {
+			wp_send_json_error( $cdn_url->get_error_message() );
+		}
+
+		wp_send_json_success( array( 'cdn_url' => $cdn_url ) );
+	}
+
+	/* ------------------------------------------------------------------
+	   AJAX: Clear direct upload history
+	   ------------------------------------------------------------------ */
+
+	public static function ajax_direct_clear_history() {
+		check_ajax_referer( 'tsvi_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized.' );
+		}
+
+		update_option( 'tsvi_direct_upload_history', array(), false );
+		wp_send_json_success();
 	}
 }

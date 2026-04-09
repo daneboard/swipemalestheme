@@ -386,4 +386,98 @@
 		}
 	}
 
+	/* ==========================================================
+	   Direct Upload: upload URLs to Bunny CDN (3 in parallel)
+	   ========================================================== */
+
+	var DIRECT_PARALLEL = 3;
+
+	$('#tsvi-btn-direct-upload').on('click', function () {
+		var raw   = $('#tsvi-direct-urls').val().trim();
+		if (!raw) { alert('Paste at least one URL.'); return; }
+
+		var urls = raw.split('\n').map(function (u) { return u.trim(); }).filter(function (u) { return u.length > 0; });
+		if (!urls.length) { alert('No valid URLs found.'); return; }
+
+		var btn      = $(this);
+		var $progress = $('#tsvi-direct-progress');
+		var $results  = $('#tsvi-direct-results');
+
+		btn.prop('disabled', true);
+		$progress.removeClass('tsvi-hidden');
+		$results.empty();
+
+		// Create a row for each URL.
+		$.each(urls, function (i, u) {
+			$results.append(
+				'<div class="tsvi-direct-row" data-idx="' + i + '">' +
+					'<small>' + escHtml(u.substring(0, 80)) + '</small> — ' +
+					'<span class="tsvi-direct-status tsvi-loading">waiting...</span>' +
+				'</div>'
+			);
+		});
+
+		var queue = urls.map(function (u, i) { return { url: u, idx: i }; });
+		var total = queue.length;
+		var done  = 0;
+
+		function nextItem() {
+			if (!queue.length) return null;
+			return queue.shift();
+		}
+
+		function worker() {
+			var item = nextItem();
+			if (!item) return;
+
+			var $status = $results.find('.tsvi-direct-row[data-idx="' + item.idx + '"] .tsvi-direct-status');
+			$status.removeClass('tsvi-loading tsvi-ok tsvi-err').addClass('tsvi-loading').text('uploading...');
+
+			$.ajax({
+				url:     tsvi.ajax_url,
+				method:  'POST',
+				timeout: 0,
+				data:    {
+					action: 'tsvi_direct_upload',
+					nonce:  tsvi.nonce,
+					url:    item.url
+				}
+			}).done(function (resp) {
+				if (resp.success) {
+					$status.removeClass('tsvi-loading').addClass('tsvi-ok')
+						.html('✅ <input type="text" readonly value="' + escAttr(resp.data.cdn_url) + '" class="regular-text tsvi-copy-field" onclick="this.select();document.execCommand(\'copy\');" title="Click to copy">');
+				} else {
+					$status.removeClass('tsvi-loading').addClass('tsvi-err').text('❌ ' + resp.data);
+				}
+			}).fail(function () {
+				$status.removeClass('tsvi-loading').addClass('tsvi-err').text('❌ Request failed');
+			}).always(function () {
+				done++;
+				if (done >= total) {
+					btn.prop('disabled', false);
+					// Reload after a short delay to update history.
+					setTimeout(function () { location.reload(); }, 3000);
+				} else {
+					worker(); // Pick next item.
+				}
+			});
+		}
+
+		// Start up to DIRECT_PARALLEL workers.
+		var workerCount = Math.min(DIRECT_PARALLEL, queue.length);
+		for (var w = 0; w < workerCount; w++) {
+			worker();
+		}
+	});
+
+	// Clear history button.
+	$('#tsvi-btn-clear-history').on('click', function () {
+		$.post(tsvi.ajax_url, {
+			action: 'tsvi_direct_clear_history',
+			nonce:  tsvi.nonce
+		}).done(function () {
+			location.reload();
+		});
+	});
+
 })(jQuery);
