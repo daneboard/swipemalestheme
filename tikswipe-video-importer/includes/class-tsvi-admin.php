@@ -131,9 +131,11 @@ class TSVI_Admin {
 					break;
 
 				case 'force_start': // Force start the cron queue immediately.
-					if ( ! wp_next_scheduled( TSVI_Bunny::CRON_HOOK ) ) {
-						wp_schedule_single_event( time(), TSVI_Bunny::CRON_HOOK );
-					}
+					// Clear any stale lock that may be blocking the queue.
+					delete_transient( 'tsvi_queue_lock' );
+					delete_transient( 'tsvi_currently_processing' );
+					wp_clear_scheduled_hook( TSVI_Bunny::CRON_HOOK );
+					wp_schedule_single_event( time(), TSVI_Bunny::CRON_HOOK );
 					spawn_cron();
 					$redirect_args['msg'] = 'force_started';
 					break;

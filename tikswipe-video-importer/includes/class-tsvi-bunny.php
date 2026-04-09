@@ -37,6 +37,12 @@ class TSVI_Bunny {
 	public static function process_queue() {
 		global $wpdb;
 
+		// Prevent concurrent runs.
+		if ( get_transient( 'tsvi_queue_lock' ) ) {
+			return;
+		}
+		set_transient( 'tsvi_queue_lock', 1, 1800 );
+
 		// Find up to 3 posts with pending Bunny upload, shorter videos first.
 		$post_ids = $wpdb->get_col(
 			"SELECT pm.post_id FROM {$wpdb->postmeta} pm
@@ -48,28 +54,44 @@ class TSVI_Bunny {
 		);
 
 		if ( empty( $post_ids ) ) {
-			return; // Nothing to process.
+			delete_transient( 'tsvi_queue_lock' );
+			return;
 		}
 
 		// Allow enough time for multiple large downloads.
 		set_time_limit( 3600 );
 		ignore_user_abort( true );
 
+		// Pre-schedule the next run as a safety net. If this process crashes
+		// (fatal error, timeout), the queue will still resume after 60s.
+		wp_schedule_single_event( time() + 60, self::CRON_HOOK );
+
 		foreach ( $post_ids as $post_id ) {
-			self::process_single( $post_id );
+			try {
+				self::process_single( $post_id );
+			} catch ( \Throwable $e ) {
+				// Catch fatal errors so the loop continues to the next item.
+				update_post_meta( $post_id, '_tsvi_bunny_pending', '' );
+				update_post_meta( $post_id, '_tsvi_bunny_error', 'Fatal: ' . $e->getMessage() );
+				delete_transient( 'tsvi_currently_processing' );
+			}
 		}
 
-		// If more items pending, schedule next run.
+		// Check if more items remain.
 		$remaining = $wpdb->get_var(
 			"SELECT COUNT(*) FROM {$wpdb->postmeta}
 			 WHERE meta_key = '_tsvi_bunny_pending'
 			 AND meta_value != ''"
 		);
 
+		// Replace the safety schedule with the correct timing.
+		wp_clear_scheduled_hook( self::CRON_HOOK );
 		if ( $remaining > 0 ) {
 			wp_schedule_single_event( time() + 5, self::CRON_HOOK );
 			spawn_cron();
 		}
+
+		delete_transient( 'tsvi_queue_lock' );
 	}
 
 	/**
