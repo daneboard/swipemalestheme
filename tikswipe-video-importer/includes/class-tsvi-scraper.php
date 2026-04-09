@@ -667,70 +667,150 @@ class TSVI_Scraper {
 	}
 
 	/**
-	 * Discover video links from a RedGifs listing page.
-	 * Extracts tile IDs from HTML, builds watch URLs, uses thumbnails from HTML.
+	 * Discover videos from a RedGifs page.
+	 * Tries API-based bulk discovery first (1 call), falls back to HTML + individual API.
 	 */
 	private static function redgifs_discover( $url, $limit ) {
+		// Try API-based bulk discovery (user pages, search pages).
+		$api_result = self::redgifs_discover_api( $url, $limit );
+		if ( ! is_wp_error( $api_result ) && ! empty( $api_result ) ) {
+			return $api_result;
+		}
+
+		// Fallback: extract IDs from HTML, then call API for each.
 		$html = self::fetch( $url );
 		if ( is_wp_error( $html ) ) {
 			return $html;
 		}
 
-		$links = array();
-
-		// Extract all data-feed-item-id attributes.
 		if ( ! preg_match_all( '/data-feed-item-id=["\']([a-zA-Z]+)["\']/i', $html, $matches ) ) {
 			return new WP_Error( 'no_links', 'No RedGifs video tiles found on this page.' );
 		}
 
-		libxml_use_internal_errors( true );
-		$doc = new DOMDocument();
-		$doc->loadHTML( '<?xml encoding="utf-8"?>' . $html );
-		libxml_clear_errors();
-		$xpath = new DOMXPath( $doc );
+		$links = array();
+		$ids   = array_unique( $matches[1] );
 
-		foreach ( $matches[1] as $gif_id ) {
+		foreach ( $ids as $gif_id ) {
 			if ( count( $links ) >= $limit ) {
 				break;
 			}
 
 			$gif_id_lower = strtolower( $gif_id );
-			$watch_url    = 'https://www.redgifs.com/watch/' . $gif_id_lower;
+			$gif = self::redgifs_api_gif( $gif_id_lower );
 
-			if ( isset( $links[ $watch_url ] ) ) {
-				continue;
+			if ( ! is_wp_error( $gif ) ) {
+				$links[] = self::redgifs_gif_to_item( $gif );
+			} else {
+				// API failed for this one — add with minimal data.
+				$links[] = array(
+					'url'       => 'https://www.redgifs.com/watch/' . $gif_id_lower,
+					'title'     => $gif_id_lower,
+					'thumbnail' => '',
+					'duration'  => '',
+				);
 			}
-
-			// Get thumbnail and tags from the tile's img alt attribute.
-			$thumb = '';
-			$tags  = '';
-			$tile  = $xpath->query( '//div[@data-feed-item-id="' . $gif_id . '"]' );
-			if ( $tile->length ) {
-				$imgs = $xpath->query( './/img', $tile->item( 0 ) );
-				if ( $imgs->length ) {
-					$img   = $imgs->item( 0 );
-					$thumb = $img->getAttribute( 'src' );
-					$alt   = $img->getAttribute( 'alt' );
-					// Alt format: "Tag1, Tag2, Tag3 porn gifid uploaded by user on date"
-					if ( $alt && preg_match( '/^(.+?)\s+porn\s+/i', $alt, $am ) ) {
-						$tags = $am[1];
-					}
-				}
-			}
-
-			$links[ $watch_url ] = array(
-				'url'       => $watch_url,
-				'title'     => $tags ? sanitize_text_field( mb_substr( $tags, 0, 200 ) ) : $gif_id_lower,
-				'thumbnail' => $thumb,
-				'duration'  => '',
-			);
 		}
 
-		if ( empty( $links ) ) {
-			return new WP_Error( 'no_links', 'No RedGifs videos found.' );
+		return $links;
+	}
+
+	/**
+	 * Bulk API discovery: fetch all videos in 1 API call for user/search pages.
+	 * Returns full video data (including video_url) so JS can skip extraction.
+	 */
+	private static function redgifs_discover_api( $url, $limit ) {
+		$token = self::redgifs_get_token();
+		if ( is_wp_error( $token ) ) {
+			return $token;
 		}
 
-		return array_values( $links );
+		$api_url = '';
+		$count   = min( $limit, 80 );
+
+		// User page: /users/username
+		if ( preg_match( '#redgifs\.com/users/([a-zA-Z0-9_.-]+)#i', $url, $m ) ) {
+			$api_url = 'https://api.redgifs.com/v2/users/' . strtolower( $m[1] ) . '/search?order=new&count=' . $count . '&page=1';
+		}
+		// Search: ?query=term or /search?query=term
+		elseif ( preg_match( '#[?&]query=([^&]+)#i', $url, $m ) ) {
+			$api_url = 'https://api.redgifs.com/v2/gifs/search?search_text=' . urlencode( urldecode( $m[1] ) ) . '&order=new&count=' . $count . '&page=1';
+		}
+		// Tag/category browsing: /gifs/tagname, /gay/tagname, etc.
+		elseif ( preg_match( '#redgifs\.com/(?:gifs|gay|straight|bi|explore)/([a-zA-Z0-9_-]+)#i', $url, $m ) ) {
+			$api_url = 'https://api.redgifs.com/v2/gifs/search?search_text=' . urlencode( $m[1] ) . '&order=new&count=' . $count . '&page=1';
+		}
+
+		if ( ! $api_url ) {
+			return new WP_Error( 'no_api', 'Could not determine RedGifs API URL.' );
+		}
+
+		$response = wp_remote_get( $api_url, array(
+			'timeout'   => 20,
+			'sslverify' => false,
+			'headers'   => array(
+				'Accept'        => 'application/json',
+				'Authorization' => 'Bearer ' . $token,
+				'User-Agent'    => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+			),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code >= 400 ) {
+			return new WP_Error( 'redgifs_api', 'RedGifs API HTTP ' . $code );
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		$gifs = $body['gifs'] ?? array();
+
+		if ( empty( $gifs ) ) {
+			return new WP_Error( 'no_results', 'No gifs returned from RedGifs API.' );
+		}
+
+		$links = array();
+		foreach ( $gifs as $gif ) {
+			if ( count( $links ) >= $limit ) {
+				break;
+			}
+			$links[] = self::redgifs_gif_to_item( $gif );
+		}
+
+		return $links;
+	}
+
+	/**
+	 * Convert a RedGifs API gif object to a discover item with full video data.
+	 * When video_url is present, JS can skip the extract step entirely.
+	 */
+	private static function redgifs_gif_to_item( $gif ) {
+		$urls      = $gif['urls'] ?? array();
+		$video_url = $urls['hd'] ?? $urls['sd'] ?? '';
+		$gif_id    = strtolower( $gif['id'] ?? '' );
+
+		$tags = array();
+		if ( ! empty( $gif['tags'] ) && is_array( $gif['tags'] ) ) {
+			$tags = array_map( 'sanitize_text_field', $gif['tags'] );
+		}
+
+		$title = ! empty( $tags ) ? implode( ', ', array_slice( $tags, 0, 5 ) ) : $gif_id;
+
+		$thumb = $urls['poster'] ?? $urls['thumbnail'] ?? '';
+
+		return array(
+			'url'         => 'https://www.redgifs.com/watch/' . $gif_id,
+			'title'       => sanitize_text_field( mb_substr( $title, 0, 200 ) ),
+			'thumbnail'   => $thumb,
+			'duration'    => intval( $gif['duration'] ?? 0 ),
+			// Full data — JS skips extraction when these are present.
+			'video_url'   => $video_url,
+			'width'       => intval( $gif['width'] ?? 0 ),
+			'height'      => intval( $gif['height'] ?? 0 ),
+			'source_tags' => $tags,
+			'description' => sanitize_text_field( $gif['description'] ?? '' ),
+		);
 	}
 
 	/**

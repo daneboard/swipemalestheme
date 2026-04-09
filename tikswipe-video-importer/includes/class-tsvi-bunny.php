@@ -190,17 +190,15 @@ class TSVI_Bunny {
 			return;
 		}
 
-		// If the pending URL is a video page (not a direct file), re-scrape
-		// to get a fresh video URL (the original one may have expired).
-		$video_url = $source_url;
-		$page_url  = get_post_meta( $post_id, '_tsvi_source_url', true );
-		if ( $page_url && ! preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $source_url ) ) {
-			$fresh = TSVI_Scraper::extract_video( $source_url );
-			if ( ! is_wp_error( $fresh ) && ! empty( $fresh['video_url'] ) ) {
-				$video_url = $fresh['video_url'];
-			}
-		} elseif ( $page_url && $page_url !== $source_url ) {
-			$fresh = TSVI_Scraper::extract_video( $page_url );
+		// If the pending URL is a direct video file (.mp4, .webm, .m3u8), use it as-is.
+		// Otherwise re-scrape to get a fresh URL (the original may have expired).
+		$video_url     = $source_url;
+		$is_direct_url = (bool) preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $source_url );
+
+		if ( ! $is_direct_url ) {
+			$page_url = get_post_meta( $post_id, '_tsvi_source_url', true );
+			$scrape_url = $page_url ?: $source_url;
+			$fresh = TSVI_Scraper::extract_video( $scrape_url );
 			if ( ! is_wp_error( $fresh ) && ! empty( $fresh['video_url'] ) ) {
 				$video_url = $fresh['video_url'];
 			}
