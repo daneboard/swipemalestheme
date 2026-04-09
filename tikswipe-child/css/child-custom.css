@@ -18,22 +18,26 @@
     }
     /* Progress bar: follow 480px */
     .wpst-progress-bar {
+        width: 100% !important;
         max-width: 480px !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
         right: auto !important;
+        margin: 0 !important;
     }
-    /* Swiper arrows: pull inside the 480px container, closer together */
+    /* Swiper arrows: same column as sidebar icons, higher up */
     .swiper-button-prev,
     .swiper-button-next {
-        right: -50px !important;
+        right: 18px !important;
         left: auto !important;
     }
     .swiper-button-prev {
-        top: calc(50% - 30px) !important;
+        top: calc(50% - 140px) !important;
+        transform: translateY(-50%) !important;
     }
     .swiper-button-next {
-        top: calc(50% + 30px) !important;
+        top: calc(50% - 95px) !important;
+        transform: translateY(-50%) !important;
     }
 }
 
@@ -387,8 +391,8 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
     }
     .swiper-button-prev:after,
     .swiper-button-next:after {
-        width: 22px !important;
-        height: 22px !important;
+        width: 26px !important;
+        height: 26px !important;
     }
 }
 
@@ -817,7 +821,6 @@ body.page-template-template-favorites-php footer {
     left: 50% !important;
     transform: translateX(-50%) !important;
     width: 100% !important;
-    max-width: 1200px !important;
     z-index: 10 !important;
     background-color: #000 !important;
 }
