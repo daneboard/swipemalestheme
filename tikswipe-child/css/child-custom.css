@@ -12,16 +12,28 @@
     body {
         background: #000;
     }
-    /* Progress bar must follow container width */
-    #wpst-global-progress {
+    /* Footer: follow 480px on ALL pages */
+    footer {
+        max-width: 480px !important;
+    }
+    /* Progress bar: follow 480px */
+    .wpst-progress-bar {
         max-width: 480px !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
         right: auto !important;
     }
-    /* Footer must follow container width */
-    footer {
-        max-width: 480px !important;
+    /* Swiper arrows: pull inside the 480px container, closer together */
+    .swiper-button-prev,
+    .swiper-button-next {
+        right: -50px !important;
+        left: auto !important;
+    }
+    .swiper-button-prev {
+        top: calc(50% - 30px) !important;
+    }
+    .swiper-button-next {
+        top: calc(50% + 30px) !important;
     }
 }
 
@@ -862,6 +874,13 @@ body.page-template-template-search-php #wpst-global-progress,
 body.search #wpst-global-progress,
 body.page-template-template-favorites-php #wpst-global-progress {
     display: none !important;
+}
+
+/* Force footer max-width on grid pages (parent sets 1200px) */
+@media (min-width: 768px) {
+    body.grid footer {
+        max-width: 480px !important;
+    }
 }
 
 /* Compact search sizing */
