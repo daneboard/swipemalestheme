@@ -338,136 +338,32 @@
 	}
 
 	/* ==========================================================
-	   CDN Queue: auto-process 3 items in parallel via browser AJAX
+	   Direct Upload: queue URLs for background processing
 	   ========================================================== */
-
-	var PARALLEL_WORKERS = 3;
-	var $queuePage = $('#tsvi-queue-page');
-
-	if ($queuePage.length && parseInt($queuePage.data('pending'), 10) > 0) {
-		var $autoStatus = $('#tsvi-auto-status');
-		var pending     = parseInt($queuePage.data('pending'), 10);
-		var slots       = Math.min(PARALLEL_WORKERS, pending);
-		var completed   = 0;
-		var results     = [];
-
-		$autoStatus.html('<span class="tsvi-loading">⏳ Processing ' + slots + ' videos in parallel... (do not close this tab)</span>');
-
-		for (var s = 0; s < slots; s++) {
-			(function (slot) {
-				$.ajax({
-					url:     tsvi.ajax_url,
-					method:  'POST',
-					timeout: 0,
-					data:    {
-						action: 'tsvi_process_tick',
-						nonce:  tsvi.nonce,
-						slot:   slot
-					}
-				}).done(function (resp) {
-					if (resp.success && resp.data.processed) {
-						results.push('<span class="tsvi-ok">#' + resp.data.processed + ' ✅</span>');
-					} else if (resp.success && resp.data.done) {
-						results.push('<span class="tsvi-warn">empty slot</span>');
-					} else {
-						results.push('<span class="tsvi-err">error</span>');
-					}
-				}).fail(function () {
-					results.push('<span class="tsvi-warn">timeout</span>');
-				}).always(function () {
-					completed++;
-					$autoStatus.html('<span class="tsvi-loading">⏳ ' + completed + '/' + slots + ' workers done... ' + results.join(' ') + '</span>');
-					if (completed >= slots) {
-						$autoStatus.html('<span class="tsvi-ok">Batch done: ' + results.join(' ') + ' — reloading...</span>');
-						setTimeout(function () { location.reload(); }, 1500);
-					}
-				});
-			})(s);
-		}
-	}
-
-	/* ==========================================================
-	   Direct Upload: upload URLs to Bunny CDN (3 in parallel)
-	   ========================================================== */
-
-	var DIRECT_PARALLEL = 3;
 
 	$('#tsvi-btn-direct-upload').on('click', function () {
-		var raw   = $('#tsvi-direct-urls').val().trim();
+		var raw = $('#tsvi-direct-urls').val().trim();
 		if (!raw) { alert('Paste at least one URL.'); return; }
 
-		var urls = raw.split('\n').map(function (u) { return u.trim(); }).filter(function (u) { return u.length > 0; });
-		if (!urls.length) { alert('No valid URLs found.'); return; }
+		var btn = $(this);
+		btn.prop('disabled', true).text('Queueing...');
 
-		var btn      = $(this);
-		var $progress = $('#tsvi-direct-progress');
-		var $results  = $('#tsvi-direct-results');
-
-		btn.prop('disabled', true);
-		$progress.removeClass('tsvi-hidden');
-		$results.empty();
-
-		// Create a row for each URL.
-		$.each(urls, function (i, u) {
-			$results.append(
-				'<div class="tsvi-direct-row" data-idx="' + i + '">' +
-					'<small>' + escHtml(u.substring(0, 80)) + '</small> — ' +
-					'<span class="tsvi-direct-status tsvi-loading">waiting...</span>' +
-				'</div>'
-			);
+		$.post(tsvi.ajax_url, {
+			action: 'tsvi_direct_queue',
+			nonce:  tsvi.nonce,
+			urls:   raw
+		}).done(function (resp) {
+			if (resp.success) {
+				$('#tsvi-direct-urls').val('');
+				location.reload();
+			} else {
+				alert('Error: ' + resp.data);
+				btn.prop('disabled', false).text('Upload to CDN');
+			}
+		}).fail(function () {
+			alert('Request failed.');
+			btn.prop('disabled', false).text('Upload to CDN');
 		});
-
-		var queue = urls.map(function (u, i) { return { url: u, idx: i }; });
-		var total = queue.length;
-		var done  = 0;
-
-		function nextItem() {
-			if (!queue.length) return null;
-			return queue.shift();
-		}
-
-		function worker() {
-			var item = nextItem();
-			if (!item) return;
-
-			var $status = $results.find('.tsvi-direct-row[data-idx="' + item.idx + '"] .tsvi-direct-status');
-			$status.removeClass('tsvi-loading tsvi-ok tsvi-err').addClass('tsvi-loading').text('uploading...');
-
-			$.ajax({
-				url:     tsvi.ajax_url,
-				method:  'POST',
-				timeout: 0,
-				data:    {
-					action: 'tsvi_direct_upload',
-					nonce:  tsvi.nonce,
-					url:    item.url
-				}
-			}).done(function (resp) {
-				if (resp.success) {
-					$status.removeClass('tsvi-loading').addClass('tsvi-ok')
-						.html('✅ <input type="text" readonly value="' + escAttr(resp.data.cdn_url) + '" class="regular-text tsvi-copy-field" onclick="this.select();document.execCommand(\'copy\');" title="Click to copy">');
-				} else {
-					$status.removeClass('tsvi-loading').addClass('tsvi-err').text('❌ ' + resp.data);
-				}
-			}).fail(function () {
-				$status.removeClass('tsvi-loading').addClass('tsvi-err').text('❌ Request failed');
-			}).always(function () {
-				done++;
-				if (done >= total) {
-					btn.prop('disabled', false);
-					// Reload after a short delay to update history.
-					setTimeout(function () { location.reload(); }, 3000);
-				} else {
-					worker(); // Pick next item.
-				}
-			});
-		}
-
-		// Start up to DIRECT_PARALLEL workers.
-		var workerCount = Math.min(DIRECT_PARALLEL, queue.length);
-		for (var w = 0; w < workerCount; w++) {
-			worker();
-		}
 	});
 
 	// Clear history button.

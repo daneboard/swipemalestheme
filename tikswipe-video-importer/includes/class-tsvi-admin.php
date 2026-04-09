@@ -17,8 +17,7 @@ class TSVI_Admin {
 		add_action( 'wp_ajax_tsvi_extract', array( __CLASS__, 'ajax_extract' ) );
 		add_action( 'wp_ajax_tsvi_enrich', array( __CLASS__, 'ajax_enrich' ) );
 		add_action( 'wp_ajax_tsvi_import', array( __CLASS__, 'ajax_import' ) );
-		add_action( 'wp_ajax_tsvi_process_tick', array( __CLASS__, 'ajax_process_tick' ) );
-		add_action( 'wp_ajax_tsvi_direct_upload', array( __CLASS__, 'ajax_direct_upload' ) );
+		add_action( 'wp_ajax_tsvi_direct_queue', array( __CLASS__, 'ajax_direct_queue' ) );
 		add_action( 'wp_ajax_tsvi_direct_clear_history', array( __CLASS__, 'ajax_direct_clear_history' ) );
 	}
 
@@ -96,8 +95,11 @@ class TSVI_Admin {
 	   ------------------------------------------------------------------ */
 
 	public static function page_direct_upload() {
+		$queue   = get_option( 'tsvi_direct_upload_queue', array() );
 		$history = get_option( 'tsvi_direct_upload_history', array() );
 		$history = array_reverse( $history ); // Newest first.
+		$queue_count   = count( $queue );
+		$history_count = count( $history );
 		?>
 		<div class="wrap">
 			<h1>Direct Upload to Bunny CDN</h1>
@@ -108,24 +110,37 @@ class TSVI_Admin {
 
 			<div class="tsvi-card">
 				<h2>Upload by URL</h2>
-				<p class="description">Paste one URL per line. Videos are downloaded and uploaded to Bunny CDN. No posts are created.</p>
+				<p class="description">Paste one URL per line. Videos are queued and uploaded to Bunny CDN in the background. No posts are created.</p>
 				<textarea id="tsvi-direct-urls" rows="6" class="large-text" placeholder="https://example.com/video1.mp4&#10;https://example.com/video2.mp4&#10;https://example.com/video3.mp4"></textarea>
 				<p>
 					<button class="button button-primary button-hero" id="tsvi-btn-direct-upload">Upload to CDN</button>
 				</p>
 			</div>
 
-			<!-- Upload progress -->
-			<div class="tsvi-card tsvi-hidden" id="tsvi-direct-progress">
-				<h2>Uploading...</h2>
-				<div id="tsvi-direct-results"></div>
+			<!-- Pending queue -->
+			<?php if ( $queue_count > 0 ) : ?>
+			<div class="tsvi-card">
+				<h2>Pending <span class="tsvi-badge tsvi-badge-pending"><?php echo $queue_count; ?></span></h2>
+				<table class="wp-list-table widefat striped">
+					<thead><tr><th>#</th><th>Source URL</th><th>Queued</th></tr></thead>
+					<tbody>
+					<?php foreach ( $queue as $i => $item ) : ?>
+						<tr>
+							<td><?php echo $i + 1; ?></td>
+							<td><small><?php echo esc_html( mb_substr( $item['url'], 0, 100 ) ); ?></small></td>
+							<td><small><?php echo esc_html( $item['queued_at'] ); ?></small></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
 			</div>
+			<?php endif; ?>
 
 			<!-- History -->
 			<div class="tsvi-card">
 				<h2>
 					Upload History
-					<span class="tsvi-badge tsvi-badge-done"><?php echo count( $history ); ?></span>
+					<span class="tsvi-badge tsvi-badge-done"><?php echo $history_count; ?></span>
 					<?php if ( $history ) : ?>
 						<button class="button button-small tsvi-btn-danger" id="tsvi-btn-clear-history" onclick="return confirm('Clear all upload history?');">Clear History</button>
 					<?php endif; ?>
@@ -216,23 +231,11 @@ class TSVI_Admin {
 					break;
 
 				case 'force_start': // Force start the cron queue immediately.
-					// Clear any stale state that may be blocking the queue.
 					delete_transient( 'tsvi_queue_lock' );
 					delete_transient( 'tsvi_currently_processing' );
 					wp_clear_scheduled_hook( TSVI_Bunny::CRON_HOOK );
-					// Method 1: schedule via wp-cron.
 					wp_schedule_single_event( time(), TSVI_Bunny::CRON_HOOK );
 					spawn_cron();
-					// Method 2: direct loopback (bypasses wp-cron entirely).
-					wp_remote_post( admin_url( 'admin-ajax.php' ), array(
-						'timeout'   => 0.01,
-						'blocking'  => false,
-						'sslverify' => false,
-						'body'      => array(
-							'action' => 'tsvi_force_process',
-							'token'  => wp_hash( 'tsvi_force_process' ),
-						),
-					) );
 					$redirect_args['msg'] = 'force_started';
 					break;
 			}
@@ -265,16 +268,6 @@ class TSVI_Admin {
 			wp_clear_scheduled_hook( TSVI_Bunny::CRON_HOOK );
 			wp_schedule_single_event( time(), TSVI_Bunny::CRON_HOOK );
 			spawn_cron();
-			// Direct loopback as backup.
-			wp_remote_post( admin_url( 'admin-ajax.php' ), array(
-				'timeout'   => 0.01,
-				'blocking'  => false,
-				'sslverify' => false,
-				'body'      => array(
-					'action' => 'tsvi_force_process',
-					'token'  => wp_hash( 'tsvi_force_process' ),
-				),
-			) );
 			echo '<div class="notice notice-warning is-dismissible"><p>Queue was stalled — automatically restarted processing.</p></div>';
 		}
 
@@ -329,13 +322,11 @@ class TSVI_Admin {
 		$cron_next    = wp_next_scheduled( TSVI_Bunny::CRON_HOOK );
 		$queue_locked = get_transient( 'tsvi_queue_lock' );
 		?>
-		<div class="wrap" id="tsvi-queue-page" data-pending="<?php echo $pending_count; ?>">
+		<div class="wrap">
 			<h1>
 				CDN Upload Queue
 				<a class="button button-primary" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=force_start' ), 'tsvi_queue_action' ); ?>">Force Start</a>
 			</h1>
-
-			<p id="tsvi-auto-status"></p>
 
 			<?php if ( $pending_count > 0 ) : ?>
 			<p class="description">
@@ -803,113 +794,38 @@ class TSVI_Admin {
 	}
 
 	/* ------------------------------------------------------------------
-	   AJAX: Process one pending CDN upload (browser-driven, no wp-cron)
+	   AJAX: Queue URLs for direct upload (instant response, no processing)
 	   ------------------------------------------------------------------ */
 
-	public static function ajax_process_tick() {
+	public static function ajax_direct_queue() {
 		check_ajax_referer( 'tsvi_nonce', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Unauthorized.' );
 		}
 
-		global $wpdb;
+		$raw  = sanitize_textarea_field( $_POST['urls'] ?? '' );
+		$urls = array_filter( array_map( 'trim', explode( "\n", $raw ) ) );
+		$urls = array_map( 'esc_url_raw', $urls );
+		$urls = array_filter( $urls );
 
-		// Each parallel worker gets a different slot (0, 1, 2) to pick a different item.
-		$slot = max( 0, min( 2, intval( $_POST['slot'] ?? 0 ) ) );
-
-		// Pick the next pending item for this slot (shortest videos first).
-		$post_id = $wpdb->get_var( $wpdb->prepare(
-			"SELECT pm.post_id FROM {$wpdb->postmeta} pm
-			 LEFT JOIN {$wpdb->postmeta} dur ON pm.post_id = dur.post_id AND dur.meta_key = 'duration'
-			 WHERE pm.meta_key = '_tsvi_bunny_pending'
-			 AND pm.meta_value != ''
-			 ORDER BY CAST(COALESCE(dur.meta_value, '999999') AS UNSIGNED) ASC
-			 LIMIT 1 OFFSET %d",
-			$slot
-		) );
-
-		if ( ! $post_id ) {
-			wp_send_json_success( array( 'done' => true ) );
+		if ( empty( $urls ) ) {
+			wp_send_json_error( 'No valid URLs.' );
 		}
 
-		set_time_limit( 1200 );
-		ignore_user_abort( true );
-
-		// Clear any stale lock so processing can proceed.
-		delete_transient( 'tsvi_queue_lock' );
-
-		TSVI_Bunny::process_single( intval( $post_id ) );
-
-		// Count remaining.
-		$remaining = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->postmeta}
-			 WHERE meta_key = '_tsvi_bunny_pending'
-			 AND meta_value != ''"
-		);
-
-		wp_send_json_success( array(
-			'processed' => intval( $post_id ),
-			'remaining' => intval( $remaining ),
-		) );
-	}
-
-	/* ------------------------------------------------------------------
-	   AJAX: Direct upload a single URL to Bunny (no post created)
-	   ------------------------------------------------------------------ */
-
-	public static function ajax_direct_upload() {
-		check_ajax_referer( 'tsvi_nonce', 'nonce' );
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( 'Unauthorized.' );
+		$queue = get_option( 'tsvi_direct_upload_queue', array() );
+		foreach ( $urls as $url ) {
+			$queue[] = array(
+				'url'       => $url,
+				'queued_at' => current_time( 'Y-m-d H:i' ),
+			);
 		}
+		update_option( 'tsvi_direct_upload_queue', $queue, false );
 
-		$url = esc_url_raw( $_POST['url'] ?? '' );
-		if ( empty( $url ) ) {
-			wp_send_json_error( 'URL is required.' );
-		}
+		// Trigger background processing.
+		TSVI_Bunny::schedule_direct_upload();
 
-		set_time_limit( 1200 );
-		ignore_user_abort( true );
-
-		// Build filename from URL.
-		$parsed   = wp_parse_url( $url, PHP_URL_PATH );
-		$basename = $parsed ? basename( $parsed ) : '';
-		$ext      = pathinfo( $basename, PATHINFO_EXTENSION ) ?: 'mp4';
-		$name     = pathinfo( $basename, PATHINFO_FILENAME );
-		$slug     = $name ? sanitize_title( mb_substr( $name, 0, 60 ) ) : 'direct-' . time();
-		$filename = $slug . '-' . wp_rand( 1000, 9999 ) . '.' . $ext;
-
-		$cdn_url = TSVI_Bunny::remote_upload( $url, $filename, 'direct' );
-
-		// Save to history.
-		$entry = array(
-			'date'    => current_time( 'Y-m-d H:i' ),
-			'source'  => $url,
-			'cdn_url' => '',
-			'error'   => '',
-		);
-
-		if ( is_wp_error( $cdn_url ) ) {
-			$entry['error'] = $cdn_url->get_error_message();
-		} else {
-			$entry['cdn_url'] = $cdn_url;
-		}
-
-		$history = get_option( 'tsvi_direct_upload_history', array() );
-		$history[] = $entry;
-		// Keep last 200 entries.
-		if ( count( $history ) > 200 ) {
-			$history = array_slice( $history, -200 );
-		}
-		update_option( 'tsvi_direct_upload_history', $history, false );
-
-		if ( is_wp_error( $cdn_url ) ) {
-			wp_send_json_error( $cdn_url->get_error_message() );
-		}
-
-		wp_send_json_success( array( 'cdn_url' => $cdn_url ) );
+		wp_send_json_success( array( 'queued' => count( $urls ) ) );
 	}
 
 	/* ------------------------------------------------------------------
