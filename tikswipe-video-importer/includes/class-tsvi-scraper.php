@@ -182,6 +182,15 @@ class TSVI_Scraper {
 			// Fallback to normal scraping if API fails.
 		}
 
+		// Known hoster (doodstream, streamtape, mixdrop, etc): try yt-dlp first.
+		if ( self::is_hoster_url( $url ) ) {
+			$result = self::ytdlp_extract( $url );
+			if ( ! is_wp_error( $result ) ) {
+				return $result;
+			}
+			// Fall through to normal scraping on failure.
+		}
+
 		$html = self::fetch( $url );
 		if ( is_wp_error( $html ) ) {
 			return $html;
@@ -263,7 +272,32 @@ class TSVI_Scraper {
 		// 8. JSON-LD fallback for all fields.
 		self::parse_json_ld( $html, $video, $base_url );
 
-		// 9. Embed fallback — og:video:url or og:video.
+		// 9. yt-dlp fallback — if no direct URL was found, try yt-dlp.
+		// Covers any site yt-dlp supports (1000+ sites) without us having to
+		// maintain per-site scraping logic.
+		if ( empty( $video['video_url'] ) ) {
+			$ytdlp = self::ytdlp_extract( $url );
+			if ( ! is_wp_error( $ytdlp ) && ! empty( $ytdlp['video_url'] ) ) {
+				// Merge: prefer yt-dlp's video_url, dimensions, duration.
+				// Keep title/description/thumb from scraping if yt-dlp didn't provide them.
+				foreach ( array( 'video_url', 'duration', 'width', 'height' ) as $k ) {
+					if ( ! empty( $ytdlp[ $k ] ) ) {
+						$video[ $k ] = $ytdlp[ $k ];
+					}
+				}
+				if ( empty( $video['title'] ) && ! empty( $ytdlp['title'] ) ) {
+					$video['title'] = $ytdlp['title'];
+				}
+				if ( empty( $video['thumbnail'] ) && ! empty( $ytdlp['thumbnail'] ) ) {
+					$video['thumbnail'] = $ytdlp['thumbnail'];
+				}
+				if ( empty( $video['source_tags'] ) && ! empty( $ytdlp['source_tags'] ) ) {
+					$video['source_tags'] = $ytdlp['source_tags'];
+				}
+			}
+		}
+
+		// 10. Embed fallback — og:video:url or og:video.
 		if ( empty( $video['video_url'] ) ) {
 			$embed_url = self::extract_meta( $xpath, 'og:video:url' )
 				?: self::extract_meta( $xpath, 'og:video' );
@@ -884,6 +918,180 @@ class TSVI_Scraper {
 			'duration'    => intval( $gif['duration'] ?? 0 ),
 			'width'       => intval( $gif['width'] ?? 0 ),
 			'height'      => intval( $gif['height'] ?? 0 ),
+			'source_tags' => $tags,
+			'embed'       => '',
+		);
+	}
+
+	/* ------------------------------------------------------------------
+	   yt-dlp support — resolves direct URLs for 1000+ hosters
+	   (Doodstream, Streamtape, Mixdrop, Fembed, Upstream, etc)
+	   ------------------------------------------------------------------ */
+
+	/**
+	 * Detect known embed hosters that need yt-dlp to resolve the direct URL.
+	 */
+	private static function is_hoster_url( $url ) {
+		$patterns = array(
+			// Doodstream
+			'/d000d\.com|dood\.(ws|so|to|re|watch|com|la|pm|sh|wf|email|video|one)|doods\.pro|ds2play\.com/i',
+			// Streamtape
+			'/streamtape\.(com|net|site|xyz|to)|streamta\.pe|strtape\.(cloud|tech)|tapewithadblock\.org/i',
+			// Mixdrop
+			'/mixdrop\.(co|to|sx|club|ag|bz|ch|is|ps|gl|nu)/i',
+			// StreamSB
+			'/streamsb\.net|sbfast\.com|sbrapid\.com|sblona\.com|sbflix\.xyz|sbanh\.com|sblanh\.com|sbchill\.com|vidcloud\.co/i',
+			// Upstream
+			'/upstream\.to/i',
+			// MP4Upload
+			'/mp4upload\.com/i',
+			// Fembed
+			'/fembed\.com|feurl\.com|anime789\.com|fembad\.org|femoload\.xyz|diasfem\.com|sharinglink\.club/i',
+			// Other common
+			'/ok\.ru|odnoklassniki\.ru/i',
+			'/filemoon\.(sx|to|in|nl|la|link|wf|pro|art)/i',
+			'/vidoza\.(net|org|co)/i',
+			'/voe\.sx|voe-network\.net|voe-un\.blocked\.page/i',
+		);
+
+		foreach ( $patterns as $pattern ) {
+			if ( preg_match( $pattern, $url ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Get the yt-dlp binary path (cached per request).
+	 * Returns empty string if yt-dlp is not installed.
+	 */
+	private static function ytdlp_binary() {
+		static $cached = null;
+		if ( $cached !== null ) {
+			return $cached;
+		}
+
+		if ( ! function_exists( 'shell_exec' ) ) {
+			$cached = '';
+			return $cached;
+		}
+
+		// Check common install paths.
+		$paths = array(
+			'/usr/local/bin/yt-dlp',
+			'/usr/bin/yt-dlp',
+			'/opt/yt-dlp/yt-dlp',
+			'/root/.local/bin/yt-dlp',
+		);
+
+		foreach ( $paths as $p ) {
+			if ( is_executable( $p ) ) {
+				$cached = $p;
+				return $cached;
+			}
+		}
+
+		// Try resolving via which.
+		$result = @shell_exec( 'command -v yt-dlp 2>/dev/null' );
+		if ( ! empty( $result ) ) {
+			$cached = trim( $result );
+			return $cached;
+		}
+
+		$cached = '';
+		return $cached;
+	}
+
+	/**
+	 * Check if yt-dlp is available (cached).
+	 */
+	public static function ytdlp_available() {
+		return ! empty( self::ytdlp_binary() );
+	}
+
+	/**
+	 * Get yt-dlp version for admin display.
+	 */
+	public static function ytdlp_version() {
+		$binary = self::ytdlp_binary();
+		if ( ! $binary ) {
+			return '';
+		}
+		$out = @shell_exec( escapeshellcmd( $binary ) . ' --version 2>/dev/null' );
+		return trim( $out ?? '' );
+	}
+
+	/**
+	 * Extract video data using yt-dlp.
+	 * Runs `yt-dlp --dump-json` and parses the metadata.
+	 *
+	 * @return array|WP_Error Standard video data array or error.
+	 */
+	public static function ytdlp_extract( $url ) {
+		$binary = self::ytdlp_binary();
+		if ( ! $binary ) {
+			return new WP_Error( 'ytdlp_missing', 'yt-dlp is not installed on the server.' );
+		}
+
+		// Build command: prefer MP4, no playlist, suppress warnings, JSON output.
+		$cmd = escapeshellcmd( $binary )
+			. ' --dump-json --no-warnings --no-playlist --no-check-certificate'
+			. ' --format "best[ext=mp4]/best[protocol^=http]/best"'
+			. ' --socket-timeout 30'
+			. ' ' . escapeshellarg( $url )
+			. ' 2>&1';
+
+		$output = @shell_exec( $cmd );
+
+		if ( empty( $output ) ) {
+			return new WP_Error( 'ytdlp_empty', 'yt-dlp returned no output for ' . mb_substr( $url, 0, 80 ) );
+		}
+
+		// Find the JSON line (yt-dlp may print warnings before it).
+		$lines     = explode( "\n", trim( $output ) );
+		$json_line = '';
+		foreach ( $lines as $line ) {
+			$line = trim( $line );
+			if ( strlen( $line ) > 10 && $line[0] === '{' ) {
+				$json_line = $line;
+				break;
+			}
+		}
+
+		if ( empty( $json_line ) ) {
+			return new WP_Error( 'ytdlp_failed', 'yt-dlp failed: ' . mb_substr( $output, 0, 300 ) );
+		}
+
+		$data = json_decode( $json_line, true );
+		if ( ! is_array( $data ) || empty( $data['url'] ) ) {
+			return new WP_Error( 'ytdlp_parse', 'yt-dlp returned invalid JSON.' );
+		}
+
+		// Build tags list from yt-dlp data.
+		$tags = array();
+		if ( ! empty( $data['tags'] ) && is_array( $data['tags'] ) ) {
+			$tags = array_map( 'sanitize_text_field', $data['tags'] );
+		} elseif ( ! empty( $data['categories'] ) && is_array( $data['categories'] ) ) {
+			$tags = array_map( 'sanitize_text_field', $data['categories'] );
+		}
+
+		// Pick thumbnail — prefer explicit field, fallback to first of thumbnails array.
+		$thumbnail = $data['thumbnail'] ?? '';
+		if ( empty( $thumbnail ) && ! empty( $data['thumbnails'] ) && is_array( $data['thumbnails'] ) ) {
+			$last = end( $data['thumbnails'] );
+			$thumbnail = $last['url'] ?? '';
+		}
+
+		return array(
+			'source_url'  => $url,
+			'title'       => sanitize_text_field( $data['title'] ?? '' ),
+			'description' => sanitize_text_field( mb_substr( $data['description'] ?? '', 0, 500 ) ),
+			'video_url'   => esc_url_raw( $data['url'] ),
+			'thumbnail'   => esc_url_raw( $thumbnail ),
+			'duration'    => intval( $data['duration'] ?? 0 ),
+			'width'       => intval( $data['width'] ?? 0 ),
+			'height'      => intval( $data['height'] ?? 0 ),
 			'source_tags' => $tags,
 			'embed'       => '',
 		);

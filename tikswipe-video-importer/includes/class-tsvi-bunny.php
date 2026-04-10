@@ -280,6 +280,18 @@ class TSVI_Bunny {
 	 * Process a single direct upload URL: download, upload to Bunny, save to history.
 	 */
 	public static function process_single_direct( $url ) {
+		$original_url = $url;
+
+		// If the URL doesn't look like a direct video file, resolve it via
+		// extract_video (which uses RedGifs API, yt-dlp for hosters, or scraping).
+		$is_direct_file = (bool) preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $url );
+		if ( ! $is_direct_file ) {
+			$resolved = TSVI_Scraper::extract_video( $url );
+			if ( ! is_wp_error( $resolved ) && ! empty( $resolved['video_url'] ) ) {
+				$url = $resolved['video_url'];
+			}
+		}
+
 		$parsed   = wp_parse_url( $url, PHP_URL_PATH );
 		$basename = $parsed ? basename( $parsed ) : '';
 		$ext      = pathinfo( $basename, PATHINFO_EXTENSION ) ?: 'mp4';
@@ -291,7 +303,7 @@ class TSVI_Bunny {
 
 		$entry = array(
 			'date'    => current_time( 'Y-m-d H:i' ),
-			'source'  => $url,
+			'source'  => $original_url,
 			'cdn_url' => '',
 			'error'   => '',
 		);

@@ -598,6 +598,23 @@ class TSVI_Admin {
 				?>
 				<br>Manual check: <code>php <?php echo esc_html( TSVI_PATH . 'worker.php' ); ?> --status</code>
 			</p>
+
+			<h2>yt-dlp (for Doodstream, Streamtape, Mixdrop, etc)</h2>
+			<p class="description">yt-dlp enables scraping videos from 1000+ hosters that use obfuscated URLs. Without it, sites like Doodstream won't work.</p>
+			<p class="description">
+				<?php
+				if ( TSVI_Scraper::ytdlp_available() ) {
+					echo '<span class="tsvi-ok">yt-dlp: installed (version ' . esc_html( TSVI_Scraper::ytdlp_version() ) . ')</span>';
+				} else {
+					echo '<span class="tsvi-warn">yt-dlp: NOT installed — install via SSH:</span>';
+					echo '<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;margin-top:8px;">apt update &amp;&amp; apt install -y yt-dlp
+
+# Or via pip if apt doesn\'t have it:
+# pip install -U yt-dlp</pre>';
+				}
+				?>
+				<br>Keep it updated monthly: <code>yt-dlp -U</code> (hosters change their code often).
+			</p>
 		</div>
 		<?php
 	}
