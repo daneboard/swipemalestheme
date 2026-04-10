@@ -1093,14 +1093,29 @@ class TSVI_Scraper {
 		}
 
 		// Build command: prefer MP4, no playlist, suppress warnings, JSON output.
-		$cmd = escapeshellcmd( $binary )
-			. ' --dump-json --no-warnings --no-playlist --no-check-certificate'
+		// Try with --impersonate chrome to bypass Cloudflare anti-bot (Doodstream etc).
+		// Falls back to a plain call if impersonation isn't available.
+		$base_args = ' --dump-json --no-warnings --no-playlist --no-check-certificate'
 			. ' --format "best[ext=mp4]/best[protocol^=http]/best"'
-			. ' --socket-timeout 30'
+			. ' --socket-timeout 30';
+
+		// First attempt: with chrome impersonation (needs curl-cffi).
+		$cmd_impersonate = escapeshellcmd( $binary )
+			. $base_args
+			. ' --impersonate chrome'
 			. ' ' . escapeshellarg( $url )
 			. ' 2>&1';
 
-		$output = @shell_exec( $cmd );
+		$output = @shell_exec( $cmd_impersonate );
+
+		// If impersonate failed (curl-cffi not installed), retry without it.
+		if ( empty( $output ) || stripos( $output, 'impersonate' ) !== false && stripos( $output, 'not' ) !== false ) {
+			$cmd_plain = escapeshellcmd( $binary )
+				. $base_args
+				. ' ' . escapeshellarg( $url )
+				. ' 2>&1';
+			$output = @shell_exec( $cmd_plain );
+		}
 
 		if ( empty( $output ) ) {
 			return new WP_Error( 'ytdlp_empty', 'yt-dlp returned no output for ' . mb_substr( $url, 0, 80 ) );
@@ -1137,7 +1152,7 @@ class TSVI_Scraper {
 		// Pick thumbnail — prefer explicit field, fallback to first of thumbnails array.
 		$thumbnail = $data['thumbnail'] ?? '';
 		if ( empty( $thumbnail ) && ! empty( $data['thumbnails'] ) && is_array( $data['thumbnails'] ) ) {
-			$last = end( $data['thumbnails'] );
+			$last      = end( $data['thumbnails'] );
 			$thumbnail = $last['url'] ?? '';
 		}
 

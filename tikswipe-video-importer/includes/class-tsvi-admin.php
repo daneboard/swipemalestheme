@@ -616,6 +616,7 @@ class TSVI_Admin {
 
 			<h2>yt-dlp (for Doodstream, Streamtape, Mixdrop, etc)</h2>
 			<p class="description">yt-dlp enables scraping videos from 1000+ hosters that use obfuscated URLs. Without it, sites like Doodstream won't work.</p>
+			<p class="description"><strong>Important:</strong> install via pip with the <code>curl-cffi</code> extra to bypass Cloudflare anti-bot on Doodstream and similar hosters. The snap version doesn't include this.</p>
 			<p class="description">
 				<?php
 				if ( TSVI_Scraper::ytdlp_available() ) {
@@ -624,20 +625,20 @@ class TSVI_Admin {
 					echo '<br>Binary: <code>' . esc_html( $bin ) . '</code>';
 				} else {
 					echo '<span class="tsvi-warn">yt-dlp: NOT detected.</span>';
-					echo '<br>If installed via snap, the path is usually <code>/snap/bin/yt-dlp</code>. Set it manually in the field above, or install via SSH:';
-					echo '<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;margin-top:8px;">snap install yt-dlp
-
-# OR via apt:
-# apt install -y yt-dlp
-
-# OR via pip:
-# pip install -U yt-dlp
-
-# Find the binary path:
-which yt-dlp</pre>';
 				}
 				?>
-				<br>Keep it updated monthly: <code>yt-dlp -U</code> (or <code>snap refresh yt-dlp</code> if installed via snap).
+				<br><br><strong>Recommended install (with Cloudflare bypass):</strong>
+				<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;margin-top:8px;">snap remove yt-dlp 2&gt;/dev/null
+apt install -y python3-pip
+pip install -U "yt-dlp[default,curl-cffi]" --break-system-packages
+
+# Verify:
+which yt-dlp
+yt-dlp --version
+
+# Test with a doodstream URL:
+yt-dlp --impersonate chrome -g "https://doodstream.com/e/SOMEID"</pre>
+				Updates: <code>pip install -U "yt-dlp[default,curl-cffi]" --break-system-packages</code> (run monthly)
 			</p>
 		</div>
 		<?php
