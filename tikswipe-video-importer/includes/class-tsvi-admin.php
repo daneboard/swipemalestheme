@@ -471,6 +471,7 @@ class TSVI_Admin {
 		register_setting( 'tsvi_settings', 'tsvi_bunny_storage_region' );
 		register_setting( 'tsvi_settings', 'tsvi_bunny_cdn_hostname' );
 		register_setting( 'tsvi_settings', 'tsvi_bunny_token_key' );
+		register_setting( 'tsvi_settings', 'tsvi_ytdlp_path' );
 	}
 
 	public static function page_settings() {
@@ -581,6 +582,18 @@ class TSVI_Admin {
 					</tr>
 				</table>
 
+				<h2>yt-dlp Binary Path (optional)</h2>
+				<table class="form-table">
+					<tr>
+						<th>Custom yt-dlp path</th>
+						<td>
+							<?php $ytdlp_custom = get_option( 'tsvi_ytdlp_path', '' ); ?>
+							<input type="text" name="tsvi_ytdlp_path" value="<?php echo esc_attr( $ytdlp_custom ); ?>" class="regular-text" placeholder="/snap/bin/yt-dlp">
+							<p class="description">Leave empty to auto-detect. Set if yt-dlp is installed in a non-standard path. Find it via SSH: <code>which yt-dlp</code></p>
+						</td>
+					</tr>
+				</table>
+
 				<?php submit_button(); ?>
 			</form>
 
@@ -604,16 +617,25 @@ class TSVI_Admin {
 			<p class="description">
 				<?php
 				if ( TSVI_Scraper::ytdlp_available() ) {
-					echo '<span class="tsvi-ok">yt-dlp: installed (version ' . esc_html( TSVI_Scraper::ytdlp_version() ) . ')</span>';
+					$bin = TSVI_Scraper::ytdlp_binary_path();
+					echo '<span class="tsvi-ok">yt-dlp: installed</span> — version ' . esc_html( TSVI_Scraper::ytdlp_version() );
+					echo '<br>Binary: <code>' . esc_html( $bin ) . '</code>';
 				} else {
-					echo '<span class="tsvi-warn">yt-dlp: NOT installed — install via SSH:</span>';
-					echo '<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;margin-top:8px;">apt update &amp;&amp; apt install -y yt-dlp
+					echo '<span class="tsvi-warn">yt-dlp: NOT detected.</span>';
+					echo '<br>If installed via snap, the path is usually <code>/snap/bin/yt-dlp</code>. Set it manually in the field above, or install via SSH:';
+					echo '<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;margin-top:8px;">snap install yt-dlp
 
-# Or via pip if apt doesn\'t have it:
-# pip install -U yt-dlp</pre>';
+# OR via apt:
+# apt install -y yt-dlp
+
+# OR via pip:
+# pip install -U yt-dlp
+
+# Find the binary path:
+which yt-dlp</pre>';
 				}
 				?>
-				<br>Keep it updated monthly: <code>yt-dlp -U</code> (hosters change their code often).
+				<br>Keep it updated monthly: <code>yt-dlp -U</code> (or <code>snap refresh yt-dlp</code> if installed via snap).
 			</p>
 		</div>
 		<?php

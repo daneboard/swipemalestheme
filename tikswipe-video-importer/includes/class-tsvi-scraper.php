@@ -1011,12 +1011,23 @@ class TSVI_Scraper {
 			return $cached;
 		}
 
-		// Check common install paths.
+		// 1. Check admin-configured custom path first.
+		$custom = trim( get_option( 'tsvi_ytdlp_path', '' ) );
+		if ( $custom && is_executable( $custom ) ) {
+			$cached = $custom;
+			return $cached;
+		}
+
+		// 2. Check common install paths (including snap, pip, manual).
 		$paths = array(
-			'/usr/local/bin/yt-dlp',
-			'/usr/bin/yt-dlp',
-			'/opt/yt-dlp/yt-dlp',
-			'/root/.local/bin/yt-dlp',
+			'/snap/bin/yt-dlp',                  // snap install
+			'/usr/local/bin/yt-dlp',             // manual install
+			'/usr/bin/yt-dlp',                   // apt install
+			'/opt/yt-dlp/yt-dlp',                // /opt
+			'/root/.local/bin/yt-dlp',           // pip --user (root)
+			'/home/ubuntu/.local/bin/yt-dlp',    // pip --user (ubuntu)
+			'/var/www/.local/bin/yt-dlp',        // pip --user (www-data)
+			'/usr/local/sbin/yt-dlp',
 		);
 
 		foreach ( $paths as $p ) {
@@ -1026,8 +1037,8 @@ class TSVI_Scraper {
 			}
 		}
 
-		// Try resolving via which.
-		$result = @shell_exec( 'command -v yt-dlp 2>/dev/null' );
+		// 3. Try resolving via which/command (PHP's PATH is often limited).
+		$result = @shell_exec( 'PATH=/usr/local/bin:/usr/bin:/snap/bin:/usr/local/sbin:/usr/sbin:/sbin:/bin command -v yt-dlp 2>/dev/null' );
 		if ( ! empty( $result ) ) {
 			$cached = trim( $result );
 			return $cached;
@@ -1042,6 +1053,13 @@ class TSVI_Scraper {
 	 */
 	public static function ytdlp_available() {
 		return ! empty( self::ytdlp_binary() );
+	}
+
+	/**
+	 * Public accessor for the detected yt-dlp binary path.
+	 */
+	public static function ytdlp_binary_path() {
+		return self::ytdlp_binary();
 	}
 
 	/**
