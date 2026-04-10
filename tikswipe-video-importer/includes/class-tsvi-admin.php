@@ -488,7 +488,9 @@ class TSVI_Admin {
 		$bunny_token   = get_option( 'tsvi_bunny_token_key', '' );
 		?>
 		<div class="wrap">
-			<h1>Video Importer Settings</h1>
+			<h1>Video Importer Settings <span style="font-size:14px;font-weight:normal;color:#666;">v<?php echo esc_html( TSVI_VERSION ); ?></span></h1>
+			<p class="description">Plugin version: <code><?php echo esc_html( TSVI_VERSION ); ?></code> &nbsp;|&nbsp; Path: <code><?php echo esc_html( TSVI_PATH ); ?></code></p>
+
 			<form method="post" action="options.php">
 				<?php settings_fields( 'tsvi_settings' ); ?>
 
