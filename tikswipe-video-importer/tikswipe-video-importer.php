@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TSVI_VERSION', '1.11.5' );
+define( 'TSVI_VERSION', '1.12.0' );
 define( 'TSVI_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TSVI_URL', plugin_dir_url( __FILE__ ) );
 

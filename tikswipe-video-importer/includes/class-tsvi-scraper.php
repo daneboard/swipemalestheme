@@ -182,9 +182,9 @@ class TSVI_Scraper {
 			// Fallback to normal scraping if API fails.
 		}
 
-		// Known hoster (doodstream, streamtape, mixdrop, etc): try yt-dlp first.
+		// Known hoster (doodstream, streamtape, mixdrop, etc): try native extractor then yt-dlp.
 		if ( self::is_hoster_url( $url ) ) {
-			$result = self::ytdlp_extract( $url );
+			$result = self::resolve_hoster_url( $url );
 			if ( ! is_wp_error( $result ) ) {
 				return $result;
 			}
@@ -237,20 +237,23 @@ class TSVI_Scraper {
 		$hoster_embed = self::find_hoster_embed_url( $html );
 		if ( $hoster_embed ) {
 			TSVI_Log::write( 'scrape', 'Found hoster embed: ' . mb_substr( $hoster_embed, 0, 120 ) );
-			$ytdlp = self::ytdlp_extract( $hoster_embed );
-			if ( is_wp_error( $ytdlp ) ) {
-				TSVI_Log::write( 'scrape', 'yt-dlp failed on hoster: ' . $ytdlp->get_error_message() );
-			} elseif ( ! empty( $ytdlp['video_url'] ) ) {
-				TSVI_Log::write( 'scrape', 'yt-dlp resolved: ' . mb_substr( $ytdlp['video_url'], 0, 120 ) );
-				$video['video_url'] = $ytdlp['video_url'];
-				if ( ! empty( $ytdlp['duration'] ) ) {
-					$video['duration'] = $ytdlp['duration'];
+			$resolved = self::resolve_hoster_url( $hoster_embed );
+			if ( is_wp_error( $resolved ) ) {
+				TSVI_Log::write( 'scrape', 'Hoster resolve failed: ' . $resolved->get_error_message() );
+			} elseif ( ! empty( $resolved['video_url'] ) ) {
+				TSVI_Log::write( 'scrape', 'Hoster resolved: ' . mb_substr( $resolved['video_url'], 0, 120 ) );
+				$video['video_url'] = $resolved['video_url'];
+				if ( ! empty( $resolved['duration'] ) ) {
+					$video['duration'] = $resolved['duration'];
 				}
-				if ( ! empty( $ytdlp['width'] ) ) {
-					$video['width'] = $ytdlp['width'];
+				if ( ! empty( $resolved['width'] ) ) {
+					$video['width'] = $resolved['width'];
 				}
-				if ( ! empty( $ytdlp['height'] ) ) {
-					$video['height'] = $ytdlp['height'];
+				if ( ! empty( $resolved['height'] ) ) {
+					$video['height'] = $resolved['height'];
+				}
+				if ( empty( $video['thumbnail'] ) && ! empty( $resolved['thumbnail'] ) ) {
+					$video['thumbnail'] = $resolved['thumbnail'];
 				}
 			}
 		} else {
@@ -1052,6 +1055,125 @@ class TSVI_Scraper {
 
 		$cached = '';
 		return $cached;
+	}
+
+	/**
+	 * Check if a URL is a Doodstream/playmogo variant.
+	 */
+	private static function is_doodstream_url( $url ) {
+		return (bool) preg_match( '/doodstream\.com|playmogo\.com|d000d\.com|dood\.(?:ws|so|to|re|watch|com|la|pm|sh|wf|email|video|one|stream|cx|li|yt)|doods\.pro|ds2play\.com|d0o0d\.com|do0od\.com/i', $url );
+	}
+
+	/**
+	 * Try to resolve a hoster URL to a direct video URL.
+	 * Tries native Doodstream extractor first (handles Cloudflare via curl_cffi),
+	 * then falls back to yt-dlp.
+	 *
+	 * @return array|WP_Error Standard video data array or error.
+	 */
+	public static function resolve_hoster_url( $url ) {
+		// Doodstream / playmogo: use native Python extractor (yt-dlp removed support).
+		if ( self::is_doodstream_url( $url ) ) {
+			$native = self::doodstream_native_extract( $url );
+			if ( ! is_wp_error( $native ) ) {
+				return $native;
+			}
+			TSVI_Log::write( 'scrape', 'Doodstream native failed: ' . $native->get_error_message() );
+			// Fall through to yt-dlp.
+		}
+
+		// All other hosters: use yt-dlp.
+		return self::ytdlp_extract( $url );
+	}
+
+	/**
+	 * Native Doodstream/playmogo extractor via Python script (uses curl_cffi).
+	 * yt-dlp removed the Doodstream extractor, so we ship our own.
+	 *
+	 * @return array|WP_Error Standard video data array or error.
+	 */
+	public static function doodstream_native_extract( $url ) {
+		if ( ! function_exists( 'shell_exec' ) ) {
+			return new WP_Error( 'no_shell', 'shell_exec is disabled.' );
+		}
+
+		$script = TSVI_PATH . 'bin/doodstream.py';
+		if ( ! file_exists( $script ) ) {
+			return new WP_Error( 'no_script', 'Doodstream helper script not found at ' . $script );
+		}
+
+		$python = self::python_binary();
+		if ( ! $python ) {
+			return new WP_Error( 'no_python', 'python3 not available on server.' );
+		}
+
+		$cmd = escapeshellcmd( $python ) . ' ' . escapeshellarg( $script ) . ' ' . escapeshellarg( $url ) . ' 2>&1';
+		$output = @shell_exec( $cmd );
+
+		if ( empty( $output ) ) {
+			return new WP_Error( 'empty', 'Doodstream script returned no output.' );
+		}
+
+		// The script prints JSON on success, or an ERROR: line on failure.
+		$output = trim( $output );
+
+		// Find JSON object in output (skip any warnings).
+		$json_start = strpos( $output, '{' );
+		if ( $json_start === false ) {
+			return new WP_Error( 'no_json', 'Doodstream script: ' . mb_substr( $output, 0, 300 ) );
+		}
+
+		$json = substr( $output, $json_start );
+		$data = json_decode( $json, true );
+
+		if ( ! is_array( $data ) || empty( $data['video_url'] ) ) {
+			return new WP_Error( 'parse', 'Doodstream script invalid JSON: ' . mb_substr( $output, 0, 300 ) );
+		}
+
+		return array(
+			'source_url'  => $url,
+			'title'       => sanitize_text_field( $data['title'] ?? '' ),
+			'description' => '',
+			'video_url'   => esc_url_raw( $data['video_url'] ),
+			'thumbnail'   => esc_url_raw( $data['thumbnail'] ?? '' ),
+			'duration'    => intval( $data['duration'] ?? 0 ),
+			'width'       => 0,
+			'height'      => 0,
+			'source_tags' => array(),
+			'embed'       => '',
+		);
+	}
+
+	/**
+	 * Find python3 binary (needed for Doodstream native extractor).
+	 */
+	private static function python_binary() {
+		static $cached = null;
+		if ( $cached !== null ) {
+			return $cached;
+		}
+
+		$paths = array(
+			'/usr/bin/python3',
+			'/usr/local/bin/python3',
+			'/usr/bin/python',
+		);
+		foreach ( $paths as $p ) {
+			if ( is_executable( $p ) ) {
+				$cached = $p;
+				return $cached;
+			}
+		}
+
+		$cached = '';
+		return $cached;
+	}
+
+	/**
+	 * Check if the native Doodstream extractor is available.
+	 */
+	public static function doodstream_native_available() {
+		return self::python_binary() && file_exists( TSVI_PATH . 'bin/doodstream.py' );
 	}
 
 	/**

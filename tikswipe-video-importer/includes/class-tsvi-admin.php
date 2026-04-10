@@ -614,32 +614,50 @@ class TSVI_Admin {
 				<br>Manual check: <code>php <?php echo esc_html( TSVI_PATH . 'worker.php' ); ?> --status</code>
 			</p>
 
-			<h2>yt-dlp (for Doodstream, Streamtape, Mixdrop, etc)</h2>
-			<p class="description">yt-dlp enables scraping videos from 1000+ hosters that use obfuscated URLs. Without it, sites like Doodstream won't work.</p>
-			<p class="description"><strong>Important:</strong> install via pip with the <code>curl-cffi</code> extra to bypass Cloudflare anti-bot on Doodstream and similar hosters. The snap version doesn't include this.</p>
-			<p class="description">
-				<?php
-				if ( TSVI_Scraper::ytdlp_available() ) {
-					$bin = TSVI_Scraper::ytdlp_binary_path();
-					echo '<span class="tsvi-ok">yt-dlp: installed</span> — version ' . esc_html( TSVI_Scraper::ytdlp_version() );
-					echo '<br>Binary: <code>' . esc_html( $bin ) . '</code>';
-				} else {
-					echo '<span class="tsvi-warn">yt-dlp: NOT detected.</span>';
-				}
-				?>
-				<br><br><strong>Recommended install (with Cloudflare bypass):</strong>
-				<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;margin-top:8px;">snap remove yt-dlp 2&gt;/dev/null
+			<h2>Video Extractors</h2>
+			<p class="description">The plugin uses multiple strategies to resolve video URLs from hoster pages.</p>
+
+			<table class="form-table">
+				<tr>
+					<th>yt-dlp</th>
+					<td>
+						<?php
+						if ( TSVI_Scraper::ytdlp_available() ) {
+							$bin = TSVI_Scraper::ytdlp_binary_path();
+							echo '<span class="tsvi-ok">Installed</span> — version ' . esc_html( TSVI_Scraper::ytdlp_version() );
+							echo '<br><small>Binary: <code>' . esc_html( $bin ) . '</code></small>';
+						} else {
+							echo '<span class="tsvi-warn">NOT detected</span>';
+						}
+						?>
+						<p class="description">Handles Streamtape, Mixdrop, Fembed, Upstream, and 1000+ other hosters.</p>
+					</td>
+				</tr>
+				<tr>
+					<th>Native Doodstream</th>
+					<td>
+						<?php
+						if ( TSVI_Scraper::doodstream_native_available() ) {
+							echo '<span class="tsvi-ok">Available</span>';
+							echo '<br><small>Script: <code>' . esc_html( TSVI_PATH . 'bin/doodstream.py' ) . '</code></small>';
+						} else {
+							echo '<span class="tsvi-warn">Script or python3 not found</span>';
+						}
+						?>
+						<p class="description">Custom Python extractor for Doodstream/playmogo (yt-dlp removed this extractor).</p>
+					</td>
+				</tr>
+			</table>
+
+			<h3>Install / update everything</h3>
+			<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;">snap remove yt-dlp 2&gt;/dev/null
 apt install -y python3-pip
 pip install -U "yt-dlp[default,curl-cffi]" --break-system-packages
 
 # Verify:
-which yt-dlp
 yt-dlp --version
-
-# Test with a doodstream URL:
-yt-dlp --impersonate chrome -g "https://doodstream.com/e/SOMEID"</pre>
-				Updates: <code>pip install -U "yt-dlp[default,curl-cffi]" --break-system-packages</code> (run monthly)
-			</p>
+python3 -c "import curl_cffi; print('curl_cffi OK')"</pre>
+			<p class="description">Updates (run monthly): <code>pip install -U "yt-dlp[default,curl-cffi]" --break-system-packages</code></p>
 		</div>
 		<?php
 	}
