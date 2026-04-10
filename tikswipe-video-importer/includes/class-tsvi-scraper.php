@@ -236,8 +236,12 @@ class TSVI_Scraper {
 		// Many aggregator sites embed players from hosters that yt-dlp can resolve.
 		$hoster_embed = self::find_hoster_embed_url( $html );
 		if ( $hoster_embed ) {
+			TSVI_Log::write( 'scrape', 'Found hoster embed: ' . mb_substr( $hoster_embed, 0, 120 ) );
 			$ytdlp = self::ytdlp_extract( $hoster_embed );
-			if ( ! is_wp_error( $ytdlp ) && ! empty( $ytdlp['video_url'] ) ) {
+			if ( is_wp_error( $ytdlp ) ) {
+				TSVI_Log::write( 'scrape', 'yt-dlp failed on hoster: ' . $ytdlp->get_error_message() );
+			} elseif ( ! empty( $ytdlp['video_url'] ) ) {
+				TSVI_Log::write( 'scrape', 'yt-dlp resolved: ' . mb_substr( $ytdlp['video_url'], 0, 120 ) );
 				$video['video_url'] = $ytdlp['video_url'];
 				if ( ! empty( $ytdlp['duration'] ) ) {
 					$video['duration'] = $ytdlp['duration'];
@@ -249,6 +253,8 @@ class TSVI_Scraper {
 					$video['height'] = $ytdlp['height'];
 				}
 			}
+		} else {
+			TSVI_Log::write( 'scrape', 'No hoster embed found in HTML for: ' . mb_substr( $url, 0, 120 ) . ' (HTML size: ' . strlen( $html ) . ')' );
 		}
 
 		// 4a. Fallback to normal video URL extraction strategies.
