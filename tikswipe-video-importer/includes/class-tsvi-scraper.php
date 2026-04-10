@@ -955,7 +955,7 @@ class TSVI_Scraper {
 	private static function hoster_regex() {
 		return '(?:'
 			// Doodstream
-			. 'd000d\.com|dood\.(?:ws|so|to|re|watch|com|la|pm|sh|wf|email|video|one)|doods\.pro|ds2play\.com'
+			. 'doodstream\.com|d000d\.com|dood\.(?:ws|so|to|re|watch|com|la|pm|sh|wf|email|video|one|stream|cx|li|yt)|doods\.pro|ds2play\.com|d0o0d\.com|do0od\.com'
 			// Streamtape
 			. '|streamtape\.(?:com|net|site|xyz|to)|streamta\.pe|strtape\.(?:cloud|tech)|tapewithadblock\.org'
 			// Mixdrop
