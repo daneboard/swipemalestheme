@@ -661,7 +661,12 @@ class TSVI_Admin {
 
 			<?php
 			// Also show worker.log if it exists.
-			$worker_log = TSVI_PATH . 'worker.log';
+			$upload_dir = wp_upload_dir();
+			$worker_log = $upload_dir['basedir'] . '/tsvi-logs/worker.log';
+			// Check legacy location for backward compat.
+			if ( ! file_exists( $worker_log ) && file_exists( TSVI_PATH . 'worker.log' ) ) {
+				$worker_log = TSVI_PATH . 'worker.log';
+			}
 			if ( file_exists( $worker_log ) ) :
 				$wlines = file( $worker_log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
 				$wlines = $wlines ? array_slice( $wlines, -100 ) : array();

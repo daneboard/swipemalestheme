@@ -232,8 +232,29 @@ class TSVI_Scraper {
 			$video['thumbnail'] = self::absolute_url( $thumb, $base_url );
 		}
 
-		// 4. Video URL — try multiple strategies.
-		$video['video_url'] = self::extract_video_url( $doc, $xpath, $html, $base_url );
+		// 4. Video URL — check for embedded hoster iframe first (Doodstream, Streamtape, etc).
+		// Many aggregator sites embed players from hosters that yt-dlp can resolve.
+		$hoster_embed = self::find_hoster_embed_url( $html );
+		if ( $hoster_embed ) {
+			$ytdlp = self::ytdlp_extract( $hoster_embed );
+			if ( ! is_wp_error( $ytdlp ) && ! empty( $ytdlp['video_url'] ) ) {
+				$video['video_url'] = $ytdlp['video_url'];
+				if ( ! empty( $ytdlp['duration'] ) ) {
+					$video['duration'] = $ytdlp['duration'];
+				}
+				if ( ! empty( $ytdlp['width'] ) ) {
+					$video['width'] = $ytdlp['width'];
+				}
+				if ( ! empty( $ytdlp['height'] ) ) {
+					$video['height'] = $ytdlp['height'];
+				}
+			}
+		}
+
+		// 4a. Fallback to normal video URL extraction strategies.
+		if ( empty( $video['video_url'] ) ) {
+			$video['video_url'] = self::extract_video_url( $doc, $xpath, $html, $base_url );
+		}
 
 		// 4b. Pre-resolve redirects so the stored URL is the final direct one.
 		// This avoids re-scraping later when the original redirect link expires.
@@ -929,37 +950,50 @@ class TSVI_Scraper {
 	   ------------------------------------------------------------------ */
 
 	/**
+	 * Combined hoster regex (used by both is_hoster_url and find_hoster_embed_url).
+	 */
+	private static function hoster_regex() {
+		return '(?:'
+			// Doodstream
+			. 'd000d\.com|dood\.(?:ws|so|to|re|watch|com|la|pm|sh|wf|email|video|one)|doods\.pro|ds2play\.com'
+			// Streamtape
+			. '|streamtape\.(?:com|net|site|xyz|to)|streamta\.pe|strtape\.(?:cloud|tech)|tapewithadblock\.org'
+			// Mixdrop
+			. '|mixdrop\.(?:co|to|sx|club|ag|bz|ch|is|ps|gl|nu)'
+			// StreamSB
+			. '|streamsb\.net|sbfast\.com|sbrapid\.com|sblona\.com|sbflix\.xyz|sbanh\.com|sblanh\.com|sbchill\.com|vidcloud\.co'
+			// Upstream
+			. '|upstream\.to'
+			// MP4Upload
+			. '|mp4upload\.com'
+			// Fembed
+			. '|fembed\.com|feurl\.com|anime789\.com|fembad\.org|femoload\.xyz|diasfem\.com|sharinglink\.club'
+			// Other common
+			. '|ok\.ru|odnoklassniki\.ru'
+			. '|filemoon\.(?:sx|to|in|nl|la|link|wf|pro|art)'
+			. '|vidoza\.(?:net|org|co)'
+			. '|voe\.sx|voe-network\.net|voe-un\.blocked\.page'
+			. ')';
+	}
+
+	/**
 	 * Detect known embed hosters that need yt-dlp to resolve the direct URL.
 	 */
 	private static function is_hoster_url( $url ) {
-		$patterns = array(
-			// Doodstream
-			'/d000d\.com|dood\.(ws|so|to|re|watch|com|la|pm|sh|wf|email|video|one)|doods\.pro|ds2play\.com/i',
-			// Streamtape
-			'/streamtape\.(com|net|site|xyz|to)|streamta\.pe|strtape\.(cloud|tech)|tapewithadblock\.org/i',
-			// Mixdrop
-			'/mixdrop\.(co|to|sx|club|ag|bz|ch|is|ps|gl|nu)/i',
-			// StreamSB
-			'/streamsb\.net|sbfast\.com|sbrapid\.com|sblona\.com|sbflix\.xyz|sbanh\.com|sblanh\.com|sbchill\.com|vidcloud\.co/i',
-			// Upstream
-			'/upstream\.to/i',
-			// MP4Upload
-			'/mp4upload\.com/i',
-			// Fembed
-			'/fembed\.com|feurl\.com|anime789\.com|fembad\.org|femoload\.xyz|diasfem\.com|sharinglink\.club/i',
-			// Other common
-			'/ok\.ru|odnoklassniki\.ru/i',
-			'/filemoon\.(sx|to|in|nl|la|link|wf|pro|art)/i',
-			'/vidoza\.(net|org|co)/i',
-			'/voe\.sx|voe-network\.net|voe-un\.blocked\.page/i',
-		);
+		return (bool) preg_match( '#' . self::hoster_regex() . '#i', $url );
+	}
 
-		foreach ( $patterns as $pattern ) {
-			if ( preg_match( $pattern, $url ) ) {
-				return true;
-			}
+	/**
+	 * Scan HTML for an embedded hoster URL (iframe src, JS variables, data attrs).
+	 * Returns the first match or empty string.
+	 */
+	private static function find_hoster_embed_url( $html ) {
+		// Match any URL in the HTML pointing to a known hoster.
+		$pattern = '#https?://(?:[a-z0-9-]+\.)*' . self::hoster_regex() . '/[^\s"\'<>\\\\]+#i';
+		if ( preg_match( $pattern, $html, $m ) ) {
+			return html_entity_decode( $m[0] );
 		}
-		return false;
+		return '';
 	}
 
 	/**

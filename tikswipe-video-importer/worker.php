@@ -182,13 +182,25 @@ function tsvi_process_direct_queue( $batch_size ) {
 
 /**
  * Log a message with timestamp.
+ * Logs are written to wp-content/uploads/tsvi-logs/ (NOT inside the plugin folder,
+ * so plugin updates don't fail due to permission conflicts).
  */
 function tsvi_log( $msg ) {
+	static $log_file = null;
+
+	if ( $log_file === null ) {
+		$upload_dir = wp_upload_dir();
+		$log_dir    = $upload_dir['basedir'] . '/tsvi-logs';
+		if ( ! is_dir( $log_dir ) ) {
+			wp_mkdir_p( $log_dir );
+			file_put_contents( $log_dir . '/.htaccess', 'Deny from all' );
+		}
+		$log_file = $log_dir . '/worker.log';
+	}
+
 	$ts   = date( 'Y-m-d H:i:s' );
 	$line = "[{$ts}] {$msg}\n";
 
-	// Write to plugin log file.
-	$log_file = __DIR__ . '/worker.log';
 	file_put_contents( $log_file, $line, FILE_APPEND | LOCK_EX );
 
 	// Also output to stdout (visible when running manually).
