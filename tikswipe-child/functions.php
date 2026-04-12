@@ -71,11 +71,17 @@ function tikswipe_child_enqueue_scripts() {
 
 			wp_add_inline_script( 'tikswipe-vast-js', '
 				if (window.TikSwipeVAST) {
-					TikSwipeVAST.config.enabled   = true;
-					TikSwipeVAST.config.tagUrl     = ' . wp_json_encode( get_theme_mod( 'wpst_vast_tag_url', '' ) ) . ';
-					TikSwipeVAST.config.proxyUrl   = ' . wp_json_encode( admin_url( 'admin-ajax.php?action=tikswipe_vast_proxy' ) ) . ';
-					TikSwipeVAST.config.frequency  = ' . intval( get_theme_mod( 'wpst_vast_frequency', 3 ) ) . ';
-					TikSwipeVAST.config.skipAfter   = ' . intval( get_theme_mod( 'wpst_vast_skip_after', 5 ) ) . ';
+					TikSwipeVAST.config.enabled              = true;
+					TikSwipeVAST.config.tagUrl                = ' . wp_json_encode( get_theme_mod( 'wpst_vast_tag_url', '' ) ) . ';
+					TikSwipeVAST.config.proxyUrl              = ' . wp_json_encode( admin_url( 'admin-ajax.php?action=tikswipe_vast_proxy' ) ) . ';
+					TikSwipeVAST.config.frequency             = ' . intval( get_theme_mod( 'wpst_vast_frequency', 3 ) ) . ';
+					TikSwipeVAST.config.skipAfter             = ' . intval( get_theme_mod( 'wpst_vast_skip_after', 5 ) ) . ';
+					TikSwipeVAST.config.midrollEnabled        = ' . ( get_theme_mod( 'wpst_vast_midroll_enabled', false ) ? 'true' : 'false' ) . ';
+					TikSwipeVAST.config.midrollPercent        = ' . intval( get_theme_mod( 'wpst_vast_midroll_percent', 20 ) ) . ';
+					TikSwipeVAST.config.midrollTagUrl         = ' . wp_json_encode( get_theme_mod( 'wpst_vast_midroll_tag_url', '' ) ) . ';
+					TikSwipeVAST.config.interstitialEnabled   = ' . ( get_theme_mod( 'wpst_interstitial_enabled', false ) ? 'true' : 'false' ) . ';
+					TikSwipeVAST.config.interstitialZoneId    = ' . wp_json_encode( get_theme_mod( 'wpst_interstitial_zone_id', '' ) ) . ';
+					TikSwipeVAST.config.interstitialSrc       = "https://a.pemsrv.com/ad-provider.js";
 				}
 			', 'after' );
 		}
@@ -493,6 +499,113 @@ function tikswipe_child_vast_customizer_fields() {
 			),
 		)
 	);
+
+	// --- Mid-roll settings ---
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'toggle',
+			'settings'        => 'wpst_vast_midroll_enabled',
+			'label'           => esc_html__( 'Enable Mid-roll VAST Ad', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Show a second VAST ad during content video playback.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => false,
+			'priority'        => 60,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'slider',
+			'settings'        => 'wpst_vast_midroll_percent',
+			'label'           => esc_html__( 'Mid-roll trigger (%)', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Show mid-roll when content video reaches this percentage.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => 20,
+			'choices'         => array(
+				'min'  => 5,
+				'max'  => 80,
+				'step' => 5,
+			),
+			'priority'        => 61,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_midroll_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'text',
+			'settings'        => 'wpst_vast_midroll_tag_url',
+			'label'           => esc_html__( 'Mid-roll VAST Tag URL', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Leave empty to use the same tag URL as pre-roll.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => '',
+			'priority'        => 62,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_midroll_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+
+	// --- Interstitial fallback settings ---
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'toggle',
+			'settings'        => 'wpst_interstitial_enabled',
+			'label'           => esc_html__( 'Enable Interstitial Fallback', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Show an interstitial ad when VAST returns no fill.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => false,
+			'priority'        => 70,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'text',
+			'settings'        => 'wpst_interstitial_zone_id',
+			'label'           => esc_html__( 'Interstitial Zone ID', 'tikswipe-child' ),
+			'description'     => esc_html__( 'ExoClick zone ID for interstitial ads.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => '',
+			'priority'        => 71,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_interstitial_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
 }
 add_action( 'init', 'tikswipe_child_vast_customizer_fields', 20 );
 
@@ -582,8 +695,21 @@ add_action( 'wp_enqueue_scripts', 'tikswipe_child_ga4_enqueue', 25 );
  * Fetches the VAST XML server-side to avoid cross-origin issues.
  */
 function tikswipe_child_vast_proxy() {
-	$url = get_theme_mod( 'wpst_vast_tag_url', '' );
+	// Accept dynamic VAST URL via query param (for mid-roll with different tag)
+	// but only allow URLs from known ad networks for security.
+	$url = isset( $_GET['vast_url'] ) ? esc_url_raw( $_GET['vast_url'] ) : '';
+	if ( empty( $url ) ) {
+		$url = get_theme_mod( 'wpst_vast_tag_url', '' );
+	}
+
 	if ( ! $url ) {
+		wp_die( '' );
+	}
+
+	// Security: only proxy requests to known ad network domains.
+	$allowed_hosts = array( 'syndication.exoclick.com', 'syndication.exosrv.com', 'ads.exoclick.com', 'main.exoclick.com', 'a.pemsrv.com', 'a.magsrv.com' );
+	$host          = wp_parse_url( $url, PHP_URL_HOST );
+	if ( ! $host || ! in_array( $host, $allowed_hosts, true ) ) {
 		wp_die( '' );
 	}
 
