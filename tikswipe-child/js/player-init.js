@@ -123,6 +123,8 @@ jQuery(document).ready(function () {
 				dataType: 'json',
 				beforeSend: function () {},
 				success: function (response) {
+					// Active slide: preload fully for instant playback.
+					// Other slides: metadata only — saves bandwidth until swiped to.
 					var player = videojs(videoPlayerId, {
 						playsinline: true,
 						muted: globalMuted,
@@ -130,7 +132,7 @@ jQuery(document).ready(function () {
 						controls: true,
 						loop: true,
 						responsive: true,
-						preload: 'auto',
+						preload: isActiveSlide ? 'auto' : 'metadata',
 						textTrackSettings: false,
 					});
 					player.poster(response.video_poster_url);
@@ -189,11 +191,13 @@ jQuery(document).ready(function () {
 					return;
 				}
 
-				// Apply global mute state and sync icon on slide change
+				// Apply global mute state, sync icon, and upgrade preload on slide change
 				if (slideVideo && slideVideo.id) {
 					var p = videojs.getPlayer(slideVideo.id);
 					if (p) {
 						p.muted(globalMuted);
+						// Switch from metadata-only to full preload now that this slide is active
+						p.preload('auto');
 					}
 					updateMuteIcon(jQuery(slide), globalMuted);
 				}
