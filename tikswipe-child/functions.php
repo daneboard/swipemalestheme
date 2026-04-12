@@ -497,6 +497,86 @@ function tikswipe_child_vast_customizer_fields() {
 add_action( 'init', 'tikswipe_child_vast_customizer_fields', 20 );
 
 /**
+ * =========================================================================
+ * GA4 ANALYTICS — Customizer setting + gtag.js + event tracking
+ * =========================================================================
+ */
+
+/**
+ * Register GA4 Measurement ID customizer field.
+ */
+function tikswipe_child_ga4_customizer_fields() {
+	if ( ! class_exists( 'Kirki' ) ) {
+		return;
+	}
+
+	Kirki::add_section(
+		'tikswipe_analytics_section',
+		array(
+			'title'    => esc_html__( 'Analytics (GA4)', 'tikswipe-child' ),
+			'priority' => 200,
+		)
+	);
+
+	Kirki::add_field(
+		'tikswipe_analytics_config',
+		array(
+			'type'        => 'text',
+			'settings'    => 'tikswipe_ga4_id',
+			'label'       => esc_html__( 'GA4 Measurement ID', 'tikswipe-child' ),
+			'description' => esc_html__( 'Enter your Google Analytics 4 Measurement ID (e.g. G-XXXXXXXXXX). Leave empty to disable.', 'tikswipe-child' ),
+			'section'     => 'tikswipe_analytics_section',
+			'default'     => '',
+			'priority'    => 10,
+		)
+	);
+}
+add_action( 'init', 'tikswipe_child_ga4_customizer_fields', 20 );
+
+/**
+ * Inject gtag.js in <head> when GA4 ID is set.
+ */
+function tikswipe_child_ga4_head() {
+	$ga4_id = get_theme_mod( 'tikswipe_ga4_id', '' );
+	if ( empty( $ga4_id ) ) {
+		return;
+	}
+	$ga4_id = sanitize_text_field( $ga4_id );
+	?>
+	<script async src="https://www.googletagmanager.com/gtag/js?id=<?php echo esc_attr( $ga4_id ); ?>"></script>
+	<script>
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', '<?php echo esc_js( $ga4_id ); ?>');
+	</script>
+	<?php
+}
+add_action( 'wp_head', 'tikswipe_child_ga4_head', 1 );
+
+/**
+ * Enqueue analytics event tracking JS (only on pages with video player).
+ */
+function tikswipe_child_ga4_enqueue() {
+	$ga4_id = get_theme_mod( 'tikswipe_ga4_id', '' );
+	if ( empty( $ga4_id ) ) {
+		return;
+	}
+
+	// Only load on pages that have the video player (swiper pages).
+	if ( ! wp_script_is( 'player-init-js', 'enqueued' ) && ! wp_script_is( 'player-init-js', 'registered' ) ) {
+		return;
+	}
+
+	wp_enqueue_script(
+		'tikswipe-analytics-js',
+		get_stylesheet_directory_uri() . '/js/analytics.js',
+		array( 'jquery' ),
+		wp_get_theme()->get( 'Version' ) . '.' . filemtime( get_stylesheet_directory() . '/js/analytics.js' ),
+		true
+	);
+}
+add_action( 'wp_enqueue_scripts', 'tikswipe_child_ga4_enqueue', 25 );
  * CORS proxy for VAST tag requests.
  * Fetches the VAST XML server-side to avoid cross-origin issues.
  */
