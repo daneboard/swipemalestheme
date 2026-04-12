@@ -691,6 +691,8 @@ function tikswipe_child_ga4_enqueue() {
 	);
 }
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_ga4_enqueue', 25 );
+
+/**
  * CORS proxy for VAST tag requests.
  * Fetches the VAST XML server-side to avoid cross-origin issues.
  */
