@@ -506,6 +506,12 @@
 
 			slide.appendChild(overlay);
 
+			// Hide header and footer during ad (header z-index blocks overlay controls)
+			var header = document.querySelector('header');
+			var footer = document.querySelector('footer');
+			if (header) header.style.display = 'none';
+			if (footer) footer.style.display = 'none';
+
 			// --- Fire impressions immediately ---
 			VAST.firePixels(adData.impressions);
 
@@ -658,6 +664,9 @@
 				if (overlay.parentNode) {
 					overlay.parentNode.removeChild(overlay);
 				}
+				// Restore header and footer
+				if (header) header.style.display = '';
+				if (footer) footer.style.display = '';
 				VAST.adPlaying = false;
 				onComplete();
 			}
