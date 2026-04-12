@@ -123,8 +123,10 @@ jQuery(document).ready(function () {
 				dataType: 'json',
 				beforeSend: function () {},
 				success: function (response) {
-					// Active slide: preload fully for instant playback.
-					// Other slides: metadata only — saves bandwidth until swiped to.
+					// All slides start with preload 'none' — video data only
+					// downloads when .play() is called (progressive buffering).
+					// This avoids downloading full video files for content
+					// the user swipes past quickly.
 					var player = videojs(videoPlayerId, {
 						playsinline: true,
 						muted: globalMuted,
@@ -132,7 +134,7 @@ jQuery(document).ready(function () {
 						controls: true,
 						loop: true,
 						responsive: true,
-						preload: isActiveSlide ? 'auto' : 'metadata',
+						preload: 'none',
 						textTrackSettings: false,
 					});
 					player.poster(response.video_poster_url);
@@ -196,8 +198,7 @@ jQuery(document).ready(function () {
 					var p = videojs.getPlayer(slideVideo.id);
 					if (p) {
 						p.muted(globalMuted);
-						// Switch from metadata-only to full preload now that this slide is active
-						p.preload('auto');
+						// No need to change preload — .play() triggers progressive buffering
 					}
 					updateMuteIcon(jQuery(slide), globalMuted);
 				}
