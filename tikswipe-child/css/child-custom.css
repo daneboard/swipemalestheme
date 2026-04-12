@@ -1019,6 +1019,25 @@ body.page-template-template-favorites-php main {
     opacity: .45;
     pointer-events: none;
 }
+.wpst-vast-mute {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0,0,0,.7);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    z-index: 102;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    transition: background .2s;
+}
+.wpst-vast-mute:hover {
+    background: rgba(255,255,255,.2);
+}
 .wpst-vast-clickarea {
     position: absolute;
     inset: 0;
