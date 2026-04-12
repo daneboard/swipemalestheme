@@ -312,6 +312,41 @@ class TSVI_Bunny {
 			$entry['error'] = $cdn_url->get_error_message();
 		} else {
 			$entry['cdn_url'] = $cdn_url;
+
+			// Create a WordPress post for the uploaded video, status: pending review.
+			// Title is the CDN URL itself for easy identification/copy.
+			$post_id = wp_insert_post( array(
+				'post_title'   => $cdn_url,
+				'post_content' => $cdn_url,
+				'post_status'  => 'pending',
+				'post_type'    => 'post',
+				'post_author'  => get_current_user_id() ?: 1,
+			), true );
+
+			if ( ! is_wp_error( $post_id ) && $post_id ) {
+				set_post_format( $post_id, 'video' );
+				update_post_meta( $post_id, 'video_url', esc_url_raw( $cdn_url ) );
+				update_post_meta( $post_id, '_tsvi_source_url', esc_url_raw( $original_url ) );
+				update_post_meta( $post_id, '_tsvi_bunny_status', 'uploaded' );
+				update_post_meta( $post_id, 'post_views_count', '0' );
+				$ext = pathinfo( wp_parse_url( $cdn_url, PHP_URL_PATH ), PATHINFO_EXTENSION );
+				if ( $ext ) {
+					update_post_meta( $post_id, '_video_extension', strtolower( $ext ) );
+				}
+				// Reset thumb generator flag so it picks up the new video.
+				delete_post_meta( $post_id, '_mtg_thumb_done' );
+				// Trigger save_post hooks (thumb generator etc.).
+				wp_update_post( array( 'ID' => $post_id ) );
+
+				$entry['post_id'] = $post_id;
+				TSVI_Log::write( 'import', 'Direct upload created post #' . $post_id . ' (pending review)', array(
+					'cdn'    => mb_substr( $cdn_url, 0, 80 ),
+					'source' => mb_substr( $original_url, 0, 80 ),
+				) );
+			} else {
+				$err_msg = is_wp_error( $post_id ) ? $post_id->get_error_message() : 'unknown';
+				TSVI_Log::error( 'Direct upload post creation failed', array( 'error' => $err_msg ) );
+			}
 		}
 
 		$history   = get_option( 'tsvi_direct_upload_history', array() );

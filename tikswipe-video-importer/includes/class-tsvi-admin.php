@@ -156,22 +156,27 @@ class TSVI_Admin {
 				</h2>
 				<?php if ( $history ) : ?>
 					<table class="wp-list-table widefat striped">
-						<thead><tr><th>Date</th><th>Source URL</th><th>CDN URL</th><th>Status</th></tr></thead>
+						<thead><tr><th style="width:90px;">Date</th><th>Source URL</th><th>CDN URL</th><th style="width:120px;">Status / Post</th></tr></thead>
 						<tbody>
 						<?php foreach ( $history as $h ) : ?>
 							<tr>
 								<td><small><?php echo esc_html( $h['date'] ); ?></small></td>
-								<td><small><?php echo esc_html( mb_substr( $h['source'], 0, 60 ) ); ?>...</small></td>
+								<td>
+									<input type="text" readonly value="<?php echo esc_attr( $h['source'] ); ?>" class="regular-text tsvi-copy-field" onclick="this.select();document.execCommand('copy');" title="Click to copy original URL">
+								</td>
 								<td>
 									<?php if ( ! empty( $h['cdn_url'] ) ) : ?>
-										<input type="text" readonly value="<?php echo esc_attr( $h['cdn_url'] ); ?>" class="regular-text tsvi-copy-field" onclick="this.select();document.execCommand('copy');" title="Click to copy">
+										<input type="text" readonly value="<?php echo esc_attr( $h['cdn_url'] ); ?>" class="regular-text tsvi-copy-field" onclick="this.select();document.execCommand('copy');" title="Click to copy CDN URL">
 									<?php else : ?>
 										—
 									<?php endif; ?>
 								</td>
 								<td>
 									<?php if ( ! empty( $h['error'] ) ) : ?>
-										<span class="tsvi-err"><?php echo esc_html( $h['error'] ); ?></span>
+										<span class="tsvi-err" title="<?php echo esc_attr( $h['error'] ); ?>"><?php echo esc_html( mb_substr( $h['error'], 0, 30 ) ); ?></span>
+									<?php elseif ( ! empty( $h['post_id'] ) ) : ?>
+										<span class="tsvi-ok">OK</span>
+										<br><a href="<?php echo esc_url( get_edit_post_link( $h['post_id'] ) ); ?>" target="_blank">Edit #<?php echo intval( $h['post_id'] ); ?></a>
 									<?php else : ?>
 										<span class="tsvi-ok">OK</span>
 									<?php endif; ?>
