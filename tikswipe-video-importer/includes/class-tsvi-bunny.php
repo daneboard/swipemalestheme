@@ -375,7 +375,16 @@ class TSVI_Bunny {
 			return $validation;
 		}
 
-		// Step 3: Upload to Bunny Storage via PUT.
+		// Step 3: Transcode to 720p if FFmpeg is available and video is larger.
+		$upload_file = $tmp;
+		$transcoded  = self::transcode_video( $tmp );
+		if ( $transcoded && $transcoded !== $tmp ) {
+			$upload_file = $transcoded;
+			// Ensure filename has .mp4 extension (transcode always outputs MP4).
+			$filename = preg_replace( '/\.[^.]+$/', '.mp4', $filename );
+		}
+
+		// Step 4: Upload to Bunny Storage via PUT.
 		$host = 'storage.bunnycdn.com';
 		if ( $region && $region !== 'default' ) {
 			$host = $region . '.' . $host;
@@ -383,16 +392,141 @@ class TSVI_Bunny {
 
 		$storage_path = '/' . $storage_zone . '/' . trim( $folder, '/' ) . '/' . $filename;
 
-		$upload = self::curl_upload( 'https://' . $host . $storage_path, $tmp, $api_key );
+		$upload = self::curl_upload( 'https://' . $host . $storage_path, $upload_file, $api_key );
 
-		// Clean up temp file immediately.
+		// Clean up temp files immediately.
 		@unlink( $tmp );
+		if ( $transcoded && $transcoded !== $tmp ) {
+			@unlink( $transcoded );
+		}
 
 		if ( is_wp_error( $upload ) ) {
 			return $upload;
 		}
 
 		return self::get_cdn_url( trim( $folder, '/' ) . '/' . $filename );
+	}
+
+	/**
+	 * Transcode video to 720p using FFmpeg.
+	 *
+	 * - If video is already 720p or smaller, skips transcoding.
+	 * - If FFmpeg is not installed, returns null (graceful fallback).
+	 * - Returns path to transcoded file, or null to use original.
+	 *
+	 * @param string $input_path Path to the downloaded video file.
+	 * @return string|null Path to transcoded file, or null to use original.
+	 */
+	private static function transcode_video( $input_path ) {
+		$ffmpeg  = self::ffmpeg_binary();
+		$ffprobe = self::ffprobe_binary();
+
+		if ( ! $ffmpeg ) {
+			return null; // FFmpeg not installed — use original.
+		}
+
+		// Probe video height to decide if transcoding is needed.
+		$height = 0;
+		if ( $ffprobe ) {
+			$probe_cmd = escapeshellcmd( $ffprobe )
+				. ' -v error -select_streams v:0 -show_entries stream=height'
+				. ' -of csv=p=0 ' . escapeshellarg( $input_path )
+				. ' 2>/dev/null';
+			$probe_out = trim( @shell_exec( $probe_cmd ) ?? '' );
+			$height    = intval( $probe_out );
+		}
+
+		// Skip if already 720p or smaller (or if probe failed and file is < 30MB).
+		if ( $height > 0 && $height <= 720 ) {
+			$size_mb = filesize( $input_path ) / 1048576;
+			if ( $size_mb < 30 ) {
+				TSVI_Log::write( 'upload', 'Transcode skipped: ' . $height . 'p, ' . round( $size_mb, 1 ) . 'MB (already small)' );
+				return null;
+			}
+		}
+
+		if ( $height === 0 && filesize( $input_path ) < 15000000 ) {
+			// Can't detect height but file is < 15MB — skip to be safe.
+			TSVI_Log::write( 'upload', 'Transcode skipped: probe failed, file < 15MB' );
+			return null;
+		}
+
+		// Build output path.
+		$output_path = $input_path . '_720p.mp4';
+		$original_size = filesize( $input_path );
+
+		TSVI_Log::write( 'upload', 'Transcoding: ' . $height . 'p → 720p, original ' . round( $original_size / 1048576, 1 ) . 'MB' );
+
+		// FFmpeg command: re-encode to 720p H.264 with faststart.
+		$cmd = escapeshellcmd( $ffmpeg )
+			. ' -y -i ' . escapeshellarg( $input_path )
+			. ' -vf "scale=-2:720"'
+			. ' -c:v libx264 -crf 23 -preset medium'
+			. ' -c:a aac -b:a 128k'
+			. ' -movflags +faststart'
+			. ' -threads 0'
+			. ' ' . escapeshellarg( $output_path )
+			. ' 2>&1';
+
+		$output   = @shell_exec( $cmd );
+		$success  = file_exists( $output_path ) && filesize( $output_path ) > 10000;
+
+		if ( ! $success ) {
+			TSVI_Log::write( 'error', 'Transcode failed: ' . mb_substr( $output ?? '', -300 ) );
+			@unlink( $output_path );
+			return null; // Fallback: use original.
+		}
+
+		$new_size = filesize( $output_path );
+		$saved    = round( ( 1 - $new_size / $original_size ) * 100 );
+		TSVI_Log::write( 'upload', 'Transcoded OK: ' . round( $new_size / 1048576, 1 ) . 'MB (saved ' . $saved . '%)' );
+
+		return $output_path;
+	}
+
+	/**
+	 * Find FFmpeg binary.
+	 */
+	private static function ffmpeg_binary() {
+		static $cached = null;
+		if ( $cached !== null ) {
+			return $cached;
+		}
+		foreach ( array( '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', '/snap/bin/ffmpeg' ) as $p ) {
+			if ( is_executable( $p ) ) {
+				$cached = $p;
+				return $cached;
+			}
+		}
+		$result = @shell_exec( 'command -v ffmpeg 2>/dev/null' );
+		$cached = ! empty( $result ) ? trim( $result ) : '';
+		return $cached;
+	}
+
+	/**
+	 * Find FFprobe binary.
+	 */
+	private static function ffprobe_binary() {
+		static $cached = null;
+		if ( $cached !== null ) {
+			return $cached;
+		}
+		foreach ( array( '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', '/snap/bin/ffprobe' ) as $p ) {
+			if ( is_executable( $p ) ) {
+				$cached = $p;
+				return $cached;
+			}
+		}
+		$result = @shell_exec( 'command -v ffprobe 2>/dev/null' );
+		$cached = ! empty( $result ) ? trim( $result ) : '';
+		return $cached;
+	}
+
+	/**
+	 * Check if FFmpeg is available.
+	 */
+	public static function ffmpeg_available() {
+		return ! empty( self::ffmpeg_binary() );
 	}
 
 	/**

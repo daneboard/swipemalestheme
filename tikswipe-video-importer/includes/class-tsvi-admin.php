@@ -599,6 +599,19 @@ class TSVI_Admin {
 				<?php submit_button(); ?>
 			</form>
 
+			<h2>FFmpeg Transcode</h2>
+			<p class="description">Videos are automatically transcoded to 720p H.264 before uploading to Bunny CDN. Reduces file size by ~75%. If FFmpeg is not installed, videos are uploaded in original quality (no errors).</p>
+			<p class="description">
+				<?php
+				if ( TSVI_Bunny::ffmpeg_available() ) {
+					echo '<span class="tsvi-ok">FFmpeg: installed</span>';
+				} else {
+					echo '<span class="tsvi-warn">FFmpeg: NOT detected — videos will upload at original size.</span>';
+					echo '<br>Install: <code>apt install -y ffmpeg</code>';
+				}
+				?>
+			</p>
+
 			<h2>CLI Worker (recommended)</h2>
 			<p class="description">The CLI worker processes uploads in the background without web server timeouts. Add this line to your server crontab (<code>crontab -e</code>):</p>
 			<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;">* * * * * php <?php echo esc_html( TSVI_PATH . 'worker.php' ); ?> >> /dev/null 2>&amp;1</pre>
