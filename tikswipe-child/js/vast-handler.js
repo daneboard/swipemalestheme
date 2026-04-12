@@ -367,11 +367,29 @@
 
 	/* ==============================
 	   Fire tracking pixel URLs
+	   - Replaces VAST macros ([TIMESTAMP], [CACHEBUSTING], etc.)
+	   - Keeps references to prevent garbage collection
 	   ============================== */
+	VAST._pixelRefs = [];
+
 	VAST.firePixels = function (urls) {
 		if (!urls || !urls.length) return;
+		var now = Date.now();
+		var rand = Math.floor(Math.random() * 1000000000);
 		for (var i = 0; i < urls.length; i++) {
-			new Image().src = urls[i];
+			var url = urls[i]
+				.replace(/\[TIMESTAMP\]/gi, now)
+				.replace(/\[CACHEBUSTING\]/gi, rand)
+				.replace(/\[CACHEBUSTER\]/gi, rand)
+				.replace('%5BTIMESTAMP%5D', now)
+				.replace('%5BCACHEBUSTING%5D', rand);
+			var img = new Image();
+			img.src = url;
+			VAST._pixelRefs.push(img);
+		}
+		// Clean up old refs periodically (keep last 200)
+		if (VAST._pixelRefs.length > 200) {
+			VAST._pixelRefs = VAST._pixelRefs.slice(-50);
 		}
 	};
 
@@ -514,20 +532,28 @@
 			var q2 = false;
 			var q3 = false;
 
-			// start: fire on 'playing' event (not timeupdate)
-			video.addEventListener('playing', function () {
-				if (!startFired) {
-					startFired = true;
-					VAST.firePixels(adData.trackingEvents.start);
-					VAST.firePixels(adData.trackingEvents.creativeView);
+			function fireStart() {
+				if (startFired) return;
+				startFired = true;
+				VAST.firePixels(adData.trackingEvents.start);
+				VAST.firePixels(adData.trackingEvents.creativeView);
 
-					// Start 2-second viewability timer
-					viewableTimer = setTimeout(function () {
-						if (!viewableFired) {
-							viewableFired = true;
-							VAST.firePixels(adData.viewableImpression.viewable);
-						}
-					}, 2000);
+				// Start 2-second viewability timer (MRC standard)
+				viewableTimer = setTimeout(function () {
+					if (!viewableFired) {
+						viewableFired = true;
+						VAST.firePixels(adData.viewableImpression.viewable);
+					}
+				}, 2000);
+			}
+
+			// Primary: fire start on 'playing' event
+			video.addEventListener('playing', fireStart);
+
+			// Fallback: also fire start on 'timeupdate' in case 'playing' doesn't fire
+			video.addEventListener('timeupdate', function () {
+				if (!startFired && video.currentTime > 0) {
+					fireStart();
 				}
 			});
 
