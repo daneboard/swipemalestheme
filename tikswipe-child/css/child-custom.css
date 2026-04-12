@@ -979,7 +979,7 @@ body.page-template-template-favorites-php main {
 .wpst-vast-overlay {
     position: absolute;
     inset: 0;
-    z-index: 100;
+    z-index: 200;
     background: #000;
 }
 .wpst-vast-video {
