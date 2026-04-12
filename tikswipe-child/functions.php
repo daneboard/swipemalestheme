@@ -534,13 +534,20 @@ function tikswipe_child_ga4_customizer_fields() {
 add_action( 'init', 'tikswipe_child_ga4_customizer_fields', 20 );
 
 /**
- * Inject gtag.js in <head> when GA4 ID is set.
+ * Inject gtag.js in <head> — only when GA4 ID is set AND no other
+ * plugin (Site Kit, MonsterInsights, etc.) already provides it.
  */
 function tikswipe_child_ga4_head() {
 	$ga4_id = get_theme_mod( 'tikswipe_ga4_id', '' );
 	if ( empty( $ga4_id ) ) {
 		return;
 	}
+
+	// Skip if Google Site Kit or another analytics plugin already loads gtag.
+	if ( wp_script_is( 'google_gtagjs', 'enqueued' ) || wp_script_is( 'google_gtagjs', 'registered' ) ) {
+		return;
+	}
+
 	$ga4_id = sanitize_text_field( $ga4_id );
 	?>
 	<script async src="https://www.googletagmanager.com/gtag/js?id=<?php echo esc_attr( $ga4_id ); ?>"></script>
@@ -555,19 +562,13 @@ function tikswipe_child_ga4_head() {
 add_action( 'wp_head', 'tikswipe_child_ga4_head', 1 );
 
 /**
- * Enqueue analytics event tracking JS (only on pages with video player).
+ * Enqueue analytics event tracking JS.
+ *
+ * Loads if EITHER the Customizer GA4 ID is set OR an external plugin
+ * (e.g. Google Site Kit) already provides gtag(). The JS itself checks
+ * for gtag() and exits silently if absent.
  */
 function tikswipe_child_ga4_enqueue() {
-	$ga4_id = get_theme_mod( 'tikswipe_ga4_id', '' );
-	if ( empty( $ga4_id ) ) {
-		return;
-	}
-
-	// Only load on pages that have the video player (swiper pages).
-	if ( ! wp_script_is( 'player-init-js', 'enqueued' ) && ! wp_script_is( 'player-init-js', 'registered' ) ) {
-		return;
-	}
-
 	wp_enqueue_script(
 		'tikswipe-analytics-js',
 		get_stylesheet_directory_uri() . '/js/analytics.js',
