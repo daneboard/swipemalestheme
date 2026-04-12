@@ -156,9 +156,20 @@ class TSVI_Admin {
 				</h2>
 				<?php if ( $history ) : ?>
 					<table class="wp-list-table widefat striped">
-						<thead><tr><th style="width:90px;">Date</th><th>Source URL</th><th>CDN URL</th><th style="width:120px;">Status / Post</th></tr></thead>
+						<thead><tr><th style="width:90px;">Date</th><th>Source URL</th><th>CDN URL</th><th style="width:90px;">Status</th><th style="width:160px;">Pending Post</th></tr></thead>
 						<tbody>
-						<?php foreach ( $history as $h ) : ?>
+						<?php foreach ( $history as $h ) :
+							// Look up the live status of the post (if it still exists).
+							$post_status = '';
+							$post_exists = false;
+							if ( ! empty( $h['post_id'] ) ) {
+								$post_obj = get_post( $h['post_id'] );
+								if ( $post_obj ) {
+									$post_exists = true;
+									$post_status = $post_obj->post_status;
+								}
+							}
+							?>
 							<tr>
 								<td><small><?php echo esc_html( $h['date'] ); ?></small></td>
 								<td>
@@ -174,11 +185,21 @@ class TSVI_Admin {
 								<td>
 									<?php if ( ! empty( $h['error'] ) ) : ?>
 										<span class="tsvi-err" title="<?php echo esc_attr( $h['error'] ); ?>"><?php echo esc_html( mb_substr( $h['error'], 0, 30 ) ); ?></span>
-									<?php elseif ( ! empty( $h['post_id'] ) ) : ?>
-										<span class="tsvi-ok">OK</span>
-										<br><a href="<?php echo esc_url( get_edit_post_link( $h['post_id'] ) ); ?>" target="_blank">Edit #<?php echo intval( $h['post_id'] ); ?></a>
 									<?php else : ?>
 										<span class="tsvi-ok">OK</span>
+									<?php endif; ?>
+								</td>
+								<td>
+									<?php if ( ! $post_exists && ! empty( $h['post_id'] ) ) : ?>
+										<span class="tsvi-err">deleted</span>
+									<?php elseif ( $post_exists && $post_status !== 'publish' ) : ?>
+										<span class="tsvi-warn"><?php echo esc_html( $post_status ); ?></span>
+										<a class="button button-small" href="<?php echo esc_url( get_edit_post_link( $h['post_id'] ) ); ?>" target="_blank">Edit #<?php echo intval( $h['post_id'] ); ?></a>
+									<?php elseif ( $post_exists && $post_status === 'publish' ) : ?>
+										<span class="tsvi-ok">published</span>
+										<a class="button button-small" href="<?php echo esc_url( get_edit_post_link( $h['post_id'] ) ); ?>" target="_blank">Edit #<?php echo intval( $h['post_id'] ); ?></a>
+									<?php else : ?>
+										—
 									<?php endif; ?>
 								</td>
 							</tr>
