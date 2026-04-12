@@ -91,68 +91,100 @@ jQuery(document).ready(function () {
 		setTimeout(function () { btn.removeClass('wpst-pulse'); }, 300);
 	});
 
-	function videojs_init() {
-		jQuery('video-js').each(function () {
-			var videoPlayer = jQuery(this);
+	/**
+	 * Initialize a single VideoJS player.
+	 * @param {jQuery} $vjsEl  The video-js element.
+	 * @param {boolean} isActive  Whether this is the currently active slide.
+	 */
+	function initSinglePlayer($vjsEl, isActive) {
+		if ($vjsEl.hasClass('player-loaded')) return;
 
-			if (videoPlayer.hasClass('player-loaded')) {
-				return;
-			}
+		var videoPostId = $vjsEl.data('postid');
+		var videoPlayerId = $vjsEl.attr('id');
+		if (!videoPlayerId) return;
 
-			var videoPostId = videoPlayer.data('postid');
-			var videoPlayerId = videoPlayer.attr('id');
+		// Mark as loading to prevent double init from concurrent calls
+		$vjsEl.addClass('player-loading');
 
-			if (!videoPlayerId) {
-				return;
-			}
+		var shouldAutoplay = autoplay && isActive;
 
-			// Only autoplay the video in the currently active slide, not all videos at once.
-			var isActiveSlide = videoPlayer
-				.closest('.swiper-slide')
-				.hasClass('swiper-slide-active');
-			var shouldAutoplay = autoplay && isActiveSlide;
+		jQuery.ajax({
+			url: wpst_ajax_var.url,
+			type: 'POST',
+			data: {
+				action: 'wpst_media_data_fetchmeta',
+				nonce: wpst_ajax_var.nonce,
+				post_id: videoPostId,
+			},
+			dataType: 'json',
+			success: function (response) {
+				if ($vjsEl.hasClass('player-loaded')) return;
 
-			jQuery.ajax({
-				url: wpst_ajax_var.url,
-				type: 'POST',
-				data: {
-					action: 'wpst_media_data_fetchmeta',
-					nonce: wpst_ajax_var.nonce,
-					post_id: videoPostId,
-				},
-				dataType: 'json',
-				beforeSend: function () {},
-				success: function (response) {
-					// All slides start with preload 'none' — video data only
-					// downloads when .play() is called (progressive buffering).
-					// This avoids downloading full video files for content
-					// the user swipes past quickly.
-					var player = videojs(videoPlayerId, {
-						playsinline: true,
-						muted: globalMuted,
-						autoplay: shouldAutoplay,
-						controls: true,
-						loop: true,
-						responsive: true,
-						preload: 'none',
-						textTrackSettings: false,
-					});
-					player.poster(response.video_poster_url);
-					player.src({
-						type: response.video_type,
-						src: response.video_url,
-					});
-					videoPlayer.addClass('player-loaded');
+				var player = videojs(videoPlayerId, {
+					playsinline: true,
+					muted: globalMuted,
+					autoplay: shouldAutoplay,
+					controls: true,
+					loop: false,
+					responsive: true,
+					preload: 'none',
+					textTrackSettings: false,
+				});
+				player.poster(response.video_poster_url);
+				player.src({
+					type: response.video_type,
+					src: response.video_url,
+				});
+				$vjsEl.addClass('player-loaded').removeClass('player-loading');
 
-					// Sync mute icon for this slide
-					var parentSlide = videoPlayer.closest('.swiper-slide');
-					updateMuteIcon(parentSlide, globalMuted);
-				},
-			});
+				// Loop: replay from buffer/cache instead of re-downloading.
+				// With loop:false + manual seek, the browser reuses cached data.
+				player.on('ended', function () {
+					player.currentTime(0);
+					player.play();
+				});
+
+				// Sync mute icon for this slide
+				var parentSlide = $vjsEl.closest('.swiper-slide');
+				updateMuteIcon(parentSlide, globalMuted);
+			},
+			error: function () {
+				$vjsEl.removeClass('player-loading');
+			},
 		});
 	}
 
-	videojs_init();
+	/**
+	 * Lazy init: only initialize players within 2 slides of the active one.
+	 * Saves memory, AJAX requests, and bandwidth for slides the user
+	 * hasn't reached yet.
+	 */
+	function videojs_lazy_init() {
+		var slides = document.querySelectorAll('.swiper-slide');
+		var activeIndex = -1;
+
+		for (var i = 0; i < slides.length; i++) {
+			if (slides[i].classList.contains('swiper-slide-active')) {
+				activeIndex = i;
+				break;
+			}
+		}
+		if (activeIndex === -1) return;
+
+		// Init: 1 behind, active, 2 ahead
+		var start = Math.max(0, activeIndex - 1);
+		var end = Math.min(slides.length - 1, activeIndex + 2);
+
+		for (var j = start; j <= end; j++) {
+			var vjsEl = slides[j].querySelector('video-js');
+			if (!vjsEl) continue;
+			var $vjsEl = jQuery(vjsEl);
+			if ($vjsEl.hasClass('player-loaded') || $vjsEl.hasClass('player-loading')) continue;
+			initSinglePlayer($vjsEl, j === activeIndex);
+		}
+	}
+
+	videojs_lazy_init();
 
 	const swiper = new Swiper('.swiper', {
 		direction: 'vertical',
@@ -184,6 +216,9 @@ jQuery(document).ready(function () {
 				// });
 			},
 			transitionEnd: function () {
+				// Lazy init nearby slides (active ± 2)
+				videojs_lazy_init();
+
 				var index = this.realIndex;
 				var slide = document.getElementsByClassName('swiper-slide')[index];
 				var slideVideo = slide.getElementsByTagName('video-js')[0];
@@ -193,12 +228,11 @@ jQuery(document).ready(function () {
 					return;
 				}
 
-				// Apply global mute state, sync icon, and upgrade preload on slide change
+				// Apply global mute state and sync icon on slide change
 				if (slideVideo && slideVideo.id) {
 					var p = videojs.getPlayer(slideVideo.id);
 					if (p) {
 						p.muted(globalMuted);
-						// No need to change preload — .play() triggers progressive buffering
 					}
 					updateMuteIcon(jQuery(slide), globalMuted);
 				}
@@ -254,7 +288,7 @@ jQuery(document).ready(function () {
 					jQuery('.swiper-wrapper').find('.swiper-slide-active').after(data);
 					loadmore_ajax_var.current_page++;
 					swiper.update();
-					videojs_init();
+					videojs_lazy_init();
 				}
 			},
 		});
