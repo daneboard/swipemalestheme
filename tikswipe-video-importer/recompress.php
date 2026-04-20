@@ -52,12 +52,20 @@ if ( $arg === '--status' ) {
 	exit( 0 );
 }
 
-// --reset
+// --reset (clears EVERYTHING)
 if ( $arg === '--reset' ) {
 	global $wpdb;
 	$wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_tsvi_recompressed', '_tsvi_recompress_error', '_tsvi_recompress_skipped')" );
 	delete_option( 'tsvi_recompress_stats' );
 	echo "Reset done. All videos can be reprocessed.\n";
+	exit( 0 );
+}
+
+// --reset-errors (clears only error markers so they can retry)
+if ( $arg === '--reset-errors' ) {
+	global $wpdb;
+	$count = $wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompress_error'" );
+	echo "Cleared " . intval( $count ) . " error markers. They will be retried on next run.\n";
 	exit( 0 );
 }
 
@@ -138,11 +146,28 @@ foreach ( $post_ids as $i => $post_id ) {
 		continue;
 	}
 
+	// Extract the storage path from the CDN URL.
+	// CDN:     https://myzone.b-cdn.net/videos/123_slug.mp4
+	// Storage: https://storage.bunnycdn.com/my-zone/videos/123_slug.mp4
+	$cdn_path_only = wp_parse_url( $clean_url, PHP_URL_PATH );
+
 	rclog( "  [{$n}/{$total}] #{$post_id}: " . mb_substr( $title, 0, 50 ) );
 
-	// Step 1: Download from Bunny CDN.
+	// Step 1: Download from Bunny STORAGE API (bypasses CDN hotlink/token protection).
+	$host = 'storage.bunnycdn.com';
+	if ( $region && $region !== 'default' ) {
+		$host = $region . '.' . $host;
+	}
+	$storage_download_url = 'https://' . $host . '/' . $zone . $cdn_path_only;
+
 	$tmp = wp_tempnam( 'tsvi_rc_' );
-	$download = tsvi_rc_download( $clean_url, $tmp );
+	$download = tsvi_rc_download_storage( $storage_download_url, $tmp, $api_key );
+
+	if ( is_wp_error( $download ) ) {
+		// Fallback: try CDN URL directly (works if no hotlink/token protection).
+		rclog( "  [{$n}/{$total}] Storage download failed, trying CDN direct..." );
+		$download = tsvi_rc_download( $clean_url, $tmp );
+	}
 
 	if ( is_wp_error( $download ) ) {
 		rclog( "  [{$n}/{$total}] DOWNLOAD FAILED: " . $download->get_error_message() );
@@ -287,6 +312,40 @@ function tsvi_rc_download( $url, $dest ) {
 	fclose( $fp );
 	if ( ! $result || $http_code >= 400 ) {
 		return new WP_Error( 'download', "HTTP {$http_code}: {$error}" );
+	}
+	return true;
+}
+
+/**
+ * Download from Bunny Storage API (uses AccessKey, bypasses CDN protection).
+ */
+function tsvi_rc_download_storage( $storage_url, $dest, $api_key ) {
+	if ( empty( $api_key ) ) {
+		return new WP_Error( 'no_key', 'Bunny API key missing.' );
+	}
+	$ch = curl_init();
+	$fp = fopen( $dest, 'wb' );
+	if ( ! $fp ) {
+		return new WP_Error( 'file', 'Cannot open temp file.' );
+	}
+	curl_setopt_array( $ch, array(
+		CURLOPT_URL            => $storage_url,
+		CURLOPT_FILE           => $fp,
+		CURLOPT_TIMEOUT        => 600,
+		CURLOPT_CONNECTTIMEOUT => 15,
+		CURLOPT_SSL_VERIFYPEER => false,
+		CURLOPT_HTTPHEADER     => array(
+			'AccessKey: ' . $api_key,
+			'Accept: */*',
+		),
+	) );
+	$result    = curl_exec( $ch );
+	$http_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+	$error     = curl_error( $ch );
+	curl_close( $ch );
+	fclose( $fp );
+	if ( ! $result || $http_code >= 400 ) {
+		return new WP_Error( 'storage_download', "Storage HTTP {$http_code}: {$error}" );
 	}
 	return true;
 }

@@ -627,7 +627,10 @@ class TSVI_Admin {
 			<!-- Errors -->
 			<?php if ( $error_posts ) : ?>
 			<div class="tsvi-card">
-				<h2>Errors <span class="tsvi-badge tsvi-badge-failed"><?php echo $errors; ?></span></h2>
+				<h2>
+					Errors <span class="tsvi-badge tsvi-badge-failed"><?php echo $errors; ?></span>
+					<button class="button button-small" id="tsvi-btn-retry-errors">Retry All Errors</button>
+				</h2>
 				<table class="wp-list-table widefat striped">
 					<thead><tr><th>ID</th><th>Title</th><th>Error</th></tr></thead>
 					<tbody>
@@ -697,6 +700,24 @@ class TSVI_Admin {
 				btn.text('Request failed').prop('disabled', false);
 			});
 		});
+
+		jQuery('#tsvi-btn-retry-errors').on('click', function () {
+			if (!confirm('Clear all error markers and retry them on next run?')) return;
+			var btn = jQuery(this);
+			btn.prop('disabled', true).text('Clearing...');
+			jQuery.post(tsvi.ajax_url, {
+				action: 'tsvi_recompress_start',
+				nonce: tsvi.nonce,
+				rc_action: 'retry_errors'
+			}).done(function (resp) {
+				if (resp.success) {
+					btn.text('Cleared ' + resp.data.cleared + ' — reloading...');
+					setTimeout(function () { location.reload(); }, 1500);
+				} else {
+					btn.text('Error').prop('disabled', false);
+				}
+			});
+		});
 		// Auto-reload while enabled so progress updates without manual F5.
 		<?php if ( get_option( 'tsvi_recompress_enabled', 0 ) ) : ?>
 		setTimeout(function () { location.reload(); }, 45000);
@@ -722,6 +743,13 @@ class TSVI_Admin {
 			update_option( 'tsvi_recompress_enabled', 0, false );
 			TSVI_Log::write( 'upload', 'Recompress disabled via admin.' );
 			wp_send_json_success( array( 'enabled' => false ) );
+		}
+
+		if ( $action === 'retry_errors' ) {
+			global $wpdb;
+			$count = $wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompress_error'" );
+			TSVI_Log::write( 'upload', 'Cleared ' . intval( $count ) . ' recompress error markers for retry.' );
+			wp_send_json_success( array( 'cleared' => intval( $count ) ) );
 		}
 
 		// Start: enable the flag. The CLI worker will pick it up within 1 minute.
