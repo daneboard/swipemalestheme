@@ -565,6 +565,13 @@ class TSVI_Bunny {
 	}
 
 	/**
+	 * Public accessor for the detected FFmpeg binary path.
+	 */
+	public static function ffmpeg_binary_path() {
+		return self::ffmpeg_binary();
+	}
+
+	/**
 	 * Download a file using cURL with browser-like headers.
 	 * Uses CURLOPT_FILE to stream directly to disk (no memory buffering).
 	 *
@@ -865,6 +872,13 @@ class TSVI_Bunny {
 		$url = preg_replace( '/\?&/', '?', $url );
 		$url = rtrim( $url, '?&' );
 		return $url;
+	}
+
+	/**
+	 * Public accessor for strip_token_params (used by recompress script).
+	 */
+	public static function strip_token_params_public( $url ) {
+		return self::strip_token_params( $url );
 	}
 
 	/**

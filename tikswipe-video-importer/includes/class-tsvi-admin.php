@@ -19,6 +19,7 @@ class TSVI_Admin {
 		add_action( 'wp_ajax_tsvi_import', array( __CLASS__, 'ajax_import' ) );
 		add_action( 'wp_ajax_tsvi_direct_queue', array( __CLASS__, 'ajax_direct_queue' ) );
 		add_action( 'wp_ajax_tsvi_direct_clear_history', array( __CLASS__, 'ajax_direct_clear_history' ) );
+		add_action( 'wp_ajax_tsvi_recompress_start', array( __CLASS__, 'ajax_recompress_start' ) );
 	}
 
 	/* ------------------------------------------------------------------
@@ -61,6 +62,15 @@ class TSVI_Admin {
 			'manage_options',
 			'tsvi-queue',
 			array( __CLASS__, 'page_queue' )
+		);
+
+		add_submenu_page(
+			'tsvi-scrape',
+			'Recompress',
+			'Recompress',
+			'manage_options',
+			'tsvi-recompress',
+			array( __CLASS__, 'page_recompress' )
 		);
 
 		add_submenu_page(
@@ -464,6 +474,234 @@ class TSVI_Admin {
 			</div>
 		</div>
 		<?php
+	}
+
+	/* ------------------------------------------------------------------
+	   Recompress page
+	   ------------------------------------------------------------------ */
+
+	public static function page_recompress() {
+		global $wpdb;
+
+		// Get stats.
+		$total   = intval( $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_bunny_status' AND meta_value = 'uploaded'" ) );
+		$done    = intval( $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompressed'" ) );
+		$skipped = intval( $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompress_skipped'" ) );
+		$errors  = intval( $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompress_error'" ) );
+		$pending = max( 0, $total - $done - $skipped - $errors );
+		$lock    = get_transient( 'tsvi_recompress_lock' );
+
+		// Recent done list.
+		$done_posts = $wpdb->get_results(
+			"SELECT p.ID, p.post_title, pm.meta_value as rc_info
+			 FROM {$wpdb->posts} p
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_tsvi_recompressed'
+			 ORDER BY p.ID DESC LIMIT 50"
+		);
+
+		// Error list.
+		$error_posts = $wpdb->get_results(
+			"SELECT p.ID, p.post_title, pm.meta_value as error_msg
+			 FROM {$wpdb->posts} p
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_tsvi_recompress_error'
+			 ORDER BY p.ID DESC LIMIT 50"
+		);
+
+		// Skipped list.
+		$skipped_posts = $wpdb->get_results(
+			"SELECT p.ID, p.post_title, pm.meta_value as reason
+			 FROM {$wpdb->posts} p
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_tsvi_recompress_skipped'
+			 ORDER BY p.ID DESC LIMIT 50"
+		);
+		?>
+		<div class="wrap">
+			<h1>Recompress Existing Videos</h1>
+			<p class="description">Downloads each video from Bunny CDN, transcodes to 720p, and re-uploads to the same path. Reduces storage and bandwidth costs by ~75%. Original URL stays the same.</p>
+
+			<!-- Stats cards -->
+			<div style="display:flex;gap:12px;flex-wrap:wrap;margin:20px 0;">
+				<div class="tsvi-card" style="flex:1;min-width:120px;text-align:center;padding:15px;">
+					<div style="font-size:28px;font-weight:700;"><?php echo $total; ?></div>
+					<div>Total uploaded</div>
+				</div>
+				<div class="tsvi-card" style="flex:1;min-width:120px;text-align:center;padding:15px;">
+					<div style="font-size:28px;font-weight:700;color:#00a32a;"><?php echo $done; ?></div>
+					<div>Compressed</div>
+				</div>
+				<div class="tsvi-card" style="flex:1;min-width:120px;text-align:center;padding:15px;">
+					<div style="font-size:28px;font-weight:700;color:#dba617;"><?php echo $skipped; ?></div>
+					<div>Skipped (small)</div>
+				</div>
+				<div class="tsvi-card" style="flex:1;min-width:120px;text-align:center;padding:15px;">
+					<div style="font-size:28px;font-weight:700;color:#d63638;"><?php echo $errors; ?></div>
+					<div>Errors</div>
+				</div>
+				<div class="tsvi-card" style="flex:1;min-width:120px;text-align:center;padding:15px;">
+					<div style="font-size:28px;font-weight:700;color:#2271b1;"><?php echo $pending; ?></div>
+					<div>Pending</div>
+				</div>
+			</div>
+
+			<!-- Progress bar -->
+			<?php if ( $total > 0 ) :
+				$processed = $done + $skipped + $errors;
+				$pct = round( ( $processed / $total ) * 100 );
+			?>
+			<div class="tsvi-card">
+				<div class="tsvi-progress-bar" style="height:24px;">
+					<div class="tsvi-progress-fill" style="width:<?php echo $pct; ?>%;"></div>
+				</div>
+				<p style="text-align:center;margin:8px 0 0;">
+					<?php echo $processed; ?>/<?php echo $total; ?> processed (<?php echo $pct; ?>%)
+					<?php if ( $lock ) : ?>
+						— <span class="tsvi-loading">running...</span>
+					<?php endif; ?>
+				</p>
+			</div>
+			<?php endif; ?>
+
+			<!-- Actions -->
+			<div class="tsvi-card">
+				<h2>Actions</h2>
+				<?php if ( ! TSVI_Bunny::ffmpeg_available() ) : ?>
+					<div class="notice notice-error" style="margin:0 0 15px;"><p>FFmpeg is not installed. Install via SSH: <code>apt install -y ffmpeg</code></p></div>
+				<?php endif; ?>
+
+				<p class="description">The recompress script runs via CLI in the background (no web server timeout). You can start it from here or via SSH.</p>
+
+				<p>
+					<?php if ( $pending > 0 ) : ?>
+						<button class="button button-primary button-hero" id="tsvi-btn-recompress" <?php echo $lock ? 'disabled' : ''; ?>>
+							<?php echo $lock ? 'Running...' : 'Start Recompress (' . $pending . ' pending)'; ?>
+						</button>
+					<?php else : ?>
+						<button class="button button-hero" disabled>All videos processed</button>
+					<?php endif; ?>
+				</p>
+
+				<p class="description">
+					SSH alternative:<br>
+					<code>php <?php echo esc_html( TSVI_PATH . 'recompress.php' ); ?> --all</code><br>
+					<code>php <?php echo esc_html( TSVI_PATH . 'recompress.php' ); ?> --status</code>
+				</p>
+			</div>
+
+			<!-- Compressed -->
+			<?php if ( $done_posts ) : ?>
+			<div class="tsvi-card">
+				<h2>Compressed <span class="tsvi-badge tsvi-badge-done"><?php echo $done; ?></span></h2>
+				<table class="wp-list-table widefat striped">
+					<thead><tr><th>ID</th><th>Title</th><th>Result</th></tr></thead>
+					<tbody>
+					<?php foreach ( $done_posts as $p ) : ?>
+						<tr>
+							<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
+							<td><?php echo esc_html( mb_substr( $p->post_title, 0, 60 ) ); ?></td>
+							<td><span class="tsvi-ok"><?php echo esc_html( $p->rc_info ); ?></span></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			<?php endif; ?>
+
+			<!-- Errors -->
+			<?php if ( $error_posts ) : ?>
+			<div class="tsvi-card">
+				<h2>Errors <span class="tsvi-badge tsvi-badge-failed"><?php echo $errors; ?></span></h2>
+				<table class="wp-list-table widefat striped">
+					<thead><tr><th>ID</th><th>Title</th><th>Error</th></tr></thead>
+					<tbody>
+					<?php foreach ( $error_posts as $p ) : ?>
+						<tr>
+							<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
+							<td><?php echo esc_html( mb_substr( $p->post_title, 0, 60 ) ); ?></td>
+							<td><span class="tsvi-err"><?php echo esc_html( mb_substr( $p->error_msg, 0, 100 ) ); ?></span></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			<?php endif; ?>
+
+			<!-- Skipped -->
+			<?php if ( $skipped_posts ) : ?>
+			<div class="tsvi-card">
+				<h2>Skipped <span class="tsvi-badge tsvi-badge-pending"><?php echo $skipped; ?></span></h2>
+				<table class="wp-list-table widefat striped">
+					<thead><tr><th>ID</th><th>Title</th><th>Reason</th></tr></thead>
+					<tbody>
+					<?php foreach ( $skipped_posts as $p ) : ?>
+						<tr>
+							<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
+							<td><?php echo esc_html( mb_substr( $p->post_title, 0, 60 ) ); ?></td>
+							<td><?php echo esc_html( $p->reason ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			<?php endif; ?>
+
+			<!-- Recompress log -->
+			<?php
+			$upload_dir    = wp_upload_dir();
+			$recompress_log = $upload_dir['basedir'] . '/tsvi-logs/recompress.log';
+			if ( file_exists( $recompress_log ) ) :
+				$rlines = file( $recompress_log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+				$rlines = $rlines ? array_slice( $rlines, -80 ) : array();
+			?>
+			<div class="tsvi-card">
+				<h2>Recompress Log</h2>
+				<pre style="max-height:400px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap;"><?php echo esc_html( implode( "\n", array_reverse( $rlines ) ) ); ?></pre>
+			</div>
+			<?php endif; ?>
+		</div>
+
+		<script>
+		jQuery('#tsvi-btn-recompress').on('click', function () {
+			var btn = jQuery(this);
+			btn.prop('disabled', true).text('Starting...');
+			jQuery.post(tsvi.ajax_url, {
+				action: 'tsvi_recompress_start',
+				nonce: tsvi.nonce
+			}).done(function (resp) {
+				if (resp.success) {
+					btn.text('Running in background...');
+					setTimeout(function () { location.reload(); }, 3000);
+				} else {
+					btn.text('Error: ' + resp.data).prop('disabled', false);
+				}
+			}).fail(function () {
+				btn.text('Request failed').prop('disabled', false);
+			});
+		});
+		</script>
+		<?php
+	}
+
+	/* ------------------------------------------------------------------
+	   AJAX: Start recompress process via CLI
+	   ------------------------------------------------------------------ */
+
+	public static function ajax_recompress_start() {
+		check_ajax_referer( 'tsvi_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized.' );
+		}
+
+		$script = TSVI_PATH . 'recompress.php';
+		if ( ! file_exists( $script ) ) {
+			wp_send_json_error( 'recompress.php not found.' );
+		}
+
+		// Run recompress.php in background (non-blocking).
+		$php    = PHP_BINARY ?: 'php';
+		$cmd    = escapeshellcmd( $php ) . ' ' . escapeshellarg( $script ) . ' --all > /dev/null 2>&1 &';
+		@exec( $cmd );
+
+		wp_send_json_success( array( 'started' => true ) );
 	}
 
 	/**
