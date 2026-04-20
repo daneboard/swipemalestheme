@@ -91,12 +91,73 @@ $processed_cdn = tsvi_process_cdn_queue( $batch_size );
 // ---- Process Direct Upload Queue ----
 $processed_direct = tsvi_process_direct_queue( $batch_size );
 
-if ( $processed_cdn === 0 && $processed_direct === 0 ) {
+// ---- Process Recompress Queue (if enabled via admin) ----
+$processed_rc = tsvi_process_recompress_queue( $batch_size );
+
+if ( $processed_cdn === 0 && $processed_direct === 0 && $processed_rc === 0 ) {
 	tsvi_log( 'Nothing to process.' );
 }
 
 tsvi_log( 'Worker finished.' );
 exit( 0 );
+
+/**
+ * Process recompress batch if enabled via admin flag.
+ * Calls recompress.php in-process.
+ */
+function tsvi_process_recompress_queue( $batch_size ) {
+	if ( ! get_option( 'tsvi_recompress_enabled', 0 ) ) {
+		return 0;
+	}
+
+	// Check if there are any pending videos to recompress.
+	global $wpdb;
+	$pending = intval( $wpdb->get_var(
+		"SELECT COUNT(*) FROM {$wpdb->postmeta} pm
+		 WHERE pm.meta_key = '_tsvi_bunny_status' AND pm.meta_value = 'uploaded'
+		 AND pm.post_id NOT IN (
+		   SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompressed'
+		 )
+		 AND pm.post_id NOT IN (
+		   SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompress_skipped'
+		 )
+		 AND pm.post_id NOT IN (
+		   SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompress_error'
+		 )"
+	) );
+
+	if ( $pending === 0 ) {
+		// Nothing left — auto-disable the flag.
+		update_option( 'tsvi_recompress_enabled', 0, false );
+		tsvi_log( 'Recompress: no pending videos — auto-disabled.' );
+		return 0;
+	}
+
+	tsvi_log( "Recompress: {$pending} pending — running batch of {$batch_size}." );
+
+	$script = __DIR__ . '/recompress.php';
+	if ( ! file_exists( $script ) ) {
+		tsvi_log( 'Recompress: script not found.' );
+		return 0;
+	}
+
+	// Call recompress.php as a subprocess using the SAME PHP CLI binary.
+	// PHP_BINARY in CLI context IS the CLI binary (unlike FPM).
+	$php = PHP_BINARY;
+	$cmd = escapeshellcmd( $php ) . ' ' . escapeshellarg( $script ) . ' 2>&1';
+	$output = @shell_exec( $cmd );
+
+	if ( $output ) {
+		// Write the recompress script output to worker log too.
+		foreach ( explode( "\n", trim( $output ) ) as $line ) {
+			if ( trim( $line ) !== '' ) {
+				tsvi_log( '  [rc] ' . trim( $line ) );
+			}
+		}
+	}
+
+	return 1;
+}
 
 /**
  * Process the CDN upload queue (posts with _tsvi_bunny_pending).

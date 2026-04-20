@@ -568,20 +568,38 @@ class TSVI_Admin {
 					<div class="notice notice-error" style="margin:0 0 15px;"><p>FFmpeg is not installed. Install via SSH: <code>apt install -y ffmpeg</code></p></div>
 				<?php endif; ?>
 
-				<p class="description">The recompress script runs via CLI in the background (no web server timeout). You can start it from here or via SSH.</p>
+				<?php $rc_enabled = (bool) get_option( 'tsvi_recompress_enabled', 0 ); ?>
 
 				<p>
-					<?php if ( $pending > 0 ) : ?>
-						<button class="button button-primary button-hero" id="tsvi-btn-recompress" <?php echo $lock ? 'disabled' : ''; ?>>
-							<?php echo $lock ? 'Running...' : 'Start Recompress (' . $pending . ' pending)'; ?>
+					<strong>Status:</strong>
+					<?php if ( $rc_enabled ) : ?>
+						<span class="tsvi-loading">ENABLED — the CLI worker processes a batch every minute.</span>
+						<?php if ( $lock ) : ?>
+							<span class="tsvi-ok">(batch running now)</span>
+						<?php endif; ?>
+					<?php else : ?>
+						<span class="tsvi-warn">DISABLED — click Start to begin processing.</span>
+					<?php endif; ?>
+				</p>
+
+				<p>
+					<?php if ( $pending > 0 && ! $rc_enabled ) : ?>
+						<button class="button button-primary button-hero" id="tsvi-btn-recompress" data-action="start">
+							Start Recompress (<?php echo $pending; ?> pending)
 						</button>
+					<?php elseif ( $rc_enabled ) : ?>
+						<button class="button button-hero tsvi-btn-danger" id="tsvi-btn-recompress" data-action="stop">
+							Stop Recompress
+						</button>
+						<span style="margin-left:10px;">Processing 3 videos per minute via CLI worker.</span>
 					<?php else : ?>
 						<button class="button button-hero" disabled>All videos processed</button>
 					<?php endif; ?>
 				</p>
 
 				<p class="description">
-					SSH alternative:<br>
+					The CLI worker (crontab) processes a batch every minute while this is enabled. Refresh the page to see progress.<br>
+					SSH alternative (runs all at once):<br>
 					<code>php <?php echo esc_html( TSVI_PATH . 'recompress.php' ); ?> --all</code><br>
 					<code>php <?php echo esc_html( TSVI_PATH . 'recompress.php' ); ?> --status</code>
 				</p>
@@ -662,14 +680,16 @@ class TSVI_Admin {
 		<script>
 		jQuery('#tsvi-btn-recompress').on('click', function () {
 			var btn = jQuery(this);
-			btn.prop('disabled', true).text('Starting...');
+			var rcAction = btn.data('action') || 'start';
+			btn.prop('disabled', true).text(rcAction === 'stop' ? 'Stopping...' : 'Starting...');
 			jQuery.post(tsvi.ajax_url, {
 				action: 'tsvi_recompress_start',
-				nonce: tsvi.nonce
+				nonce: tsvi.nonce,
+				rc_action: rcAction
 			}).done(function (resp) {
 				if (resp.success) {
-					btn.text('Running in background...');
-					setTimeout(function () { location.reload(); }, 3000);
+					btn.text(rcAction === 'stop' ? 'Stopped.' : 'Enabled — worker will pick up in < 1 minute.');
+					setTimeout(function () { location.reload(); }, 1500);
 				} else {
 					btn.text('Error: ' + resp.data).prop('disabled', false);
 				}
@@ -677,12 +697,17 @@ class TSVI_Admin {
 				btn.text('Request failed').prop('disabled', false);
 			});
 		});
+		// Auto-reload while enabled so progress updates without manual F5.
+		<?php if ( get_option( 'tsvi_recompress_enabled', 0 ) ) : ?>
+		setTimeout(function () { location.reload(); }, 45000);
+		<?php endif; ?>
 		</script>
 		<?php
 	}
 
 	/* ------------------------------------------------------------------
-	   AJAX: Start recompress process via CLI
+	   AJAX: Toggle recompress processing flag
+	   The CLI worker (running via crontab) picks this up on next run.
 	   ------------------------------------------------------------------ */
 
 	public static function ajax_recompress_start() {
@@ -691,17 +716,32 @@ class TSVI_Admin {
 			wp_send_json_error( 'Unauthorized.' );
 		}
 
-		$script = TSVI_PATH . 'recompress.php';
-		if ( ! file_exists( $script ) ) {
-			wp_send_json_error( 'recompress.php not found.' );
+		$action = sanitize_text_field( $_POST['rc_action'] ?? 'start' );
+
+		if ( $action === 'stop' ) {
+			update_option( 'tsvi_recompress_enabled', 0, false );
+			TSVI_Log::write( 'upload', 'Recompress disabled via admin.' );
+			wp_send_json_success( array( 'enabled' => false ) );
 		}
 
-		// Run recompress.php in background (non-blocking).
-		$php    = PHP_BINARY ?: 'php';
-		$cmd    = escapeshellcmd( $php ) . ' ' . escapeshellarg( $script ) . ' --all > /dev/null 2>&1 &';
-		@exec( $cmd );
+		// Start: enable the flag. The CLI worker will pick it up within 1 minute.
+		update_option( 'tsvi_recompress_enabled', 1, false );
+		TSVI_Log::write( 'upload', 'Recompress enabled via admin.' );
 
-		wp_send_json_success( array( 'started' => true ) );
+		// Best-effort: also try to spawn recompress.php directly, but don't rely on it.
+		$script = TSVI_PATH . 'recompress.php';
+		if ( file_exists( $script ) && function_exists( 'exec' ) ) {
+			$php_candidates = array( '/usr/bin/php', '/usr/local/bin/php', 'php' );
+			foreach ( $php_candidates as $php_bin ) {
+				if ( $php_bin === 'php' || is_executable( $php_bin ) ) {
+					$cmd = 'nohup ' . escapeshellcmd( $php_bin ) . ' ' . escapeshellarg( $script ) . ' > /dev/null 2>&1 &';
+					@exec( $cmd );
+					break;
+				}
+			}
+		}
+
+		wp_send_json_success( array( 'enabled' => true ) );
 	}
 
 	/**
