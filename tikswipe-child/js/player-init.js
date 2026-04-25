@@ -16,6 +16,45 @@ jQuery(document).ready(function () {
 	// Global mute state persists across slides (TikTok behavior)
 	var globalMuted = muted;
 
+	// Cancel CDN download for a slide's video; remembers src so it can be restored.
+	function cancelSlideDownload(slide) {
+		if (!slide || slide.dataset.deferredSrc) return;
+		var vjsEl = slide.querySelector('video-js');
+		if (!vjsEl || !vjsEl.id) return;
+		var player = videojs.getPlayer(vjsEl.id);
+		if (!player) return;
+		var src = player.currentSrc();
+		if (!src) return;
+		var type = (typeof player.currentType === 'function' && player.currentType()) || 'video/mp4';
+		slide.dataset.deferredSrc = src;
+		slide.dataset.deferredType = type;
+		try {
+			player.pause();
+			player.reset();
+		} catch (e) {}
+	}
+
+	// Restore previously cancelled src so the slide can play again.
+	function restoreSlideDownload(slide, shouldPlay) {
+		if (!slide || !slide.dataset.deferredSrc) return;
+		var vjsEl = slide.querySelector('video-js');
+		if (!vjsEl || !vjsEl.id) return;
+		var player = videojs.getPlayer(vjsEl.id);
+		if (!player) return;
+		var src = slide.dataset.deferredSrc;
+		var type = slide.dataset.deferredType || 'video/mp4';
+		delete slide.dataset.deferredSrc;
+		delete slide.dataset.deferredType;
+		try {
+			player.src({ type: type, src: src });
+			if (shouldPlay) {
+				player.ready(function () {
+					player.play();
+				});
+			}
+		} catch (e) {}
+	}
+
 	function updateMuteIcon(slide, isMuted) {
 		var muteBtn = jQuery(slide).find('.wpst-mute-toggle');
 		if (isMuted) {
@@ -164,10 +203,22 @@ jQuery(document).ready(function () {
 		},
 		on: {
 			transitionStart: function () {
+				var swiperInstance = this;
+				var newActiveSlide = swiperInstance.slides[swiperInstance.activeIndex];
+
 				var videos = document.querySelectorAll('video');
 				Array.prototype.forEach.call(videos, function (video) {
 					video.pause();
 				});
+
+				// Cancel CDN download for slides that are no longer active.
+				swiperInstance.slides.forEach(function (slide) {
+					if (slide !== newActiveSlide) {
+						cancelSlideDownload(slide);
+					}
+				});
+				// Restore src on the slide becoming active; transitionEnd will play().
+				restoreSlideDownload(newActiveSlide, false);
 
 				// Post views
 				// var postId = 0;
@@ -409,5 +460,17 @@ jQuery(document).ready(function () {
 		jQuery('.comment-icon.comment-opened')
 			.addClass('comment-closed')
 			.removeClass('comment-opened');
+	});
+
+	// Stop video downloads when tab is hidden; restore active slide when visible.
+	document.addEventListener('visibilitychange', function () {
+		if (document.hidden) {
+			document.querySelectorAll('.swiper-slide').forEach(cancelSlideDownload);
+		} else {
+			var activeSlide = document.querySelector('.swiper-slide-active');
+			if (activeSlide) {
+				restoreSlideDownload(activeSlide, autoplay);
+			}
+		}
 	});
 });
