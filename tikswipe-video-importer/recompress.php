@@ -195,9 +195,9 @@ foreach ( $post_ids as $i => $post_id ) {
 
 	$cmd = escapeshellcmd( $ffmpeg )
 		. ' -y -i ' . escapeshellarg( $tmp )
-		. ' -vf "scale=-2:720"'
-		. ' -c:v libx264 -crf 23 -preset medium'
-		. ' -c:a aac -b:a 128k'
+		. ' -c:v libx264 -preset medium -crf 24 -profile:v high -pix_fmt yuv420p'
+		. " -vf \"scale='min(720,iw)':-2\""
+		. ' -c:a aac -b:a 96k -ac 2'
 		. ' -movflags +faststart'
 		. ' -threads 0'
 		. ' ' . escapeshellarg( $output )

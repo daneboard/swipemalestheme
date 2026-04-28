@@ -460,28 +460,31 @@ class TSVI_Bunny {
 			return null; // FFmpeg not installed — use original.
 		}
 
-		// Probe video height to decide if transcoding is needed.
+		// Probe video width and height to decide if transcoding is needed.
+		// The scale filter caps WIDTH at 720px, so we check width.
+		$width  = 0;
 		$height = 0;
 		if ( $ffprobe ) {
 			$probe_cmd = escapeshellcmd( $ffprobe )
-				. ' -v error -select_streams v:0 -show_entries stream=height'
+				. ' -v error -select_streams v:0 -show_entries stream=width,height'
 				. ' -of csv=p=0 ' . escapeshellarg( $input_path )
 				. ' 2>/dev/null';
 			$probe_out = trim( @shell_exec( $probe_cmd ) ?? '' );
-			$height    = intval( $probe_out );
+			// Output format: "width,height" e.g. "1080,1920"
+			$parts  = explode( ',', $probe_out );
+			$width  = intval( $parts[0] ?? 0 );
+			$height = intval( $parts[1] ?? 0 );
 		}
 
-		// Skip if already 720p or smaller (or if probe failed and file is < 30MB).
-		if ( $height > 0 && $height <= 720 ) {
-			$size_mb = filesize( $input_path ) / 1048576;
-			if ( $size_mb < 30 ) {
-				TSVI_Log::write( 'upload', 'Transcode skipped: ' . $height . 'p, ' . round( $size_mb, 1 ) . 'MB (already small)' );
-				return null;
-			}
+		$size_mb = filesize( $input_path ) / 1048576;
+
+		// Skip if already at or below 720px width AND file is small.
+		if ( $width > 0 && $width <= 720 && $size_mb < 30 ) {
+			TSVI_Log::write( 'upload', 'Transcode skipped: ' . $width . 'x' . $height . ', ' . round( $size_mb, 1 ) . 'MB (already small)' );
+			return null;
 		}
 
-		if ( $height === 0 && filesize( $input_path ) < 15000000 ) {
-			// Can't detect height but file is < 15MB — skip to be safe.
+		if ( $width === 0 && $size_mb < 15 ) {
 			TSVI_Log::write( 'upload', 'Transcode skipped: probe failed, file < 15MB' );
 			return null;
 		}
@@ -490,14 +493,14 @@ class TSVI_Bunny {
 		$output_path = $input_path . '_720p.mp4';
 		$original_size = filesize( $input_path );
 
-		TSVI_Log::write( 'upload', 'Transcoding: ' . $height . 'p → 720p, original ' . round( $original_size / 1048576, 1 ) . 'MB' );
+		TSVI_Log::write( 'upload', 'Transcoding: ' . $width . 'x' . $height . ' → 720w cap, original ' . round( $original_size / 1048576, 1 ) . 'MB' );
 
-		// FFmpeg command: re-encode to 720p H.264 with faststart.
+		// FFmpeg command: H.264 high profile, CRF 24, cap 720px width, AAC 96k, faststart.
 		$cmd = escapeshellcmd( $ffmpeg )
 			. ' -y -i ' . escapeshellarg( $input_path )
-			. ' -vf "scale=-2:720"'
-			. ' -c:v libx264 -crf 23 -preset medium'
-			. ' -c:a aac -b:a 128k'
+			. ' -c:v libx264 -preset medium -crf 24 -profile:v high -pix_fmt yuv420p'
+			. " -vf \"scale='min(720,iw)':-2\""
+			. ' -c:a aac -b:a 96k -ac 2'
 			. ' -movflags +faststart'
 			. ' -threads 0'
 			. ' ' . escapeshellarg( $output_path )
