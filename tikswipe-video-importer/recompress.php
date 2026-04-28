@@ -199,7 +199,7 @@ foreach ( $post_ids as $i => $post_id ) {
 		. " -vf \"scale='min(720,iw)':-2\""
 		. ' -c:a aac -b:a 96k -ac 2'
 		. ' -movflags +faststart'
-		. ' -threads 0'
+		. ' -threads 2'
 		. ' ' . escapeshellarg( $output )
 		. ' 2>&1';
 

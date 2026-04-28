@@ -122,6 +122,8 @@ class TSVI_Bunny {
 		set_transient( 'tsvi_queue_lock', 1, 1800 );
 
 		// Find up to 3 posts with pending Bunny upload, shorter videos first.
+		// Process sequentially (not parallel) to avoid multiple FFmpeg processes
+		// saturating the VPS CPU and making the site unresponsive.
 		$post_ids = $wpdb->get_col(
 			"SELECT pm.post_id FROM {$wpdb->postmeta} pm
 			 LEFT JOIN {$wpdb->postmeta} dur ON pm.post_id = dur.post_id AND dur.meta_key = 'duration'
@@ -136,28 +138,21 @@ class TSVI_Bunny {
 			return;
 		}
 
-		set_time_limit( 1500 );
+		set_time_limit( 3600 );
 		ignore_user_abort( true );
 
 		// Pre-schedule the next run as a safety net.
 		wp_schedule_single_event( time() + 60, self::CRON_HOOK );
 
-		// Process first item directly in this process.
-		$first = intval( array_shift( $post_ids ) );
-
-		// Spawn parallel background workers for items 2 and 3 (non-blocking).
-		// If loopback fails, they'll be picked up in the next cron batch.
+		// Process each item sequentially (one FFmpeg at a time).
 		foreach ( $post_ids as $pid ) {
-			self::spawn_worker( intval( $pid ) );
-		}
-
-		// Process item 1 here.
-		try {
-			self::process_single( $first );
-		} catch ( \Throwable $e ) {
-			update_post_meta( $first, '_tsvi_bunny_pending', '' );
-			update_post_meta( $first, '_tsvi_bunny_error', 'Fatal: ' . $e->getMessage() );
-			delete_transient( 'tsvi_currently_processing' );
+			try {
+				self::process_single( intval( $pid ) );
+			} catch ( \Throwable $e ) {
+				update_post_meta( intval( $pid ), '_tsvi_bunny_pending', '' );
+				update_post_meta( intval( $pid ), '_tsvi_bunny_error', 'Fatal: ' . $e->getMessage() );
+				delete_transient( 'tsvi_currently_processing' );
+			}
 		}
 
 		// Check if more items remain.
@@ -260,12 +255,10 @@ class TSVI_Bunny {
 		$batch = array_splice( $queue, 0, 3 );
 		update_option( 'tsvi_direct_upload_queue', $queue, false );
 
-		// Process first directly, spawn workers for the rest.
-		$first = array_shift( $batch );
+		// Process sequentially (one FFmpeg at a time to avoid CPU overload).
 		foreach ( $batch as $item ) {
-			self::spawn_direct_worker( $item['url'] );
+			self::process_single_direct( $item['url'] );
 		}
-		self::process_single_direct( $first['url'] );
 
 		// Replace safety schedule.
 		wp_clear_scheduled_hook( self::DIRECT_CRON_HOOK );
@@ -496,13 +489,14 @@ class TSVI_Bunny {
 		TSVI_Log::write( 'upload', 'Transcoding: ' . $width . 'x' . $height . ' → 720w cap, original ' . round( $original_size / 1048576, 1 ) . 'MB' );
 
 		// FFmpeg command: H.264 high profile, CRF 24, cap 720px width, AAC 96k, faststart.
+		// -threads 2 limits CPU usage so the VPS can still serve web requests.
 		$cmd = escapeshellcmd( $ffmpeg )
 			. ' -y -i ' . escapeshellarg( $input_path )
 			. ' -c:v libx264 -preset medium -crf 24 -profile:v high -pix_fmt yuv420p'
 			. " -vf \"scale='min(720,iw)':-2\""
 			. ' -c:a aac -b:a 96k -ac 2'
 			. ' -movflags +faststart'
-			. ' -threads 0'
+			. ' -threads 2'
 			. ' ' . escapeshellarg( $output_path )
 			. ' 2>&1';
 
