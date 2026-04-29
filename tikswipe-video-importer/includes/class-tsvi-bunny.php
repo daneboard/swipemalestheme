@@ -113,6 +113,12 @@ class TSVI_Bunny {
 	 * Shorter videos are uploaded first. Schedules itself again if more items remain.
 	 */
 	public static function process_queue() {
+		// Only process via CLI worker (crontab), never via web requests.
+		// Web-triggered wp-cron causes multiple FFmpeg processes that overload the VPS.
+		if ( php_sapi_name() !== 'cli' ) {
+			return;
+		}
+
 		global $wpdb;
 
 		// Prevent concurrent runs.
@@ -239,6 +245,10 @@ class TSVI_Bunny {
 	 * Processes 1 directly + spawns 2 background workers.
 	 */
 	public static function process_direct_queue() {
+		if ( php_sapi_name() !== 'cli' ) {
+			return;
+		}
+
 		$queue = get_option( 'tsvi_direct_upload_queue', array() );
 		if ( empty( $queue ) ) {
 			return;
