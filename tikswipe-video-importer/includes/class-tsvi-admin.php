@@ -17,6 +17,9 @@ class TSVI_Admin {
 		add_action( 'wp_ajax_tsvi_extract', array( __CLASS__, 'ajax_extract' ) );
 		add_action( 'wp_ajax_tsvi_enrich', array( __CLASS__, 'ajax_enrich' ) );
 		add_action( 'wp_ajax_tsvi_import', array( __CLASS__, 'ajax_import' ) );
+		add_action( 'wp_ajax_tsvi_direct_queue', array( __CLASS__, 'ajax_direct_queue' ) );
+		add_action( 'wp_ajax_tsvi_direct_clear_history', array( __CLASS__, 'ajax_direct_clear_history' ) );
+		add_action( 'wp_ajax_tsvi_recompress_start', array( __CLASS__, 'ajax_recompress_start' ) );
 	}
 
 	/* ------------------------------------------------------------------
@@ -45,6 +48,15 @@ class TSVI_Admin {
 
 		add_submenu_page(
 			'tsvi-scrape',
+			'Direct Upload',
+			'Direct Upload',
+			'manage_options',
+			'tsvi-direct',
+			array( __CLASS__, 'page_direct_upload' )
+		);
+
+		add_submenu_page(
+			'tsvi-scrape',
 			'CDN Queue',
 			'CDN Queue',
 			'manage_options',
@@ -54,11 +66,29 @@ class TSVI_Admin {
 
 		add_submenu_page(
 			'tsvi-scrape',
+			'Recompress',
+			'Recompress',
+			'manage_options',
+			'tsvi-recompress',
+			array( __CLASS__, 'page_recompress' )
+		);
+
+		add_submenu_page(
+			'tsvi-scrape',
 			'Settings',
 			'Settings',
 			'manage_options',
 			'tsvi-settings',
 			array( __CLASS__, 'page_settings' )
+		);
+
+		add_submenu_page(
+			'tsvi-scrape',
+			'Activity Log',
+			'Activity Log',
+			'manage_options',
+			'tsvi-log',
+			array( __CLASS__, 'page_log' )
 		);
 	}
 
@@ -77,6 +107,121 @@ class TSVI_Admin {
 				'nonce'    => wp_create_nonce( 'tsvi_nonce' ),
 			)
 		);
+	}
+
+	/* ------------------------------------------------------------------
+	   Direct Upload page
+	   ------------------------------------------------------------------ */
+
+	public static function page_direct_upload() {
+		$queue   = get_option( 'tsvi_direct_upload_queue', array() );
+		$history = get_option( 'tsvi_direct_upload_history', array() );
+		$history = array_reverse( $history ); // Newest first.
+		$queue_count   = count( $queue );
+		$history_count = count( $history );
+		?>
+		<div class="wrap">
+			<h1>Direct Upload to Bunny CDN</h1>
+
+			<?php if ( ! TSVI_Bunny::is_enabled() ) : ?>
+				<div class="notice notice-error"><p>Bunny CDN is not configured. Go to <a href="<?php echo admin_url( 'admin.php?page=tsvi-settings' ); ?>">Settings</a> first.</p></div>
+			<?php endif; ?>
+
+			<div class="tsvi-card">
+				<h2>Upload by URL</h2>
+				<p class="description">Paste one URL per line. Videos are queued and uploaded to Bunny CDN in the background. No posts are created.</p>
+				<textarea id="tsvi-direct-urls" rows="6" class="large-text" placeholder="https://example.com/video1.mp4&#10;https://example.com/video2.mp4&#10;https://example.com/video3.mp4"></textarea>
+				<p>
+					<button class="button button-primary button-hero" id="tsvi-btn-direct-upload">Upload to CDN</button>
+				</p>
+			</div>
+
+			<!-- Pending queue -->
+			<?php if ( $queue_count > 0 ) : ?>
+			<div class="tsvi-card">
+				<h2>Pending <span class="tsvi-badge tsvi-badge-pending"><?php echo $queue_count; ?></span></h2>
+				<table class="wp-list-table widefat striped">
+					<thead><tr><th>#</th><th>Source URL</th><th>Queued</th></tr></thead>
+					<tbody>
+					<?php foreach ( $queue as $i => $item ) : ?>
+						<tr>
+							<td><?php echo $i + 1; ?></td>
+							<td><small><?php echo esc_html( mb_substr( $item['url'], 0, 100 ) ); ?></small></td>
+							<td><small><?php echo esc_html( $item['queued_at'] ); ?></small></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			<?php endif; ?>
+
+			<!-- History -->
+			<div class="tsvi-card">
+				<h2>
+					Upload History
+					<span class="tsvi-badge tsvi-badge-done"><?php echo $history_count; ?></span>
+					<?php if ( $history ) : ?>
+						<button class="button button-small tsvi-btn-danger" id="tsvi-btn-clear-history" onclick="return confirm('Clear all upload history?');">Clear History</button>
+					<?php endif; ?>
+				</h2>
+				<?php if ( $history ) : ?>
+					<table class="wp-list-table widefat striped">
+						<thead><tr><th style="width:90px;">Date</th><th>Source URL</th><th>CDN URL</th><th style="width:90px;">Status</th><th style="width:160px;">Pending Post</th></tr></thead>
+						<tbody>
+						<?php foreach ( $history as $h ) :
+							// Look up the live status of the post (if it still exists).
+							$post_status = '';
+							$post_exists = false;
+							if ( ! empty( $h['post_id'] ) ) {
+								$post_obj = get_post( $h['post_id'] );
+								if ( $post_obj ) {
+									$post_exists = true;
+									$post_status = $post_obj->post_status;
+								}
+							}
+							?>
+							<tr>
+								<td><small><?php echo esc_html( $h['date'] ); ?></small></td>
+								<td>
+									<input type="text" readonly value="<?php echo esc_attr( $h['source'] ); ?>" class="regular-text tsvi-copy-field" onclick="this.select();document.execCommand('copy');" title="Click to copy original URL">
+								</td>
+								<td>
+									<?php if ( ! empty( $h['cdn_url'] ) ) : ?>
+										<input type="text" readonly value="<?php echo esc_attr( $h['cdn_url'] ); ?>" class="regular-text tsvi-copy-field" onclick="this.select();document.execCommand('copy');" title="Click to copy CDN URL">
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+								<td>
+									<?php if ( ! empty( $h['error'] ) ) : ?>
+										<span class="tsvi-err" title="<?php echo esc_attr( $h['error'] ); ?>"><?php echo esc_html( mb_substr( $h['error'], 0, 30 ) ); ?></span>
+									<?php else : ?>
+										<span class="tsvi-ok">OK</span>
+									<?php endif; ?>
+								</td>
+								<td>
+									<?php if ( ! $post_exists && ! empty( $h['post_id'] ) ) : ?>
+										<span class="tsvi-err">deleted</span>
+									<?php elseif ( $post_exists && $post_status !== 'publish' ) : ?>
+										<span class="tsvi-warn"><?php echo esc_html( $post_status ); ?></span>
+										<a class="button button-small" href="<?php echo esc_url( get_edit_post_link( $h['post_id'] ) ); ?>" target="_blank">Edit #<?php echo intval( $h['post_id'] ); ?></a>
+									<?php elseif ( $post_exists && $post_status === 'publish' ) : ?>
+										<span class="tsvi-ok">published</span>
+										<a class="button button-small" href="<?php echo esc_url( get_edit_post_link( $h['post_id'] ) ); ?>" target="_blank">Edit #<?php echo intval( $h['post_id'] ); ?></a>
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php else : ?>
+					<p>No uploads yet.</p>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
 	}
 
 	/* ------------------------------------------------------------------
@@ -129,6 +274,15 @@ class TSVI_Admin {
 					$redirect_args['msg'] = 'retried';
 					$redirect_args['ids'] = $action_id;
 					break;
+
+				case 'force_start': // Force start the cron queue immediately.
+					delete_transient( 'tsvi_queue_lock' );
+					delete_transient( 'tsvi_currently_processing' );
+					wp_clear_scheduled_hook( TSVI_Bunny::CRON_HOOK );
+					wp_schedule_single_event( time(), TSVI_Bunny::CRON_HOOK );
+					spawn_cron();
+					$redirect_args['msg'] = 'force_started';
+					break;
 			}
 
 			wp_safe_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
@@ -138,13 +292,38 @@ class TSVI_Admin {
 		// Detect which post is currently being processed by cron.
 		$processing_id = get_transient( 'tsvi_currently_processing' );
 
+		// Auto-heal: detect stalled queue and restart it.
+		$has_pending = $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_tsvi_bunny_pending' AND meta_value != ''"
+		);
+		$scheduled_time = wp_next_scheduled( TSVI_Bunny::CRON_HOOK );
+		$is_stalled     = false;
+		if ( $has_pending > 0 && ! get_transient( 'tsvi_queue_lock' ) ) {
+			if ( ! $scheduled_time ) {
+				// No cron scheduled at all — definitely stalled.
+				$is_stalled = true;
+			} elseif ( $scheduled_time < time() - 120 ) {
+				// Cron is overdue by 2+ minutes — wp-cron likely broken.
+				$is_stalled = true;
+			}
+		}
+		if ( $is_stalled ) {
+			delete_transient( 'tsvi_currently_processing' );
+			wp_clear_scheduled_hook( TSVI_Bunny::CRON_HOOK );
+			wp_schedule_single_event( time(), TSVI_Bunny::CRON_HOOK );
+			spawn_cron();
+			echo '<div class="notice notice-warning is-dismissible"><p>Queue was stalled — automatically restarted processing.</p></div>';
+		}
+
 		// Fetch all posts with Bunny-related meta.
 		$pending_posts = $wpdb->get_results(
-			"SELECT p.ID, p.post_title, pm.meta_value as pending_url
+			"SELECT p.ID, p.post_title, pm.meta_value as pending_url,
+			        CAST(COALESCE(dur.meta_value, '999999') AS UNSIGNED) as duration
 			 FROM {$wpdb->posts} p
-			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-			 WHERE pm.meta_key = '_tsvi_bunny_pending' AND pm.meta_value != ''
-			 ORDER BY p.ID ASC LIMIT 100"
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_tsvi_bunny_pending' AND pm.meta_value != ''
+			 LEFT JOIN {$wpdb->postmeta} dur ON p.ID = dur.post_id AND dur.meta_key = 'duration'
+			 ORDER BY duration ASC LIMIT 100"
 		);
 
 		$done_posts = $wpdb->get_results(
@@ -176,14 +355,32 @@ class TSVI_Admin {
 				'cancelled'     => 'Post #' . $msg_ids . ' cancelled.',
 				'cancelled_all' => $msg_ids . ' pending uploads cancelled.',
 				'retried_all'   => $msg_ids . ' failed uploads re-queued.',
+				'force_started' => 'CDN queue processing triggered.',
 			);
 			if ( isset( $notices[ $msg ] ) ) {
 				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $notices[ $msg ] ) . '</p></div>';
 			}
 		}
 		?>
+		<?php
+		// Diagnostic info.
+		$cron_next    = wp_next_scheduled( TSVI_Bunny::CRON_HOOK );
+		$queue_locked = get_transient( 'tsvi_queue_lock' );
+		?>
 		<div class="wrap">
-			<h1>CDN Upload Queue</h1>
+			<h1>
+				CDN Upload Queue
+				<a class="button button-primary" href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=tsvi-queue&tsvi_action=force_start' ), 'tsvi_queue_action' ); ?>">Force Start</a>
+			</h1>
+
+			<?php if ( $pending_count > 0 ) : ?>
+			<p class="description">
+				Cron: <?php echo $cron_next ? 'scheduled for ' . date( 'H:i:s', $cron_next ) . ( $cron_next <= time() ? ' (overdue)' : '' ) : '<strong>not scheduled</strong>'; ?>
+				&nbsp;|&nbsp; Lock: <?php echo $queue_locked ? '<strong>active</strong>' : 'none'; ?>
+				&nbsp;|&nbsp; Processing: <?php echo $processing_id ? '#' . $processing_id : 'idle'; ?>
+				&nbsp;|&nbsp; v<?php echo TSVI_VERSION; ?>
+			</p>
+			<?php endif; ?>
 
 			<!-- PENDING -->
 			<div class="tsvi-card">
@@ -279,6 +476,302 @@ class TSVI_Admin {
 		<?php
 	}
 
+	/* ------------------------------------------------------------------
+	   Recompress page
+	   ------------------------------------------------------------------ */
+
+	public static function page_recompress() {
+		global $wpdb;
+
+		// Get stats.
+		$total   = intval( $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_bunny_status' AND meta_value = 'uploaded'" ) );
+		$done    = intval( $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompressed'" ) );
+		$skipped = intval( $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompress_skipped'" ) );
+		$errors  = intval( $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompress_error'" ) );
+		$pending = max( 0, $total - $done - $skipped - $errors );
+		$lock    = get_transient( 'tsvi_recompress_lock' );
+
+		// Recent done list.
+		$done_posts = $wpdb->get_results(
+			"SELECT p.ID, p.post_title, pm.meta_value as rc_info
+			 FROM {$wpdb->posts} p
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_tsvi_recompressed'
+			 ORDER BY p.ID DESC LIMIT 50"
+		);
+
+		// Error list.
+		$error_posts = $wpdb->get_results(
+			"SELECT p.ID, p.post_title, pm.meta_value as error_msg
+			 FROM {$wpdb->posts} p
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_tsvi_recompress_error'
+			 ORDER BY p.ID DESC LIMIT 50"
+		);
+
+		// Skipped list.
+		$skipped_posts = $wpdb->get_results(
+			"SELECT p.ID, p.post_title, pm.meta_value as reason
+			 FROM {$wpdb->posts} p
+			 JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_tsvi_recompress_skipped'
+			 ORDER BY p.ID DESC LIMIT 50"
+		);
+		?>
+		<div class="wrap">
+			<h1>Recompress Existing Videos</h1>
+			<p class="description">Downloads each video from Bunny CDN, transcodes to 720p, and re-uploads to the same path. Reduces storage and bandwidth costs by ~75%. Original URL stays the same.</p>
+
+			<!-- Stats cards -->
+			<div style="display:flex;gap:12px;flex-wrap:wrap;margin:20px 0;">
+				<div class="tsvi-card" style="flex:1;min-width:120px;text-align:center;padding:15px;">
+					<div style="font-size:28px;font-weight:700;"><?php echo $total; ?></div>
+					<div>Total uploaded</div>
+				</div>
+				<div class="tsvi-card" style="flex:1;min-width:120px;text-align:center;padding:15px;">
+					<div style="font-size:28px;font-weight:700;color:#00a32a;"><?php echo $done; ?></div>
+					<div>Compressed</div>
+				</div>
+				<div class="tsvi-card" style="flex:1;min-width:120px;text-align:center;padding:15px;">
+					<div style="font-size:28px;font-weight:700;color:#dba617;"><?php echo $skipped; ?></div>
+					<div>Skipped (small)</div>
+				</div>
+				<div class="tsvi-card" style="flex:1;min-width:120px;text-align:center;padding:15px;">
+					<div style="font-size:28px;font-weight:700;color:#d63638;"><?php echo $errors; ?></div>
+					<div>Errors</div>
+				</div>
+				<div class="tsvi-card" style="flex:1;min-width:120px;text-align:center;padding:15px;">
+					<div style="font-size:28px;font-weight:700;color:#2271b1;"><?php echo $pending; ?></div>
+					<div>Pending</div>
+				</div>
+			</div>
+
+			<!-- Progress bar -->
+			<?php if ( $total > 0 ) :
+				$processed = $done + $skipped + $errors;
+				$pct = round( ( $processed / $total ) * 100 );
+			?>
+			<div class="tsvi-card">
+				<div class="tsvi-progress-bar" style="height:24px;">
+					<div class="tsvi-progress-fill" style="width:<?php echo $pct; ?>%;"></div>
+				</div>
+				<p style="text-align:center;margin:8px 0 0;">
+					<?php echo $processed; ?>/<?php echo $total; ?> processed (<?php echo $pct; ?>%)
+					<?php if ( $lock ) : ?>
+						— <span class="tsvi-loading">running...</span>
+					<?php endif; ?>
+				</p>
+			</div>
+			<?php endif; ?>
+
+			<!-- Actions -->
+			<div class="tsvi-card">
+				<h2>Actions</h2>
+				<?php if ( ! TSVI_Bunny::ffmpeg_available() ) : ?>
+					<div class="notice notice-error" style="margin:0 0 15px;"><p>FFmpeg is not installed. Install via SSH: <code>apt install -y ffmpeg</code></p></div>
+				<?php endif; ?>
+
+				<?php $rc_enabled = (bool) get_option( 'tsvi_recompress_enabled', 0 ); ?>
+
+				<p>
+					<strong>Status:</strong>
+					<?php if ( $rc_enabled ) : ?>
+						<span class="tsvi-loading">ENABLED — the CLI worker processes a batch every minute.</span>
+						<?php if ( $lock ) : ?>
+							<span class="tsvi-ok">(batch running now)</span>
+						<?php endif; ?>
+					<?php else : ?>
+						<span class="tsvi-warn">DISABLED — click Start to begin processing.</span>
+					<?php endif; ?>
+				</p>
+
+				<p>
+					<?php if ( $pending > 0 && ! $rc_enabled ) : ?>
+						<button class="button button-primary button-hero" id="tsvi-btn-recompress" data-action="start">
+							Start Recompress (<?php echo $pending; ?> pending)
+						</button>
+					<?php elseif ( $rc_enabled ) : ?>
+						<button class="button button-hero tsvi-btn-danger" id="tsvi-btn-recompress" data-action="stop">
+							Stop Recompress
+						</button>
+						<span style="margin-left:10px;">Processing 3 videos per minute via CLI worker.</span>
+					<?php else : ?>
+						<button class="button button-hero" disabled>All videos processed</button>
+					<?php endif; ?>
+				</p>
+
+				<p class="description">
+					The CLI worker (crontab) processes a batch every minute while this is enabled. Refresh the page to see progress.<br>
+					SSH alternative (runs all at once):<br>
+					<code>php <?php echo esc_html( TSVI_PATH . 'recompress.php' ); ?> --all</code><br>
+					<code>php <?php echo esc_html( TSVI_PATH . 'recompress.php' ); ?> --status</code>
+				</p>
+			</div>
+
+			<!-- Compressed -->
+			<?php if ( $done_posts ) : ?>
+			<div class="tsvi-card">
+				<h2>Compressed <span class="tsvi-badge tsvi-badge-done"><?php echo $done; ?></span></h2>
+				<table class="wp-list-table widefat striped">
+					<thead><tr><th>ID</th><th>Title</th><th>Result</th></tr></thead>
+					<tbody>
+					<?php foreach ( $done_posts as $p ) : ?>
+						<tr>
+							<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
+							<td><?php echo esc_html( mb_substr( $p->post_title, 0, 60 ) ); ?></td>
+							<td><span class="tsvi-ok"><?php echo esc_html( $p->rc_info ); ?></span></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			<?php endif; ?>
+
+			<!-- Errors -->
+			<?php if ( $error_posts ) : ?>
+			<div class="tsvi-card">
+				<h2>
+					Errors <span class="tsvi-badge tsvi-badge-failed"><?php echo $errors; ?></span>
+					<button class="button button-small" id="tsvi-btn-retry-errors">Retry All Errors</button>
+				</h2>
+				<table class="wp-list-table widefat striped">
+					<thead><tr><th>ID</th><th>Title</th><th>Error</th></tr></thead>
+					<tbody>
+					<?php foreach ( $error_posts as $p ) : ?>
+						<tr>
+							<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
+							<td><?php echo esc_html( mb_substr( $p->post_title, 0, 60 ) ); ?></td>
+							<td><span class="tsvi-err"><?php echo esc_html( mb_substr( $p->error_msg, 0, 100 ) ); ?></span></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			<?php endif; ?>
+
+			<!-- Skipped -->
+			<?php if ( $skipped_posts ) : ?>
+			<div class="tsvi-card">
+				<h2>Skipped <span class="tsvi-badge tsvi-badge-pending"><?php echo $skipped; ?></span></h2>
+				<table class="wp-list-table widefat striped">
+					<thead><tr><th>ID</th><th>Title</th><th>Reason</th></tr></thead>
+					<tbody>
+					<?php foreach ( $skipped_posts as $p ) : ?>
+						<tr>
+							<td><a href="<?php echo get_edit_post_link( $p->ID ); ?>">#<?php echo $p->ID; ?></a></td>
+							<td><?php echo esc_html( mb_substr( $p->post_title, 0, 60 ) ); ?></td>
+							<td><?php echo esc_html( $p->reason ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			<?php endif; ?>
+
+			<!-- Recompress log -->
+			<?php
+			$upload_dir    = wp_upload_dir();
+			$recompress_log = $upload_dir['basedir'] . '/tsvi-logs/recompress.log';
+			if ( file_exists( $recompress_log ) ) :
+				$rlines = file( $recompress_log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+				$rlines = $rlines ? array_slice( $rlines, -80 ) : array();
+			?>
+			<div class="tsvi-card">
+				<h2>Recompress Log</h2>
+				<pre style="max-height:400px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap;"><?php echo esc_html( implode( "\n", array_reverse( $rlines ) ) ); ?></pre>
+			</div>
+			<?php endif; ?>
+		</div>
+
+		<script>
+		jQuery('#tsvi-btn-recompress').on('click', function () {
+			var btn = jQuery(this);
+			var rcAction = btn.data('action') || 'start';
+			btn.prop('disabled', true).text(rcAction === 'stop' ? 'Stopping...' : 'Starting...');
+			jQuery.post(tsvi.ajax_url, {
+				action: 'tsvi_recompress_start',
+				nonce: tsvi.nonce,
+				rc_action: rcAction
+			}).done(function (resp) {
+				if (resp.success) {
+					btn.text(rcAction === 'stop' ? 'Stopped.' : 'Enabled — worker will pick up in < 1 minute.');
+					setTimeout(function () { location.reload(); }, 1500);
+				} else {
+					btn.text('Error: ' + resp.data).prop('disabled', false);
+				}
+			}).fail(function () {
+				btn.text('Request failed').prop('disabled', false);
+			});
+		});
+
+		jQuery('#tsvi-btn-retry-errors').on('click', function () {
+			if (!confirm('Clear all error markers and retry them on next run?')) return;
+			var btn = jQuery(this);
+			btn.prop('disabled', true).text('Clearing...');
+			jQuery.post(tsvi.ajax_url, {
+				action: 'tsvi_recompress_start',
+				nonce: tsvi.nonce,
+				rc_action: 'retry_errors'
+			}).done(function (resp) {
+				if (resp.success) {
+					btn.text('Cleared ' + resp.data.cleared + ' — reloading...');
+					setTimeout(function () { location.reload(); }, 1500);
+				} else {
+					btn.text('Error').prop('disabled', false);
+				}
+			});
+		});
+		// Auto-reload while enabled so progress updates without manual F5.
+		<?php if ( get_option( 'tsvi_recompress_enabled', 0 ) ) : ?>
+		setTimeout(function () { location.reload(); }, 45000);
+		<?php endif; ?>
+		</script>
+		<?php
+	}
+
+	/* ------------------------------------------------------------------
+	   AJAX: Toggle recompress processing flag
+	   The CLI worker (running via crontab) picks this up on next run.
+	   ------------------------------------------------------------------ */
+
+	public static function ajax_recompress_start() {
+		check_ajax_referer( 'tsvi_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized.' );
+		}
+
+		$action = sanitize_text_field( $_POST['rc_action'] ?? 'start' );
+
+		if ( $action === 'stop' ) {
+			update_option( 'tsvi_recompress_enabled', 0, false );
+			TSVI_Log::write( 'upload', 'Recompress disabled via admin.' );
+			wp_send_json_success( array( 'enabled' => false ) );
+		}
+
+		if ( $action === 'retry_errors' ) {
+			global $wpdb;
+			$count = $wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key = '_tsvi_recompress_error'" );
+			TSVI_Log::write( 'upload', 'Cleared ' . intval( $count ) . ' recompress error markers for retry.' );
+			wp_send_json_success( array( 'cleared' => intval( $count ) ) );
+		}
+
+		// Start: enable the flag. The CLI worker will pick it up within 1 minute.
+		update_option( 'tsvi_recompress_enabled', 1, false );
+		TSVI_Log::write( 'upload', 'Recompress enabled via admin.' );
+
+		// Best-effort: also try to spawn recompress.php directly, but don't rely on it.
+		$script = TSVI_PATH . 'recompress.php';
+		if ( file_exists( $script ) && function_exists( 'exec' ) ) {
+			$php_candidates = array( '/usr/bin/php', '/usr/local/bin/php', 'php' );
+			foreach ( $php_candidates as $php_bin ) {
+				if ( $php_bin === 'php' || is_executable( $php_bin ) ) {
+					$cmd = 'nohup ' . escapeshellcmd( $php_bin ) . ' ' . escapeshellarg( $script ) . ' > /dev/null 2>&1 &';
+					@exec( $cmd );
+					break;
+				}
+			}
+		}
+
+		wp_send_json_success( array( 'enabled' => true ) );
+	}
+
 	/**
 	 * Re-queue a post for Bunny upload (works for failed and uploaded posts).
 	 */
@@ -310,6 +803,7 @@ class TSVI_Admin {
 		register_setting( 'tsvi_settings', 'tsvi_bunny_storage_region' );
 		register_setting( 'tsvi_settings', 'tsvi_bunny_cdn_hostname' );
 		register_setting( 'tsvi_settings', 'tsvi_bunny_token_key' );
+		register_setting( 'tsvi_settings', 'tsvi_ytdlp_path' );
 	}
 
 	public static function page_settings() {
@@ -326,7 +820,9 @@ class TSVI_Admin {
 		$bunny_token   = get_option( 'tsvi_bunny_token_key', '' );
 		?>
 		<div class="wrap">
-			<h1>Video Importer Settings</h1>
+			<h1>Video Importer Settings <span style="font-size:14px;font-weight:normal;color:#666;">v<?php echo esc_html( TSVI_VERSION ); ?></span></h1>
+			<p class="description">Plugin version: <code><?php echo esc_html( TSVI_VERSION ); ?></code> &nbsp;|&nbsp; Path: <code><?php echo esc_html( TSVI_PATH ); ?></code></p>
+
 			<form method="post" action="options.php">
 				<?php settings_fields( 'tsvi_settings' ); ?>
 
@@ -420,8 +916,154 @@ class TSVI_Admin {
 					</tr>
 				</table>
 
+				<h2>yt-dlp Binary Path (optional)</h2>
+				<table class="form-table">
+					<tr>
+						<th>Custom yt-dlp path</th>
+						<td>
+							<?php $ytdlp_custom = get_option( 'tsvi_ytdlp_path', '' ); ?>
+							<input type="text" name="tsvi_ytdlp_path" value="<?php echo esc_attr( $ytdlp_custom ); ?>" class="regular-text" placeholder="/snap/bin/yt-dlp">
+							<p class="description">Leave empty to auto-detect. Set if yt-dlp is installed in a non-standard path. Find it via SSH: <code>which yt-dlp</code></p>
+						</td>
+					</tr>
+				</table>
+
 				<?php submit_button(); ?>
 			</form>
+
+			<h2>FFmpeg Transcode</h2>
+			<p class="description">Videos are automatically transcoded to 720p H.264 before uploading to Bunny CDN. Reduces file size by ~75%. If FFmpeg is not installed, videos are uploaded in original quality (no errors).</p>
+			<p class="description">
+				<?php
+				if ( TSVI_Bunny::ffmpeg_available() ) {
+					echo '<span class="tsvi-ok">FFmpeg: installed</span>';
+				} else {
+					echo '<span class="tsvi-warn">FFmpeg: NOT detected — videos will upload at original size.</span>';
+					echo '<br>Install: <code>apt install -y ffmpeg</code>';
+				}
+				?>
+			</p>
+
+			<h2>CLI Worker (recommended)</h2>
+			<p class="description">The CLI worker processes uploads in the background without web server timeouts. Add this line to your server crontab (<code>crontab -e</code>):</p>
+			<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;">* * * * * php <?php echo esc_html( TSVI_PATH . 'worker.php' ); ?> >> /dev/null 2>&amp;1</pre>
+			<p class="description">
+				<?php
+				$cli_lock = get_transient( 'tsvi_cli_lock' );
+				if ( $cli_lock ) {
+					echo '<span class="tsvi-ok">CLI Worker: active (PID ' . esc_html( $cli_lock ) . ')</span>';
+				} else {
+					echo '<span class="tsvi-warn">CLI Worker: not detected — set up the crontab above for reliable uploads.</span>';
+				}
+				?>
+				<br>Manual check: <code>php <?php echo esc_html( TSVI_PATH . 'worker.php' ); ?> --status</code>
+			</p>
+
+			<h2>Video Extractors</h2>
+			<p class="description">The plugin uses multiple strategies to resolve video URLs from hoster pages.</p>
+
+			<table class="form-table">
+				<tr>
+					<th>yt-dlp</th>
+					<td>
+						<?php
+						if ( TSVI_Scraper::ytdlp_available() ) {
+							$bin = TSVI_Scraper::ytdlp_binary_path();
+							echo '<span class="tsvi-ok">Installed</span> — version ' . esc_html( TSVI_Scraper::ytdlp_version() );
+							echo '<br><small>Binary: <code>' . esc_html( $bin ) . '</code></small>';
+						} else {
+							echo '<span class="tsvi-warn">NOT detected</span>';
+						}
+						?>
+						<p class="description">Handles Streamtape, Mixdrop, Fembed, Upstream, and 1000+ other hosters.</p>
+					</td>
+				</tr>
+				<tr>
+					<th>Native Doodstream</th>
+					<td>
+						<?php
+						if ( TSVI_Scraper::doodstream_native_available() ) {
+							echo '<span class="tsvi-ok">Available</span>';
+							echo '<br><small>Script: <code>' . esc_html( TSVI_PATH . 'bin/doodstream.py' ) . '</code></small>';
+						} else {
+							echo '<span class="tsvi-warn">Script or python3 not found</span>';
+						}
+						?>
+						<p class="description">Custom Python extractor for Doodstream/playmogo (yt-dlp removed this extractor).</p>
+					</td>
+				</tr>
+			</table>
+
+			<h3>Install / update everything</h3>
+			<pre style="background:#1d2327;color:#50c878;padding:12px;border-radius:4px;overflow-x:auto;">snap remove yt-dlp 2&gt;/dev/null
+apt install -y python3-pip
+pip install -U "yt-dlp[default,curl-cffi]" --break-system-packages
+
+# Verify:
+yt-dlp --version
+python3 -c "import curl_cffi; print('curl_cffi OK')"</pre>
+			<p class="description">Updates (run monthly): <code>pip install -U "yt-dlp[default,curl-cffi]" --break-system-packages</code></p>
+		</div>
+		<?php
+	}
+
+	/* ------------------------------------------------------------------
+	   Activity Log page
+	   ------------------------------------------------------------------ */
+
+	public static function page_log() {
+		$files   = TSVI_Log::get_log_files();
+		$current = sanitize_file_name( $_GET['log_file'] ?? '' );
+		$content = '';
+
+		if ( $current && in_array( $current, $files, true ) ) {
+			$content = TSVI_Log::read_file( $current, 300 );
+		} elseif ( ! empty( $files ) ) {
+			$current = end( $files );
+			$content = TSVI_Log::read_file( $current, 300 );
+		}
+		?>
+		<div class="wrap">
+			<h1>Activity Log</h1>
+
+			<?php if ( ! empty( $files ) ) : ?>
+			<p>
+				<?php foreach ( $files as $f ) : ?>
+					<?php if ( $f === $current ) : ?>
+						<strong><?php echo esc_html( $f ); ?></strong>
+					<?php else : ?>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=tsvi-log&log_file=' . $f ) ); ?>"><?php echo esc_html( $f ); ?></a>
+					<?php endif; ?>
+					&nbsp;
+				<?php endforeach; ?>
+			</p>
+			<?php endif; ?>
+
+			<div class="tsvi-card">
+				<?php if ( $content ) : ?>
+					<pre style="max-height:600px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap;"><?php echo esc_html( $content ); ?></pre>
+				<?php else : ?>
+					<p>No log entries yet. Logs are created when imports, uploads, or errors occur.</p>
+				<?php endif; ?>
+			</div>
+
+			<?php
+			// Also show worker.log if it exists.
+			$upload_dir = wp_upload_dir();
+			$worker_log = $upload_dir['basedir'] . '/tsvi-logs/worker.log';
+			// Check legacy location for backward compat.
+			if ( ! file_exists( $worker_log ) && file_exists( TSVI_PATH . 'worker.log' ) ) {
+				$worker_log = TSVI_PATH . 'worker.log';
+			}
+			if ( file_exists( $worker_log ) ) :
+				$wlines = file( $worker_log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+				$wlines = $wlines ? array_slice( $wlines, -100 ) : array();
+			?>
+			<div class="tsvi-card">
+				<h2>CLI Worker Log</h2>
+				<pre style="max-height:400px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap;"><?php echo esc_html( implode( "\n", array_reverse( $wlines ) ) ); ?></pre>
+			</div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -639,5 +1281,55 @@ class TSVI_Admin {
 				'video_url'    => $result['video_url'],
 			)
 		);
+	}
+
+	/* ------------------------------------------------------------------
+	   AJAX: Queue URLs for direct upload (instant response, no processing)
+	   ------------------------------------------------------------------ */
+
+	public static function ajax_direct_queue() {
+		check_ajax_referer( 'tsvi_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized.' );
+		}
+
+		$raw  = sanitize_textarea_field( $_POST['urls'] ?? '' );
+		$urls = array_filter( array_map( 'trim', explode( "\n", $raw ) ) );
+		$urls = array_map( 'esc_url_raw', $urls );
+		$urls = array_filter( $urls );
+
+		if ( empty( $urls ) ) {
+			wp_send_json_error( 'No valid URLs.' );
+		}
+
+		$queue = get_option( 'tsvi_direct_upload_queue', array() );
+		foreach ( $urls as $url ) {
+			$queue[] = array(
+				'url'       => $url,
+				'queued_at' => current_time( 'Y-m-d H:i' ),
+			);
+		}
+		update_option( 'tsvi_direct_upload_queue', $queue, false );
+
+		// Trigger background processing.
+		TSVI_Bunny::schedule_direct_upload();
+
+		wp_send_json_success( array( 'queued' => count( $urls ) ) );
+	}
+
+	/* ------------------------------------------------------------------
+	   AJAX: Clear direct upload history
+	   ------------------------------------------------------------------ */
+
+	public static function ajax_direct_clear_history() {
+		check_ajax_referer( 'tsvi_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized.' );
+		}
+
+		update_option( 'tsvi_direct_upload_history', array(), false );
+		wp_send_json_success();
 	}
 }

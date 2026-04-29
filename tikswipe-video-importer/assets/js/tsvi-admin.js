@@ -51,37 +51,83 @@
 					return;
 				}
 
-				$('#tsvi-progress-text').text('Found ' + links.length + ' links. Extracting videos...');
+				// Separate items that already have full data (RedGifs API) from those needing extraction.
+				var readyLinks   = [];
+				var extractLinks = [];
+				var total = Math.min(links.length, limit);
 
-				// Process links sequentially with delay.
-				var idx = 0;
-				function next() {
-					if (idx >= links.length || idx >= limit) {
-						scrapeDone();
-						return;
+				for (var li = 0; li < total; li++) {
+					if (links[li].video_url) {
+						readyLinks.push(links[li]);
+					} else {
+						extractLinks.push(links[li]);
 					}
+				}
 
-					var link = links[idx];
-					var pct  = Math.round(((idx + 1) / Math.min(links.length, limit)) * 100);
-					setProgress('tsvi-progress-fill', pct);
-					$('#tsvi-progress-text').text('Extracting ' + (idx + 1) + '/' + Math.min(links.length, limit) + ': ' + link.title.substring(0, 60));
-
-					extractOne(link.url, function (video) {
-						if (video) {
-							// Use listing thumbnail as fallback.
-							if (!video.thumbnail && link.thumbnail) {
-								video.thumbnail = link.thumbnail;
-							}
-							if (!video.title && link.title) {
-								video.title = link.title;
-							}
-							results.push(video);
-						}
-						idx++;
-						setTimeout(next, delay * 1000);
+				// Add ready items directly (no extraction needed).
+				for (var ri = 0; ri < readyLinks.length; ri++) {
+					var rl = readyLinks[ri];
+					results.push({
+						source_url:  rl.url,
+						title:       rl.title || '',
+						description: rl.description || '',
+						video_url:   rl.video_url,
+						thumbnail:   rl.thumbnail || '',
+						duration:    rl.duration || 0,
+						width:       rl.width || 0,
+						height:      rl.height || 0,
+						source_tags: rl.source_tags || [],
+						embed:       ''
 					});
 				}
-				next();
+
+				if (!extractLinks.length) {
+					$('#tsvi-progress-text').text('Got ' + readyLinks.length + ' videos from API.');
+					setProgress('tsvi-progress-fill', 100);
+					scrapeDone();
+					return;
+				}
+
+				$('#tsvi-progress-text').text(
+					(readyLinks.length ? readyLinks.length + ' ready, ' : '') +
+					'extracting ' + extractLinks.length + ' videos (3 at a time)...'
+				);
+
+				// Extract remaining links 3 in parallel.
+				var EXTRACT_PARALLEL = 3;
+				var extIdx     = 0;
+				var extDone    = 0;
+				var extTotal   = extractLinks.length;
+
+				function extractNext() {
+					if (extIdx >= extTotal) return;
+					var i    = extIdx++;
+					var link = extractLinks[i];
+
+					extractOne(link.url, function (video) {
+						extDone++;
+						var pct = Math.round(((readyLinks.length + extDone) / total) * 100);
+						setProgress('tsvi-progress-fill', pct);
+						$('#tsvi-progress-text').text('Extracted ' + extDone + '/' + extTotal + ': ' + link.title.substring(0, 50));
+
+						if (video) {
+							if (!video.thumbnail && link.thumbnail) video.thumbnail = link.thumbnail;
+							if (!video.title && link.title) video.title = link.title;
+							results.push(video);
+						}
+
+						if (extDone >= extTotal) {
+							scrapeDone();
+						} else {
+							setTimeout(extractNext, delay * 1000);
+						}
+					});
+				}
+
+				// Start up to EXTRACT_PARALLEL workers.
+				for (var w = 0; w < Math.min(EXTRACT_PARALLEL, extTotal); w++) {
+					extractNext();
+				}
 			});
 		}
 	});
@@ -336,5 +382,44 @@
 		if (!str) return '';
 		return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 	}
+
+	/* ==========================================================
+	   Direct Upload: queue URLs for background processing
+	   ========================================================== */
+
+	$('#tsvi-btn-direct-upload').on('click', function () {
+		var raw = $('#tsvi-direct-urls').val().trim();
+		if (!raw) { alert('Paste at least one URL.'); return; }
+
+		var btn = $(this);
+		btn.prop('disabled', true).text('Queueing...');
+
+		$.post(tsvi.ajax_url, {
+			action: 'tsvi_direct_queue',
+			nonce:  tsvi.nonce,
+			urls:   raw
+		}).done(function (resp) {
+			if (resp.success) {
+				$('#tsvi-direct-urls').val('');
+				location.reload();
+			} else {
+				alert('Error: ' + resp.data);
+				btn.prop('disabled', false).text('Upload to CDN');
+			}
+		}).fail(function () {
+			alert('Request failed.');
+			btn.prop('disabled', false).text('Upload to CDN');
+		});
+	});
+
+	// Clear history button.
+	$('#tsvi-btn-clear-history').on('click', function () {
+		$.post(tsvi.ajax_url, {
+			action: 'tsvi_direct_clear_history',
+			nonce:  tsvi.nonce
+		}).done(function () {
+			location.reload();
+		});
+	});
 
 })(jQuery);

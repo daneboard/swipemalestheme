@@ -10,13 +10,82 @@ defined( 'ABSPATH' ) || exit;
 
 class TSVI_Bunny {
 
-	const CRON_HOOK = 'tsvi_bunny_process_queue';
+	const CRON_HOOK        = 'tsvi_bunny_process_queue';
+	const DIRECT_CRON_HOOK = 'tsvi_direct_process_queue';
 
 	/**
-	 * Register the background cron hook.
+	 * Register the background cron hooks.
 	 */
 	public static function init_cron() {
 		add_action( self::CRON_HOOK, array( __CLASS__, 'process_queue' ) );
+		add_action( self::DIRECT_CRON_HOOK, array( __CLASS__, 'process_direct_queue' ) );
+		add_action( 'wp_ajax_tsvi_worker', array( __CLASS__, 'ajax_worker' ) );
+		add_action( 'wp_ajax_nopriv_tsvi_worker', array( __CLASS__, 'ajax_worker' ) );
+		add_action( 'wp_ajax_tsvi_direct_worker', array( __CLASS__, 'ajax_direct_worker' ) );
+		add_action( 'wp_ajax_nopriv_tsvi_direct_worker', array( __CLASS__, 'ajax_direct_worker' ) );
+	}
+
+	/**
+	 * AJAX handler: process a single post in a background worker.
+	 */
+	public static function ajax_worker() {
+		$post_id = intval( $_POST['post_id'] ?? 0 );
+		$token   = sanitize_text_field( $_POST['token'] ?? '' );
+		if ( ! $post_id || $token !== wp_hash( 'tsvi_worker_' . $post_id ) ) {
+			wp_die();
+		}
+		set_time_limit( 1200 );
+		ignore_user_abort( true );
+		self::process_single( $post_id );
+		wp_die();
+	}
+
+	/**
+	 * AJAX handler: process a single direct upload in a background worker.
+	 */
+	public static function ajax_direct_worker() {
+		$url   = esc_url_raw( $_POST['url'] ?? '' );
+		$token = sanitize_text_field( $_POST['token'] ?? '' );
+		if ( ! $url || $token !== wp_hash( 'tsvi_dw_' . md5( $url ) ) ) {
+			wp_die();
+		}
+		set_time_limit( 1200 );
+		ignore_user_abort( true );
+		self::process_single_direct( $url );
+		wp_die();
+	}
+
+	/**
+	 * Spawn a background worker (non-blocking, like spawn_cron).
+	 * If the server can't do loopback, this silently fails — no harm done.
+	 */
+	private static function spawn_worker( $post_id ) {
+		wp_remote_post( admin_url( 'admin-ajax.php' ), array(
+			'timeout'   => 0.01,
+			'blocking'  => false,
+			'sslverify' => false,
+			'body'      => array(
+				'action'  => 'tsvi_worker',
+				'post_id' => $post_id,
+				'token'   => wp_hash( 'tsvi_worker_' . $post_id ),
+			),
+		) );
+	}
+
+	/**
+	 * Spawn a background worker for a direct upload URL.
+	 */
+	private static function spawn_direct_worker( $url ) {
+		wp_remote_post( admin_url( 'admin-ajax.php' ), array(
+			'timeout'   => 0.01,
+			'blocking'  => false,
+			'sslverify' => false,
+			'body'      => array(
+				'action' => 'tsvi_direct_worker',
+				'url'    => $url,
+				'token'  => wp_hash( 'tsvi_dw_' . md5( $url ) ),
+			),
+		) );
 	}
 
 	/**
@@ -26,33 +95,92 @@ class TSVI_Bunny {
 		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
 			wp_schedule_single_event( time(), self::CRON_HOOK );
 		}
-		// Kick cron immediately.
 		spawn_cron();
 	}
 
 	/**
-	 * Background cron handler: process ONE pending Bunny upload per run.
-	 * Schedules itself again if more items remain.
+	 * Schedule background processing for direct uploads.
+	 */
+	public static function schedule_direct_upload() {
+		if ( ! wp_next_scheduled( self::DIRECT_CRON_HOOK ) ) {
+			wp_schedule_single_event( time(), self::DIRECT_CRON_HOOK );
+		}
+		spawn_cron();
+	}
+
+	/**
+	 * Background cron handler: process up to 3 pending Bunny uploads per run.
+	 * Shorter videos are uploaded first. Schedules itself again if more items remain.
 	 */
 	public static function process_queue() {
+		// Only process via CLI worker (crontab), never via web requests.
+		// Web-triggered wp-cron causes multiple FFmpeg processes that overload the VPS.
+		if ( php_sapi_name() !== 'cli' ) {
+			return;
+		}
+
 		global $wpdb;
 
-		// Find one post with pending Bunny upload.
-		$post_id = $wpdb->get_var(
-			"SELECT post_id FROM {$wpdb->postmeta}
-			 WHERE meta_key = '_tsvi_bunny_pending'
-			 AND meta_value != ''
+		// Prevent concurrent runs.
+		if ( get_transient( 'tsvi_queue_lock' ) ) {
+			return;
+		}
+		set_transient( 'tsvi_queue_lock', 1, 1800 );
+
+		// Find up to 3 posts with pending Bunny upload, shorter videos first.
+		// Process sequentially (not parallel) to avoid multiple FFmpeg processes
+		// saturating the VPS CPU and making the site unresponsive.
+		$post_ids = $wpdb->get_col(
+			"SELECT pm.post_id FROM {$wpdb->postmeta} pm
+			 LEFT JOIN {$wpdb->postmeta} dur ON pm.post_id = dur.post_id AND dur.meta_key = 'duration'
+			 WHERE pm.meta_key = '_tsvi_bunny_pending'
+			 AND pm.meta_value != ''
+			 ORDER BY CAST(COALESCE(dur.meta_value, '999999') AS UNSIGNED) ASC
 			 LIMIT 1"
 		);
 
-		if ( ! $post_id ) {
-			return; // Nothing to process.
+		if ( empty( $post_ids ) ) {
+			delete_transient( 'tsvi_queue_lock' );
+			return;
 		}
 
-		// Allow enough time for large downloads.
-		set_time_limit( 900 );
+		set_time_limit( 1800 );
 		ignore_user_abort( true );
 
+		// Pre-schedule the next run as a safety net.
+		wp_schedule_single_event( time() + 60, self::CRON_HOOK );
+
+		// Process ONE item per cron run (keeps CPU usage minimal).
+		$pid = intval( $post_ids[0] );
+		try {
+			self::process_single( $pid );
+		} catch ( \Throwable $e ) {
+			update_post_meta( $pid, '_tsvi_bunny_pending', '' );
+			update_post_meta( $pid, '_tsvi_bunny_error', 'Fatal: ' . $e->getMessage() );
+			delete_transient( 'tsvi_currently_processing' );
+		}
+
+		// Check if more items remain.
+		$remaining = $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_tsvi_bunny_pending'
+			 AND meta_value != ''"
+		);
+
+		// Replace the safety schedule with the correct timing.
+		wp_clear_scheduled_hook( self::CRON_HOOK );
+		if ( $remaining > 0 ) {
+			wp_schedule_single_event( time() + 5, self::CRON_HOOK );
+			spawn_cron();
+		}
+
+		delete_transient( 'tsvi_queue_lock' );
+	}
+
+	/**
+	 * Process a single pending Bunny upload.
+	 */
+	public static function process_single( $post_id ) {
 		// Mark which post is currently processing (for the queue UI).
 		set_transient( 'tsvi_currently_processing', $post_id, 600 );
 
@@ -62,19 +190,15 @@ class TSVI_Bunny {
 			return;
 		}
 
-		// If the pending URL is a video page (not a direct file), re-scrape
-		// to get a fresh video URL (the original one may have expired).
-		$video_url = $source_url;
-		$page_url  = get_post_meta( $post_id, '_tsvi_source_url', true );
-		if ( $page_url && ! preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $source_url ) ) {
-			// source_url is a page, not a file — re-scrape it.
-			$fresh = TSVI_Scraper::extract_video( $source_url );
-			if ( ! is_wp_error( $fresh ) && ! empty( $fresh['video_url'] ) ) {
-				$video_url = $fresh['video_url'];
-			}
-		} elseif ( $page_url && $page_url !== $source_url ) {
-			// We have the page URL — re-scrape for a fresh video URL.
-			$fresh = TSVI_Scraper::extract_video( $page_url );
+		// If the pending URL is a direct video file (.mp4, .webm, .m3u8), use it as-is.
+		// Otherwise re-scrape to get a fresh URL (the original may have expired).
+		$video_url     = $source_url;
+		$is_direct_url = (bool) preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $source_url );
+
+		if ( ! $is_direct_url ) {
+			$page_url = get_post_meta( $post_id, '_tsvi_source_url', true );
+			$scrape_url = $page_url ?: $source_url;
+			$fresh = TSVI_Scraper::extract_video( $scrape_url );
 			if ( ! is_wp_error( $fresh ) && ! empty( $fresh['video_url'] ) ) {
 				$video_url = $fresh['video_url'];
 			}
@@ -93,21 +217,17 @@ class TSVI_Bunny {
 		delete_transient( 'tsvi_currently_processing' );
 
 		if ( is_wp_error( $cdn_url ) ) {
-			// Mark as failed so we don't retry forever.
 			update_post_meta( $post_id, '_tsvi_bunny_pending', '' );
 			update_post_meta( $post_id, '_tsvi_bunny_error', $cdn_url->get_error_message() );
+			TSVI_Log::error( 'Upload failed #' . $post_id, array( 'error' => $cdn_url->get_error_message() ) );
 		} else {
-			// Success: update the video URL to CDN and publish.
 			update_post_meta( $post_id, 'video_url', esc_url_raw( $cdn_url ) );
 			delete_post_meta( $post_id, '_tsvi_bunny_pending' );
 			delete_post_meta( $post_id, '_tsvi_bunny_error' );
 			update_post_meta( $post_id, '_tsvi_bunny_status', 'uploaded' );
 
-			// Reset thumb generator flag so it retries with the new CDN URL.
 			delete_post_meta( $post_id, '_mtg_thumb_done' );
 
-			// Auto-publish: draft → publish now that CDN URL is set.
-			// This also triggers save_post → thumb generator runs with CDN URL.
 			$post = get_post( $post_id );
 			if ( $post && 'draft' === $post->post_status ) {
 				wp_update_post( array(
@@ -115,19 +235,126 @@ class TSVI_Bunny {
 					'post_status' => 'publish',
 				) );
 			}
+
+			TSVI_Log::upload( 'Uploaded #' . $post_id . ' to CDN', array( 'cdn' => mb_substr( $cdn_url, 0, 80 ) ) );
+		}
+	}
+
+	/**
+	 * Background cron handler: process pending direct uploads (up to 3 parallel).
+	 * Processes 1 directly + spawns 2 background workers.
+	 */
+	public static function process_direct_queue() {
+		if ( php_sapi_name() !== 'cli' ) {
+			return;
 		}
 
-		// If more items pending, schedule next run.
-		$remaining = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->postmeta}
-			 WHERE meta_key = '_tsvi_bunny_pending'
-			 AND meta_value != ''"
-		);
+		$queue = get_option( 'tsvi_direct_upload_queue', array() );
+		if ( empty( $queue ) ) {
+			return;
+		}
 
-		if ( $remaining > 0 ) {
-			wp_schedule_single_event( time() + 5, self::CRON_HOOK );
+		set_time_limit( 1500 );
+		ignore_user_abort( true );
+
+		// Pre-schedule safety net.
+		wp_schedule_single_event( time() + 60, self::DIRECT_CRON_HOOK );
+
+		// Take 1 item per run (keeps CPU usage minimal).
+		$batch = array_splice( $queue, 0, 1 );
+		update_option( 'tsvi_direct_upload_queue', $queue, false );
+
+		// Process ONE item per cron run.
+		self::process_single_direct( $batch[0]['url'] );
+
+		// Replace safety schedule.
+		wp_clear_scheduled_hook( self::DIRECT_CRON_HOOK );
+		$remaining = get_option( 'tsvi_direct_upload_queue', array() );
+		if ( ! empty( $remaining ) ) {
+			wp_schedule_single_event( time() + 5, self::DIRECT_CRON_HOOK );
 			spawn_cron();
 		}
+	}
+
+	/**
+	 * Process a single direct upload URL: download, upload to Bunny, save to history.
+	 */
+	public static function process_single_direct( $url ) {
+		$original_url = $url;
+
+		// If the URL doesn't look like a direct video file, resolve it via
+		// extract_video (which uses RedGifs API, yt-dlp for hosters, or scraping).
+		$is_direct_file = (bool) preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $url );
+		if ( ! $is_direct_file ) {
+			$resolved = TSVI_Scraper::extract_video( $url );
+			if ( ! is_wp_error( $resolved ) && ! empty( $resolved['video_url'] ) ) {
+				$url = $resolved['video_url'];
+			}
+		}
+
+		$parsed   = wp_parse_url( $url, PHP_URL_PATH );
+		$basename = $parsed ? basename( $parsed ) : '';
+		$ext      = pathinfo( $basename, PATHINFO_EXTENSION ) ?: 'mp4';
+		$name     = pathinfo( $basename, PATHINFO_FILENAME );
+		$slug     = $name ? sanitize_title( mb_substr( $name, 0, 60 ) ) : 'direct-' . time();
+		$filename = $slug . '-' . wp_rand( 1000, 9999 ) . '.' . $ext;
+
+		$cdn_url = self::remote_upload( $url, $filename, 'direct' );
+
+		$entry = array(
+			'date'    => current_time( 'Y-m-d H:i' ),
+			'source'  => $original_url,
+			'cdn_url' => '',
+			'error'   => '',
+		);
+
+		if ( is_wp_error( $cdn_url ) ) {
+			$entry['error'] = $cdn_url->get_error_message();
+		} else {
+			$entry['cdn_url'] = $cdn_url;
+
+			// Create a WordPress post for the uploaded video, status: pending review.
+			// Title is the CDN URL itself for easy identification/copy.
+			$post_id = wp_insert_post( array(
+				'post_title'   => $cdn_url,
+				'post_content' => $cdn_url,
+				'post_status'  => 'pending',
+				'post_type'    => 'post',
+				'post_author'  => get_current_user_id() ?: 1,
+			), true );
+
+			if ( ! is_wp_error( $post_id ) && $post_id ) {
+				set_post_format( $post_id, 'video' );
+				update_post_meta( $post_id, 'video_url', esc_url_raw( $cdn_url ) );
+				update_post_meta( $post_id, '_tsvi_source_url', esc_url_raw( $original_url ) );
+				update_post_meta( $post_id, '_tsvi_bunny_status', 'uploaded' );
+				update_post_meta( $post_id, 'post_views_count', '0' );
+				$ext = pathinfo( wp_parse_url( $cdn_url, PHP_URL_PATH ), PATHINFO_EXTENSION );
+				if ( $ext ) {
+					update_post_meta( $post_id, '_video_extension', strtolower( $ext ) );
+				}
+				// Reset thumb generator flag so it picks up the new video.
+				delete_post_meta( $post_id, '_mtg_thumb_done' );
+				// Trigger save_post hooks (thumb generator etc.).
+				wp_update_post( array( 'ID' => $post_id ) );
+
+				$entry['post_id'] = $post_id;
+				TSVI_Log::write( 'import', 'Direct upload created post #' . $post_id . ' (pending review)', array(
+					'cdn'    => mb_substr( $cdn_url, 0, 80 ),
+					'source' => mb_substr( $original_url, 0, 80 ),
+				) );
+			} else {
+				$err_msg = is_wp_error( $post_id ) ? $post_id->get_error_message() : 'unknown';
+				TSVI_Log::error( 'Direct upload post creation failed', array( 'error' => $err_msg ) );
+			}
+		}
+
+		$history   = get_option( 'tsvi_direct_upload_history', array() );
+		$history[] = $entry;
+		if ( count( $history ) > 200 ) {
+			$history = array_slice( $history, -200 );
+		}
+		update_option( 'tsvi_direct_upload_history', $history, false );
 	}
 
 	/**
@@ -183,7 +410,16 @@ class TSVI_Bunny {
 			return $validation;
 		}
 
-		// Step 3: Upload to Bunny Storage via PUT.
+		// Step 3: Transcode to 720p if FFmpeg is available and video is larger.
+		$upload_file = $tmp;
+		$transcoded  = self::transcode_video( $tmp );
+		if ( $transcoded && $transcoded !== $tmp ) {
+			$upload_file = $transcoded;
+			// Ensure filename has .mp4 extension (transcode always outputs MP4).
+			$filename = preg_replace( '/\.[^.]+$/', '.mp4', $filename );
+		}
+
+		// Step 4: Upload to Bunny Storage via PUT.
 		$host = 'storage.bunnycdn.com';
 		if ( $region && $region !== 'default' ) {
 			$host = $region . '.' . $host;
@@ -191,16 +427,152 @@ class TSVI_Bunny {
 
 		$storage_path = '/' . $storage_zone . '/' . trim( $folder, '/' ) . '/' . $filename;
 
-		$upload = self::curl_upload( 'https://' . $host . $storage_path, $tmp, $api_key );
+		$upload = self::curl_upload( 'https://' . $host . $storage_path, $upload_file, $api_key );
 
-		// Clean up temp file immediately.
+		// Clean up temp files immediately.
 		@unlink( $tmp );
+		if ( $transcoded && $transcoded !== $tmp ) {
+			@unlink( $transcoded );
+		}
 
 		if ( is_wp_error( $upload ) ) {
 			return $upload;
 		}
 
 		return self::get_cdn_url( trim( $folder, '/' ) . '/' . $filename );
+	}
+
+	/**
+	 * Transcode video to 720p using FFmpeg.
+	 *
+	 * - If video is already 720p or smaller, skips transcoding.
+	 * - If FFmpeg is not installed, returns null (graceful fallback).
+	 * - Returns path to transcoded file, or null to use original.
+	 *
+	 * @param string $input_path Path to the downloaded video file.
+	 * @return string|null Path to transcoded file, or null to use original.
+	 */
+	private static function transcode_video( $input_path ) {
+		$ffmpeg  = self::ffmpeg_binary();
+		$ffprobe = self::ffprobe_binary();
+
+		if ( ! $ffmpeg ) {
+			return null; // FFmpeg not installed — use original.
+		}
+
+		// Probe video width and height to decide if transcoding is needed.
+		// The scale filter caps WIDTH at 720px, so we check width.
+		$width  = 0;
+		$height = 0;
+		if ( $ffprobe ) {
+			$probe_cmd = escapeshellcmd( $ffprobe )
+				. ' -v error -select_streams v:0 -show_entries stream=width,height'
+				. ' -of csv=p=0 ' . escapeshellarg( $input_path )
+				. ' 2>/dev/null';
+			$probe_out = trim( @shell_exec( $probe_cmd ) ?? '' );
+			// Output format: "width,height" e.g. "1080,1920"
+			$parts  = explode( ',', $probe_out );
+			$width  = intval( $parts[0] ?? 0 );
+			$height = intval( $parts[1] ?? 0 );
+		}
+
+		$size_mb = filesize( $input_path ) / 1048576;
+
+		// Skip if already at or below 720px width AND file is small.
+		if ( $width > 0 && $width <= 720 && $size_mb < 30 ) {
+			TSVI_Log::write( 'upload', 'Transcode skipped: ' . $width . 'x' . $height . ', ' . round( $size_mb, 1 ) . 'MB (already small)' );
+			return null;
+		}
+
+		if ( $width === 0 && $size_mb < 15 ) {
+			TSVI_Log::write( 'upload', 'Transcode skipped: probe failed, file < 15MB' );
+			return null;
+		}
+
+		// Build output path.
+		$output_path = $input_path . '_720p.mp4';
+		$original_size = filesize( $input_path );
+
+		TSVI_Log::write( 'upload', 'Transcoding: ' . $width . 'x' . $height . ' → 720w cap, original ' . round( $original_size / 1048576, 1 ) . 'MB' );
+
+		// FFmpeg command: H.264 high profile, CRF 24, cap 720px width, AAC 96k, faststart.
+		// -threads 1 ensures minimal CPU impact so the VPS can serve web requests.
+		$cmd = 'nice -n 19 ' . escapeshellcmd( $ffmpeg )
+			. ' -y -i ' . escapeshellarg( $input_path )
+			. ' -c:v libx264 -preset medium -crf 24 -profile:v high -pix_fmt yuv420p'
+			. " -vf \"scale='min(720,iw)':-2\""
+			. ' -c:a aac -b:a 96k -ac 2'
+			. ' -movflags +faststart'
+			. ' -threads 1'
+			. ' ' . escapeshellarg( $output_path )
+			. ' 2>&1';
+
+		$output   = @shell_exec( $cmd );
+		$success  = file_exists( $output_path ) && filesize( $output_path ) > 10000;
+
+		if ( ! $success ) {
+			TSVI_Log::write( 'error', 'Transcode failed: ' . mb_substr( $output ?? '', -300 ) );
+			@unlink( $output_path );
+			return null; // Fallback: use original.
+		}
+
+		$new_size = filesize( $output_path );
+		$saved    = round( ( 1 - $new_size / $original_size ) * 100 );
+		TSVI_Log::write( 'upload', 'Transcoded OK: ' . round( $new_size / 1048576, 1 ) . 'MB (saved ' . $saved . '%)' );
+
+		return $output_path;
+	}
+
+	/**
+	 * Find FFmpeg binary.
+	 */
+	private static function ffmpeg_binary() {
+		static $cached = null;
+		if ( $cached !== null ) {
+			return $cached;
+		}
+		foreach ( array( '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', '/snap/bin/ffmpeg' ) as $p ) {
+			if ( is_executable( $p ) ) {
+				$cached = $p;
+				return $cached;
+			}
+		}
+		$result = @shell_exec( 'command -v ffmpeg 2>/dev/null' );
+		$cached = ! empty( $result ) ? trim( $result ) : '';
+		return $cached;
+	}
+
+	/**
+	 * Find FFprobe binary.
+	 */
+	private static function ffprobe_binary() {
+		static $cached = null;
+		if ( $cached !== null ) {
+			return $cached;
+		}
+		foreach ( array( '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', '/snap/bin/ffprobe' ) as $p ) {
+			if ( is_executable( $p ) ) {
+				$cached = $p;
+				return $cached;
+			}
+		}
+		$result = @shell_exec( 'command -v ffprobe 2>/dev/null' );
+		$cached = ! empty( $result ) ? trim( $result ) : '';
+		return $cached;
+	}
+
+	/**
+	 * Check if FFmpeg is available.
+	 */
+	public static function ffmpeg_available() {
+		return ! empty( self::ffmpeg_binary() );
+	}
+
+	/**
+	 * Public accessor for the detected FFmpeg binary path.
+	 */
+	public static function ffmpeg_binary_path() {
+		return self::ffmpeg_binary();
 	}
 
 	/**
@@ -227,7 +599,7 @@ class TSVI_Bunny {
 				CURLOPT_FILE           => $fp,
 				CURLOPT_FOLLOWLOCATION => true,
 				CURLOPT_MAXREDIRS      => 5,
-				CURLOPT_TIMEOUT        => 600,
+				CURLOPT_TIMEOUT        => 1000,
 				CURLOPT_CONNECTTIMEOUT => 15,
 				CURLOPT_SSL_VERIFYPEER => false,
 				CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -268,7 +640,7 @@ class TSVI_Bunny {
 		$response = wp_remote_get(
 			$url,
 			array(
-				'timeout'     => 600,
+				'timeout'     => 1000,
 				'stream'      => true,
 				'filename'    => $dest_path,
 				'sslverify'   => false,
@@ -362,7 +734,7 @@ class TSVI_Bunny {
 					CURLOPT_UPLOAD         => true,
 					CURLOPT_INFILE         => $fp,
 					CURLOPT_INFILESIZE     => $filesize,
-					CURLOPT_TIMEOUT        => 600,
+					CURLOPT_TIMEOUT        => 1000,
 					CURLOPT_CONNECTTIMEOUT => 15,
 					CURLOPT_RETURNTRANSFER => true,
 					CURLOPT_HTTPHEADER     => array(
@@ -398,7 +770,7 @@ class TSVI_Bunny {
 			$storage_url,
 			array(
 				'method'  => 'PUT',
-				'timeout' => 600,
+				'timeout' => 1000,
 				'headers' => array(
 					'AccessKey'    => $api_key,
 					'Content-Type' => 'application/octet-stream',
@@ -504,6 +876,13 @@ class TSVI_Bunny {
 		$url = preg_replace( '/\?&/', '?', $url );
 		$url = rtrim( $url, '?&' );
 		return $url;
+	}
+
+	/**
+	 * Public accessor for strip_token_params (used by recompress script).
+	 */
+	public static function strip_token_params_public( $url ) {
+		return self::strip_token_params( $url );
 	}
 
 	/**

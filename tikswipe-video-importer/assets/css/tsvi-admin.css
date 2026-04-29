@@ -113,3 +113,18 @@
 .tsvi-card .check-column {
     width: 30px;
 }
+
+/* Direct upload */
+.tsvi-direct-row {
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+}
+.tsvi-direct-row:last-child {
+    border-bottom: none;
+}
+.tsvi-copy-field {
+    cursor: pointer;
+    font-size: 12px;
+    background: #f0f6fc;
+    border-color: #2271b1;
+}
