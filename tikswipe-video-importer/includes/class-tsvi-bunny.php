@@ -130,7 +130,7 @@ class TSVI_Bunny {
 			 WHERE pm.meta_key = '_tsvi_bunny_pending'
 			 AND pm.meta_value != ''
 			 ORDER BY CAST(COALESCE(dur.meta_value, '999999') AS UNSIGNED) ASC
-			 LIMIT 3"
+			 LIMIT 1"
 		);
 
 		if ( empty( $post_ids ) ) {
@@ -138,21 +138,20 @@ class TSVI_Bunny {
 			return;
 		}
 
-		set_time_limit( 3600 );
+		set_time_limit( 1800 );
 		ignore_user_abort( true );
 
 		// Pre-schedule the next run as a safety net.
 		wp_schedule_single_event( time() + 60, self::CRON_HOOK );
 
-		// Process each item sequentially (one FFmpeg at a time).
-		foreach ( $post_ids as $pid ) {
-			try {
-				self::process_single( intval( $pid ) );
-			} catch ( \Throwable $e ) {
-				update_post_meta( intval( $pid ), '_tsvi_bunny_pending', '' );
-				update_post_meta( intval( $pid ), '_tsvi_bunny_error', 'Fatal: ' . $e->getMessage() );
-				delete_transient( 'tsvi_currently_processing' );
-			}
+		// Process ONE item per cron run (keeps CPU usage minimal).
+		$pid = intval( $post_ids[0] );
+		try {
+			self::process_single( $pid );
+		} catch ( \Throwable $e ) {
+			update_post_meta( $pid, '_tsvi_bunny_pending', '' );
+			update_post_meta( $pid, '_tsvi_bunny_error', 'Fatal: ' . $e->getMessage() );
+			delete_transient( 'tsvi_currently_processing' );
 		}
 
 		// Check if more items remain.
@@ -251,14 +250,12 @@ class TSVI_Bunny {
 		// Pre-schedule safety net.
 		wp_schedule_single_event( time() + 60, self::DIRECT_CRON_HOOK );
 
-		// Take up to 3 items from queue.
-		$batch = array_splice( $queue, 0, 3 );
+		// Take 1 item per run (keeps CPU usage minimal).
+		$batch = array_splice( $queue, 0, 1 );
 		update_option( 'tsvi_direct_upload_queue', $queue, false );
 
-		// Process sequentially (one FFmpeg at a time to avoid CPU overload).
-		foreach ( $batch as $item ) {
-			self::process_single_direct( $item['url'] );
-		}
+		// Process ONE item per cron run.
+		self::process_single_direct( $batch[0]['url'] );
 
 		// Replace safety schedule.
 		wp_clear_scheduled_hook( self::DIRECT_CRON_HOOK );
@@ -489,14 +486,14 @@ class TSVI_Bunny {
 		TSVI_Log::write( 'upload', 'Transcoding: ' . $width . 'x' . $height . ' → 720w cap, original ' . round( $original_size / 1048576, 1 ) . 'MB' );
 
 		// FFmpeg command: H.264 high profile, CRF 24, cap 720px width, AAC 96k, faststart.
-		// -threads 2 limits CPU usage so the VPS can still serve web requests.
-		$cmd = escapeshellcmd( $ffmpeg )
+		// -threads 1 ensures minimal CPU impact so the VPS can serve web requests.
+		$cmd = 'nice -n 19 ' . escapeshellcmd( $ffmpeg )
 			. ' -y -i ' . escapeshellarg( $input_path )
 			. ' -c:v libx264 -preset medium -crf 24 -profile:v high -pix_fmt yuv420p'
 			. " -vf \"scale='min(720,iw)':-2\""
 			. ' -c:a aac -b:a 96k -ac 2'
 			. ' -movflags +faststart'
-			. ' -threads 2'
+			. ' -threads 1'
 			. ' ' . escapeshellarg( $output_path )
 			. ' 2>&1';
 
