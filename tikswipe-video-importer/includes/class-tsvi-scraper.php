@@ -182,6 +182,16 @@ class TSVI_Scraper {
 			// Fallback to normal scraping if API fails.
 		}
 
+		// GFF Shorts / Feaner: derive direct CDN URL from thumbnail to avoid
+		// the page's signed /api/stream URLs which expire.
+		if ( self::is_gffshorts_url( $url ) ) {
+			$result = self::gffshorts_extract( $url );
+			if ( ! is_wp_error( $result ) ) {
+				return $result;
+			}
+			// Fall through to normal scraping on failure.
+		}
+
 		// Known hoster (doodstream, streamtape, mixdrop, etc): try native extractor then yt-dlp.
 		if ( self::is_hoster_url( $url ) ) {
 			$result = self::resolve_hoster_url( $url );
@@ -951,6 +961,96 @@ class TSVI_Scraper {
 			'source_tags' => $tags,
 			'embed'       => '',
 		);
+	}
+
+	/* ------------------------------------------------------------------
+	   GFF Shorts / Feaner support
+	   The page renders /api/stream/<id>?token=<expiring> URLs that stop
+	   working once the token expires. The CDN exposes a stable direct
+	   path next to the thumbnail, so we derive that instead.
+	   ------------------------------------------------------------------ */
+
+	private static function is_gffshorts_url( $url ) {
+		return (bool) preg_match( '#(?:^|\.)(?:gffshorts\.com|feaner\.com|gff\.network)/#i', $url );
+	}
+
+	/**
+	 * Extract video data from a GFF Shorts / Feaner page.
+	 * Builds the direct CDN URL (e.g. .../720p.mp4) from the thumbnail
+	 * path so the stored URL doesn't depend on a signed token.
+	 */
+	private static function gffshorts_extract( $url ) {
+		$html = self::fetch( $url );
+		if ( is_wp_error( $html ) ) {
+			return $html;
+		}
+
+		$base_url = self::base_url( $url );
+		$video    = array(
+			'source_url'  => $url,
+			'title'       => '',
+			'description' => '',
+			'video_url'   => '',
+			'thumbnail'   => '',
+			'duration'    => 0,
+			'width'       => 0,
+			'height'      => 0,
+			'source_tags' => array(),
+			'embed'       => '',
+		);
+
+		libxml_use_internal_errors( true );
+		$doc = new DOMDocument();
+		$doc->loadHTML( '<?xml encoding="utf-8"?>' . $html );
+		libxml_clear_errors();
+		$xpath = new DOMXPath( $doc );
+
+		$video['title']       = self::extract_meta( $xpath, 'og:title' )
+			?: self::extract_tag_content( $doc, 'title' );
+		$video['description'] = self::extract_meta( $xpath, 'og:description' );
+
+		$thumb = self::extract_meta( $xpath, 'og:image' );
+		if ( $thumb ) {
+			$video['thumbnail'] = self::absolute_url( $thumb, $base_url );
+		}
+
+		// JSON-LD VideoObject — most reliable source on this site for
+		// title/description/duration/dims/thumb. Discard whatever it says
+		// about contentUrl since that points to an expiring /api/stream URL.
+		self::parse_json_ld( $html, $video, $base_url );
+		$video['video_url'] = '';
+
+		// Derive direct MP4 URL from the thumbnail path:
+		//   .../videos/<YYYY>/W<nn>/<UUID>/thumbnail.jpg -> .../<UUID>/720p.mp4
+		if ( ! empty( $video['thumbnail'] )
+			&& preg_match( '#^(https?://[^/]+/videos/\d{4}/W\d{1,2}/[a-f0-9-]{36})/#i', $video['thumbnail'], $m )
+		) {
+			$video['video_url'] = $m[1] . '/720p.mp4';
+		}
+
+		// Fallback: pull the UUID from the JSON-LD/og:video stream URL and pair
+		// with thumbnail host. The thumbnail path includes year/week, but if it
+		// is missing for any reason, leave video_url empty so the generic
+		// scraper can take over.
+		if ( empty( $video['video_url'] ) ) {
+			$og_video = self::extract_meta( $xpath, 'og:video' )
+				?: self::extract_meta( $xpath, 'og:video:secure_url' );
+			if ( $og_video
+				&& preg_match( '#/api/stream/([a-f0-9-]{36})#i', $og_video, $idm )
+				&& ! empty( $video['thumbnail'] )
+				&& preg_match( '#^(https?://[^/]+/videos/\d{4}/W\d{1,2})/#i', $video['thumbnail'], $hm )
+			) {
+				$video['video_url'] = $hm[1] . '/' . $idm[1] . '/720p.mp4';
+			}
+		}
+
+		if ( empty( $video['video_url'] ) ) {
+			return new WP_Error( 'gffshorts_extract', 'Could not derive direct CDN URL.' );
+		}
+
+		$video['title'] = sanitize_text_field( $video['title'] );
+
+		return $video;
 	}
 
 	/* ------------------------------------------------------------------
