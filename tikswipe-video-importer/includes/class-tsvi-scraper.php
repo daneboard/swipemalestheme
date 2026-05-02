@@ -984,8 +984,10 @@ class TSVI_Scraper {
 	 * path so the stored URL doesn't depend on a signed token.
 	 */
 	private static function gffshorts_extract( $url ) {
+		TSVI_Log::write( 'scrape', 'gffshorts_extract: start ' . mb_substr( $url, 0, 120 ) );
 		$html = self::fetch( $url );
 		if ( is_wp_error( $html ) ) {
+			TSVI_Log::write( 'scrape', 'gffshorts_extract: fetch failed ' . $html->get_error_message() );
 			return $html;
 		}
 
@@ -1049,8 +1051,11 @@ class TSVI_Scraper {
 		}
 
 		if ( empty( $video['video_url'] ) ) {
+			TSVI_Log::write( 'scrape', 'gffshorts_extract: no video_url derived. thumb=' . mb_substr( $video['thumbnail'], 0, 160 ) );
 			return new WP_Error( 'gffshorts_extract', 'Could not derive direct CDN URL.' );
 		}
+
+		TSVI_Log::write( 'scrape', 'gffshorts_extract: ok ' . mb_substr( $video['video_url'], 0, 160 ) );
 
 		$video['title'] = sanitize_text_field( $video['title'] );
 
