@@ -83,8 +83,8 @@ class TSE_Template {
 		if ( ! tse_post_supports_embed( $post ) ) {
 			return;
 		}
-		// CDN/browser cache: counts (views/comments) refresh hourly.
-		header( 'Cache-Control: public, max-age=3600' );
+		// Short cache while we iterate; long cache will come back later.
+		header( 'Cache-Control: public, max-age=60' );
 		header_remove( 'X-Frame-Options' );
 		// Modern equivalent — empty CSP frame-ancestors directive allows all.
 		header( 'Content-Security-Policy: frame-ancestors *' );
