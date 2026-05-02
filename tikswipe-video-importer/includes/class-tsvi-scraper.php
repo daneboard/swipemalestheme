@@ -971,7 +971,11 @@ class TSVI_Scraper {
 	   ------------------------------------------------------------------ */
 
 	private static function is_gffshorts_url( $url ) {
-		return (bool) preg_match( '#(?:^|\.)(?:gffshorts\.com|feaner\.com|gff\.network)/#i', $url );
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+		if ( ! $host ) {
+			return false;
+		}
+		return (bool) preg_match( '#(?:^|\.)(gffshorts\.com|feaner\.com|gff\.network)$#i', $host );
 	}
 
 	/**
