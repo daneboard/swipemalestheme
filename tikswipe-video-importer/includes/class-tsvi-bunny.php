@@ -228,13 +228,7 @@ class TSVI_Bunny {
 
 			delete_post_meta( $post_id, '_mtg_thumb_done' );
 
-			$post = get_post( $post_id );
-			if ( $post && 'draft' === $post->post_status ) {
-				wp_update_post( array(
-					'ID'          => $post_id,
-					'post_status' => 'publish',
-				) );
-			}
+			self::publish_post( $post_id );
 
 			TSVI_Log::upload( 'Uploaded #' . $post_id . ' to CDN', array( 'cdn' => mb_substr( $cdn_url, 0, 80 ) ) );
 		}
@@ -355,6 +349,52 @@ class TSVI_Bunny {
 			$history = array_slice( $history, -200 );
 		}
 		update_option( 'tsvi_direct_upload_history', $history, false );
+	}
+
+	/**
+	 * Transition a post to "publish" after a successful upload.
+	 *
+	 * wp_update_post() can be silently filtered to a different status by
+	 * theme/plugin hooks (or fail outright). Log the result and fall back
+	 * to a direct DB update + cache flush so the post actually flips.
+	 */
+	private static function publish_post( $post_id ) {
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			TSVI_Log::write( 'upload', 'publish_post #' . $post_id . ': post not found' );
+			return;
+		}
+		if ( 'publish' === $post->post_status ) {
+			return;
+		}
+
+		$result = wp_update_post(
+			array(
+				'ID'          => $post_id,
+				'post_status' => 'publish',
+			),
+			true
+		);
+
+		if ( is_wp_error( $result ) ) {
+			TSVI_Log::write( 'upload', 'publish_post #' . $post_id . ': wp_update_post error: ' . $result->get_error_message() );
+		} elseif ( ! $result ) {
+			TSVI_Log::write( 'upload', 'publish_post #' . $post_id . ': wp_update_post returned 0' );
+		}
+
+		// Verify and force via direct DB update if hooks reverted it.
+		clean_post_cache( $post_id );
+		$fresh = get_post( $post_id );
+		if ( $fresh && 'publish' !== $fresh->post_status ) {
+			global $wpdb;
+			$wpdb->update(
+				$wpdb->posts,
+				array( 'post_status' => 'publish' ),
+				array( 'ID' => $post_id )
+			);
+			clean_post_cache( $post_id );
+			TSVI_Log::write( 'upload', 'publish_post #' . $post_id . ': forced via DB (was ' . $fresh->post_status . ')' );
+		}
 	}
 
 	/**
