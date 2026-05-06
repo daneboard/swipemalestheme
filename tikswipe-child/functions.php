@@ -197,6 +197,44 @@ function tikswipe_child_enqueue_scripts() {
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
 
 /**
+ * Sticky top banner — Magsrv 300x50 zone 5920214. Skips admin and oEmbed
+ * iframes so it never shows inside the TikSwipe Embed cards.
+ */
+function tikswipe_child_top_banner() {
+	if ( is_admin() || is_embed() || is_customize_preview() ) {
+		return;
+	}
+	?>
+	<div id="tikswipe-top-banner" aria-hidden="true">
+		<script async type="application/javascript" src="https://a.magsrv.com/ad-provider.js"></script>
+		<ins class="eas6a97888e10" data-zoneid="5920214"></ins>
+		<script>(AdProvider = window.AdProvider || []).push({"serve": {}});</script>
+	</div>
+	<style>
+		#tikswipe-top-banner {
+			position: fixed;
+			top: 0;
+			left: 50%;
+			transform: translateX(-50%);
+			width: 300px;
+			height: 50px;
+			z-index: 99999;
+			text-align: center;
+			line-height: 0;
+			pointer-events: auto;
+		}
+		#tikswipe-top-banner ins {
+			display: block;
+			width: 300px;
+			height: 50px;
+			margin: 0;
+		}
+	</style>
+	<?php
+}
+add_action( 'wp_body_open', 'tikswipe_child_top_banner' );
+
+/**
  * Override loadmore query to use RAND for home AND category-based for single.
  */
 function tikswipe_child_override_loadmore() {
