@@ -211,6 +211,10 @@ function tikswipe_child_top_banner() {
 		<script>(AdProvider = window.AdProvider || []).push({"serve": {}});</script>
 	</div>
 	<style>
+		body { padding-top: 50px; }
+		body .content { min-height: calc(100vh - 50px); }
+		body.admin-bar .content { min-height: calc(100vh - var(--wp-admin--admin-bar--height, 32px) - 50px); }
+
 		#tikswipe-top-banner {
 			position: fixed;
 			top: 0;
@@ -222,6 +226,7 @@ function tikswipe_child_top_banner() {
 			text-align: center;
 			line-height: 0;
 			pointer-events: auto;
+			background: #000;
 		}
 		#tikswipe-top-banner ins {
 			display: block;
