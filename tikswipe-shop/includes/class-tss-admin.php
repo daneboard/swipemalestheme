@@ -35,11 +35,32 @@ class TSS_Admin {
 			array(),
 			tss_asset_ver( 'assets/css/tikswipe-shop-admin.css' )
 		);
+		// Reuse the exact frontend card CSS so the preview matches the live
+		// rendering. The preview CSS adds the phone-shaped stage on top.
+		wp_enqueue_style(
+			'tikswipe-shop',
+			TSS_PLUGIN_URL . 'assets/css/tikswipe-shop.css',
+			array( 'dashicons' ),
+			tss_asset_ver( 'assets/css/tikswipe-shop.css' )
+		);
+		wp_enqueue_style(
+			'tss-preview',
+			TSS_PLUGIN_URL . 'assets/css/tikswipe-shop-preview.css',
+			array( 'tikswipe-shop' ),
+			tss_asset_ver( 'assets/css/tikswipe-shop-preview.css' )
+		);
 		wp_enqueue_script(
 			'tss-admin',
 			TSS_PLUGIN_URL . 'assets/js/tikswipe-shop-admin.js',
 			array( 'jquery' ),
 			tss_asset_ver( 'assets/js/tikswipe-shop-admin.js' ),
+			true
+		);
+		wp_enqueue_script(
+			'tss-preview',
+			TSS_PLUGIN_URL . 'assets/js/tikswipe-shop-preview.js',
+			array( 'jquery', 'tss-admin' ),
+			tss_asset_ver( 'assets/js/tikswipe-shop-preview.js' ),
 			true
 		);
 		wp_localize_script(
@@ -61,6 +82,14 @@ class TSS_Admin {
 	}
 
 	public static function register_meta_boxes() {
+		add_meta_box(
+			'tss_preview',
+			__( 'Live preview', 'tikswipe-shop' ),
+			array( __CLASS__, 'render_preview_box' ),
+			TSS_CPT,
+			'side',
+			'high'
+		);
 		add_meta_box(
 			'tss_product',
 			__( 'Product', 'tikswipe-shop' ),
@@ -93,6 +122,24 @@ class TSS_Admin {
 			'normal',
 			'default'
 		);
+	}
+
+	public static function render_preview_box( $post ) {
+		?>
+		<p class="tss-preview-hint">
+			<?php esc_html_e( 'Updates live as you edit the fields below.', 'tikswipe-shop' ); ?>
+		</p>
+		<div class="tss-preview-stage" id="tss-preview-stage">
+			<div class="tss-preview-frame swiper-slide tss-active tss-can-close">
+				<div class="tss-preview-bg"></div>
+				<div class="tss-preview-mock-infos">
+					<div class="tss-preview-mock-title"><?php esc_html_e( 'Original post title', 'tikswipe-shop' ); ?></div>
+					<div class="tss-preview-mock-meta">@creator · #tag</div>
+				</div>
+				<div id="tss-preview-card-mount"></div>
+			</div>
+		</div>
+		<?php
 	}
 
 	public static function render_product_box( $post ) {
