@@ -20,6 +20,7 @@ class TSS_Admin {
 		add_action( 'save_post_' . TSS_CPT, array( __CLASS__, 'save_meta' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 		add_action( 'wp_ajax_tss_search_posts', array( __CLASS__, 'ajax_search_posts' ) );
+		add_action( 'wp_ajax_tss_targets_count', array( __CLASS__, 'ajax_targets_count' ) );
 	}
 
 	public static function enqueue_admin_assets( $hook ) {
@@ -297,6 +298,24 @@ class TSS_Admin {
 				</label>
 			<?php endforeach; ?>
 		</div>
+
+		<div class="tss-visibility">
+			<div class="tss-visibility-head">
+				<strong><?php esc_html_e( 'Estimated visibility', 'tikswipe-shop' ); ?></strong>
+				<span class="tss-visibility-summary">
+					<span class="tss-visibility-count">0</span>
+					<?php esc_html_e( 'of', 'tikswipe-shop' ); ?>
+					<span class="tss-visibility-total">—</span>
+					<?php esc_html_e( 'eligible posts', 'tikswipe-shop' ); ?>
+					·
+					<span class="tss-visibility-pct">0%</span>
+				</span>
+			</div>
+			<div class="tss-visibility-bar"><div class="tss-visibility-fill"></div></div>
+			<p class="description">
+				<?php esc_html_e( 'Share of published video / image posts where this product is eligible to appear. Updates as you change the targets above.', 'tikswipe-shop' ); ?>
+			</p>
+		</div>
 		<?php
 	}
 
@@ -349,6 +368,99 @@ class TSS_Admin {
 		$cat_ids = isset( $_POST['tss_target_categories'] ) ? array_map( 'intval', (array) $_POST['tss_target_categories'] ) : array();
 		$cat_ids = array_values( array_unique( array_filter( $cat_ids ) ) );
 		update_post_meta( $post_id, '_tss_target_categories', $cat_ids );
+	}
+
+	/**
+	 * Count published video/image posts that match the current target
+	 * selection. Used to render a live "visibility %" indicator on the
+	 * Where to display box.
+	 */
+	public static function ajax_targets_count() {
+		check_ajax_referer( 'tss_admin', 'nonce' );
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( array(), 403 );
+		}
+
+		$post_ids = isset( $_GET['post_ids'] ) ? array_map( 'intval', (array) $_GET['post_ids'] ) : array();
+		$cat_ids  = isset( $_GET['cat_ids'] )  ? array_map( 'intval', (array) $_GET['cat_ids'] )  : array();
+		$post_ids = array_values( array_unique( array_filter( $post_ids ) ) );
+		$cat_ids  = array_values( array_unique( array_filter( $cat_ids ) ) );
+
+		$total = self::cached_eligible_count();
+
+		$cat_matched = array();
+		if ( $cat_ids ) {
+			$q = new WP_Query(
+				array(
+					'post_type'      => 'post',
+					'post_status'    => 'publish',
+					'posts_per_page' => -1,
+					'fields'         => 'ids',
+					'no_found_rows'  => true,
+					'category__in'   => $cat_ids,
+					'tax_query'      => array(
+						array(
+							'taxonomy' => 'post_format',
+							'field'    => 'slug',
+							'terms'    => array( 'post-format-video', 'post-format-image' ),
+							'operator' => 'IN',
+						),
+					),
+				)
+			);
+			$cat_matched = $q->posts;
+		}
+
+		$explicit_eligible = array();
+		foreach ( $post_ids as $pid ) {
+			$format = get_post_format( $pid );
+			if ( in_array( $format, array( 'video', 'image' ), true ) && 'publish' === get_post_status( $pid ) ) {
+				$explicit_eligible[] = $pid;
+			}
+		}
+
+		$matching   = array_unique( array_merge( $cat_matched, $explicit_eligible ) );
+		$count      = count( $matching );
+		$pct        = $total > 0 ? round( ( $count / $total ) * 100, 2 ) : 0;
+
+		wp_send_json_success(
+			array(
+				'total' => (int) $total,
+				'count' => (int) $count,
+				'pct'   => (float) $pct,
+			)
+		);
+	}
+
+	/**
+	 * Count of all published video/image posts on the site. Cached for
+	 * 5 minutes so the live indicator doesn't run a fresh tax query on
+	 * every keystroke / checkbox toggle.
+	 */
+	private static function cached_eligible_count() {
+		$cached = get_transient( 'tss_eligible_count' );
+		if ( false !== $cached ) {
+			return (int) $cached;
+		}
+		$q = new WP_Query(
+			array(
+				'post_type'      => 'post',
+				'post_status'    => 'publish',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'tax_query'      => array(
+					array(
+						'taxonomy' => 'post_format',
+						'field'    => 'slug',
+						'terms'    => array( 'post-format-video', 'post-format-image' ),
+						'operator' => 'IN',
+					),
+				),
+			)
+		);
+		$count = (int) $q->found_posts;
+		set_transient( 'tss_eligible_count', $count, 5 * MINUTE_IN_SECONDS );
+		return $count;
 	}
 
 	public static function ajax_search_posts() {

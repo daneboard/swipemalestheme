@@ -110,4 +110,56 @@ jQuery(function ($) {
 		$grid.find('.tss-dashicon-item').removeClass('is-selected');
 		$(this).closest('.tss-dashicon-item').addClass('is-selected');
 	});
+
+	// ---- Live "visibility %" indicator on the targets meta box ----
+
+	var $vis = $('.tss-visibility');
+	if ($vis.length) {
+		var fmt = function (n) {
+			try { return Number(n).toLocaleString(); } catch (e) { return String(n); }
+		};
+
+		var refreshVisibility = function () {
+			var postIds = $('.tss-post-selected input[name="tss_target_post_ids[]"]')
+				.map(function () { return parseInt($(this).val(), 10); }).get();
+			var catIds = $('.tss-cat-list input[type=checkbox]:checked')
+				.map(function () { return parseInt($(this).val(), 10); }).get();
+
+			$.ajax({
+				url: tssAdmin.ajaxUrl,
+				data: {
+					action: 'tss_targets_count',
+					nonce: tssAdmin.nonce,
+					post_ids: postIds,
+					cat_ids:  catIds,
+				},
+				success: function (res) {
+					if (!res || !res.success) { return; }
+					var d = res.data;
+					$vis.find('.tss-visibility-count').text(fmt(d.count));
+					$vis.find('.tss-visibility-total').text(fmt(d.total));
+					$vis.find('.tss-visibility-pct').text(d.pct + '%');
+					$vis.find('.tss-visibility-fill').css('width', Math.min(d.pct, 100) + '%');
+					$vis.toggleClass('is-zero', d.count === 0);
+				},
+			});
+		};
+
+		var visTimer;
+		var scheduleVisibility = function () {
+			clearTimeout(visTimer);
+			visTimer = setTimeout(refreshVisibility, 250);
+		};
+
+		$(document).on('change', '.tss-cat-list input[type=checkbox]', scheduleVisibility);
+
+		// The post picker adds / removes <li> nodes imperatively; watch
+		// the selected list for child mutations.
+		var selectedNode = document.querySelector('.tss-post-selected');
+		if (selectedNode && typeof MutationObserver !== 'undefined') {
+			new MutationObserver(scheduleVisibility).observe(selectedNode, { childList: true });
+		}
+
+		refreshVisibility();
+	}
 });
