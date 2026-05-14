@@ -213,12 +213,21 @@ function tikswipe_child_top_banner() {
 	<style>
 		:root { --tse-banner-h: 50px; }
 
-		/* Reserve 50px inside .content (border-box keeps its 100vh).
-		   The swiper inherits height:100% from the padded content area,
-		   so footer:fixed and the mobile URL bar are not affected. */
+		/* Static-flow header on pages where it is NOT absolutely positioned
+		   (grid/profile/author/search) gets its room via .content padding. */
 		.content { padding-top: var(--tse-banner-h); }
 
-		/* Profile/author pages have their own 100vh main wrapper. */
+		/* On swiper pages, main is position:absolute with top:0 / height:100%
+		   which ignores .content padding. Shift it down by the banner height
+		   and shrink so the swiper fits the visible viewport exactly. */
+		body.media-body main,
+		body.grid main {
+			top: var(--tse-banner-h);
+			height: calc(100% - var(--tse-banner-h));
+		}
+
+		/* Profile/author/main has its own min-height:100vh — clamp it so
+		   the page does not overflow past the footer. */
 		body.author main,
 		body.profile main {
 			min-height: calc(100vh - var(--tse-banner-h));
