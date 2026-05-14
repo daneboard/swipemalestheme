@@ -199,12 +199,35 @@ add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
 /**
  * Sticky top banner — Magsrv 300x50 zone 5920214. Skips admin and oEmbed
  * iframes so it never shows inside the TikSwipe Embed cards.
+ *
+ * Also emits a tiny inline script that mirrors window.innerHeight into a CSS
+ * variable (--tse-vh). This is the cross-browser way to get the real visible
+ * viewport height — works on every iOS Safari version including the ones
+ * that ignore 100dvh, and reacts to the Safari bottom toolbar showing /
+ * hiding via visualViewport.
  */
 function tikswipe_child_top_banner() {
 	if ( is_admin() || is_embed() || is_customize_preview() ) {
 		return;
 	}
 	?>
+	<script>
+	(function () {
+		var root = document.documentElement;
+		function setVh() {
+			root.style.setProperty('--tse-vh', window.innerHeight + 'px');
+		}
+		setVh();
+		window.addEventListener('resize', setVh, { passive: true });
+		window.addEventListener('orientationchange', setVh, { passive: true });
+		if (window.visualViewport) {
+			window.visualViewport.addEventListener('resize', setVh, { passive: true });
+		}
+		// iOS Safari sometimes reports the old height during navigation; re-check
+		// once layout is settled.
+		setTimeout(setVh, 300);
+	})();
+	</script>
 	<div id="tikswipe-top-banner" aria-hidden="true">
 		<script async type="application/javascript" src="https://a.magsrv.com/ad-provider.js"></script>
 		<ins class="eas6a97888e10" data-zoneid="5920214"></ins>
@@ -213,46 +236,55 @@ function tikswipe_child_top_banner() {
 	<style>
 		:root { --tse-banner-h: 50px; }
 
-		/* Sticky takes 50px of body flow + stays glued to viewport top.
-		   No need to override main/header positions because .content
-		   simply starts 50px lower in document flow. */
+		/* Banner: sticky so it takes 50px of body flow AND stays glued to
+		   the viewport top during scroll. Width clamps to 300px because
+		   the Magsrv iframe self-sizes to the ad creative; using a full-
+		   width strip caused the ad to render flush-left with a black
+		   tail on the right. A centered 300px sticky strip avoids both. */
 		#tikswipe-top-banner {
 			position: sticky;
 			top: 0;
 			z-index: 99999;
-			width: 100%;
+			width: 300px;
+			max-width: 100%;
 			height: var(--tse-banner-h);
+			margin: 0 auto;
 			background: #000;
-			display: flex;
-			align-items: center;
-			justify-content: center;
 			pointer-events: auto;
 			line-height: 0;
+			text-align: center;
 		}
 		#tikswipe-top-banner ins {
-			display: block;
+			display: inline-block;
 			width: 300px;
 			height: var(--tse-banner-h);
 			margin: 0;
+			vertical-align: top;
 		}
 
 		/* The banner ate 50px at the top of body, so any 100vh fill
-		   has to drop by 50px. Use dvh (dynamic viewport height) so
-		   the layout follows the Chrome / Safari URL bar as it
-		   shows / hides, instead of letting content slide under it.
-		   vh kept as fallback for browsers older than 2022. */
+		   has to drop by 50px. Three declarations in increasing
+		   reliability — the browser picks the last one it understands:
+		     1. vh — universal, but ignores mobile URL/toolbar overlays
+		     2. dvh — accurate on Chrome 108+, Safari 15.4+, FF 101+
+		     3. --tse-vh — set from window.innerHeight by the JS above;
+		        works on every browser back to ~2010, follows the iOS
+		        Safari bottom toolbar exactly. */
 		body .content {
 			min-height: calc(100vh - var(--tse-banner-h));
 			min-height: calc(100dvh - var(--tse-banner-h));
+			min-height: calc(var(--tse-vh, 100dvh) - var(--tse-banner-h));
 		}
 		body.admin-bar .content {
 			min-height: calc(100vh - var(--wp-admin--admin-bar--height, 32px) - var(--tse-banner-h));
 			min-height: calc(100dvh - var(--wp-admin--admin-bar--height, 32px) - var(--tse-banner-h));
+			min-height: calc(var(--tse-vh, 100dvh) - var(--wp-admin--admin-bar--height, 32px) - var(--tse-banner-h));
 		}
 		body.author main,
 		body.profile main {
 			min-height: calc(100vh - var(--tse-banner-h));
 			min-height: calc(100dvh - var(--tse-banner-h));
+			min-height: calc(var(--tse-vh, 100dvh) - var(--tse-banner-h));
 		}
 	</style>
 	<?php
