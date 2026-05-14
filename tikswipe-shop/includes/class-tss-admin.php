@@ -103,6 +103,7 @@ class TSS_Admin {
 		$description = get_post_meta( $post->ID, '_tss_description', true );
 		$price       = get_post_meta( $post->ID, '_tss_price', true );
 		$position    = get_post_meta( $post->ID, '_tss_position_label', true );
+		$store       = get_post_meta( $post->ID, '_tss_store', true );
 		?>
 		<p>
 			<label for="tss_affiliate_url"><strong><?php esc_html_e( 'Affiliate product URL', 'tikswipe-shop' ); ?></strong></label>
@@ -113,6 +114,11 @@ class TSS_Admin {
 			<label for="tss_button_url"><strong><?php esc_html_e( 'Buy button URL', 'tikswipe-shop' ); ?></strong></label>
 			<input type="url" id="tss_button_url" name="tss_button_url" value="<?php echo esc_attr( $button_url ); ?>" class="widefat" placeholder="https://">
 			<span class="description"><?php esc_html_e( 'Where the Buy button (and clicks on title / price / image) take the user.', 'tikswipe-shop' ); ?></span>
+		</p>
+		<p>
+			<label for="tss_store"><strong><?php esc_html_e( 'Store name (admin only)', 'tikswipe-shop' ); ?></strong></label>
+			<input type="text" id="tss_store" name="tss_store" value="<?php echo esc_attr( $store ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'e.g. Misterb, Amazon, Shopify…', 'tikswipe-shop' ); ?>">
+			<span class="description"><?php esc_html_e( 'Internal label used in the dashboard to track which stores convert best. Not shown to visitors.', 'tikswipe-shop' ); ?></span>
 		</p>
 		<p>
 			<label for="tss_description"><strong><?php esc_html_e( 'Description', 'tikswipe-shop' ); ?></strong></label>
@@ -264,6 +270,7 @@ class TSS_Admin {
 			'_tss_description'    => 'tss_description',
 			'_tss_price'          => 'tss_price',
 			'_tss_position_label' => 'tss_position_label',
+			'_tss_store'          => 'tss_store',
 			'_tss_image_url'      => 'tss_image_url',
 			'_tss_tag_label'      => 'tss_tag_label',
 			'_tss_tag_dashicon'   => 'tss_tag_dashicon',

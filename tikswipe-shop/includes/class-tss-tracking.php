@@ -151,6 +151,7 @@ class TSS_Tracking {
 		foreach ( $cols as $k => $v ) {
 			$out[ $k ] = $v;
 			if ( 'title' === $k ) {
+				$out['tss_store']   = __( 'Store', 'tikswipe-shop' );
 				$out['tss_targets'] = __( 'Targets', 'tikswipe-shop' );
 				$out['tss_price']   = __( 'Price', 'tikswipe-shop' );
 				$out['tss_views']   = __( 'Views', 'tikswipe-shop' );
@@ -184,6 +185,11 @@ class TSS_Tracking {
 	}
 
 	public static function column_content( $col, $post_id ) {
+		if ( 'tss_store' === $col ) {
+			$store = (string) get_post_meta( $post_id, '_tss_store', true );
+			echo $store ? esc_html( $store ) : '—';
+			return;
+		}
 		if ( 'tss_price' === $col ) {
 			echo esc_html( get_post_meta( $post_id, '_tss_price', true ) );
 			return;
