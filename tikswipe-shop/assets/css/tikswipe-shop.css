@@ -1,10 +1,12 @@
 /*
  * TikSwipe Shop — dark TikTok-style card on swiper slides.
  *
- * Card is hidden until the slide gets .tss-active (after 10s of playback)
- * and reveals its close button after another 5s (.tss-can-close). The card
- * uses pointer-events:none on the wrapper so swipe gestures pass through;
- * only interactive children (anchor + close button) capture events.
+ * Visibility model:
+ *  - Card and its children all start with pointer-events: none so the
+ *    invisible card never intercepts clicks meant for the original post
+ *    UI (title, tags, side buttons) before activation or after the user
+ *    closes it. They only become interactive while the slide has the
+ *    .tss-active class — i.e. while the card is actually showing.
  */
 
 .tss-shop-card,
@@ -16,10 +18,10 @@
 	right: 90px;
 	bottom: 120px;
 	max-width: 460px;
-	background: rgba(22, 24, 35, 0.92);
+	background: #000;
 	color: #fff;
-	border-radius: 14px;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 	padding: 10px 12px;
 	display: flex;
 	align-items: center;
@@ -30,14 +32,19 @@
 	transition: opacity .35s ease, transform .35s ease;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 	pointer-events: none;
-	backdrop-filter: blur(6px);
-	-webkit-backdrop-filter: blur(6px);
 }
-.tss-shop-card > * { pointer-events: auto; }
+.tss-shop-card,
+.tss-shop-card > *,
+.tss-shop-card > * > * { pointer-events: none; }
 
 .swiper-slide.tss-active .tss-shop-card {
 	opacity: 1;
 	transform: translateY(0);
+}
+.swiper-slide.tss-active .tss-shop-card > a,
+.swiper-slide.tss-active .tss-shop-card > button,
+.swiper-slide.tss-active .tss-shop-card__close {
+	pointer-events: auto;
 }
 
 /* Anchor wrapping image + body — clicking takes user to the Buy URL. */
@@ -58,26 +65,35 @@
 	flex: 0 0 64px;
 	width: 64px;
 	height: 64px;
-	border-radius: 8px;
+	border-radius: 6px;
 	overflow: hidden;
 	background: #111;
 }
-.tss-shop-card__image img {
+/* Image fill: theme has .swiper-slide img { object-fit: contain } at the
+ * same specificity, so we need !important on object-fit too. */
+.tss-shop-card__image img,
+.swiper-slide .tss-shop-card__image img {
 	width: 100% !important;
 	height: 100% !important;
 	max-width: none !important;
 	max-height: none !important;
-	object-fit: cover;
-	display: block;
-	margin: 0;
-	padding: 0;
-	border-radius: 0;
+	min-width: 100% !important;
+	min-height: 100% !important;
+	object-fit: cover !important;
+	object-position: center !important;
+	display: block !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	border-radius: 0 !important;
+	position: static !important;
+	top: auto !important;
+	left: auto !important;
 }
 .tss-shop-card__position {
 	position: absolute;
 	top: 4px;
 	left: 4px;
-	background: rgba(0, 0, 0, 0.7);
+	background: rgba(0, 0, 0, 0.75);
 	color: #fff;
 	font-size: 10px;
 	font-weight: 600;
@@ -134,10 +150,10 @@
 
 .tss-shop-card__buy {
 	flex: 0 0 auto;
-	background: #F63A61;
+	background: #fd0131;
 	color: #fff !important;
 	border: 0;
-	border-radius: 8px;
+	border-radius: 6px;
 	font-size: 14px;
 	font-weight: 600;
 	padding: 9px 18px;
@@ -146,16 +162,22 @@
 	line-height: 1;
 }
 .tss-shop-card__buy:hover,
-.tss-shop-card__buy:focus { background: #e02a52; color: #fff !important; text-decoration: none; }
+.tss-shop-card__buy:focus {
+	background: #d90029;
+	color: #fff !important;
+	text-decoration: none;
+}
 
+/* Close button — floats just above the card's top-right corner so it
+ * never overlaps the Buy button or the price. */
 .tss-shop-card__close {
 	position: absolute;
-	top: 6px;
-	right: 8px;
-	width: 22px;
-	height: 22px;
-	border: 0;
-	background: rgba(255, 255, 255, 0.12);
+	top: -10px;
+	right: -8px;
+	width: 24px;
+	height: 24px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	background: #000;
 	color: #fff;
 	cursor: pointer;
 	border-radius: 50%;
@@ -165,8 +187,9 @@
 	padding: 0;
 	opacity: 0;
 	transition: opacity .3s ease;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
-.tss-shop-card__close:hover { background: rgba(255, 255, 255, 0.22); }
+.tss-shop-card__close:hover { background: #222; }
 .swiper-slide.tss-active.tss-can-close .tss-shop-card__close { opacity: 1; }
 .tss-shop-card__close svg { width: 12px; height: 12px; }
 

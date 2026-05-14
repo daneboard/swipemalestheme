@@ -74,16 +74,19 @@
 	max-width: none;
 	padding: 8px 10px;
 	gap: 8px;
+	border-radius: 8px;
 	opacity: 1;
 	transform: none;
 	transition: none;
 	pointer-events: auto;
 }
+.tss-preview-frame .tss-shop-card > *,
+.tss-preview-frame .tss-shop-card > * > * { pointer-events: auto; }
 .tss-preview-frame .tss-shop-card__image {
 	flex: 0 0 48px;
 	width: 48px;
 	height: 48px;
-	border-radius: 6px;
+	border-radius: 4px;
 }
 .tss-preview-frame .tss-shop-card__title {
 	font-size: 12px;
@@ -98,11 +101,21 @@
 .tss-preview-frame .tss-shop-card__buy {
 	font-size: 12px;
 	padding: 7px 12px;
-	border-radius: 6px;
+	border-radius: 5px;
 }
+/* In the preview the frame clips overflow, so a -10/-8 floating close
+ * would be cut off. Tuck it inside the card's top-right corner instead. */
 .tss-preview-frame .tss-shop-card__close {
+	top: 4px;
+	right: 4px;
+	width: 18px;
+	height: 18px;
+	background: rgba(255, 255, 255, 0.18);
+	border: 0;
+	box-shadow: none;
 	opacity: 1;
 }
+.tss-preview-frame .tss-shop-card__close svg { width: 10px; height: 10px; }
 .tss-preview-frame .tss-shop-card__position {
 	font-size: 9px;
 }
