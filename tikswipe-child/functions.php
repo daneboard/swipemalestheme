@@ -211,9 +211,18 @@ function tikswipe_child_top_banner() {
 		<script>(AdProvider = window.AdProvider || []).push({"serve": {}});</script>
 	</div>
 	<style>
-		body { padding-top: 50px; }
-		body .content { min-height: calc(100vh - 50px); }
-		body.admin-bar .content { min-height: calc(100vh - var(--wp-admin--admin-bar--height, 32px) - 50px); }
+		:root { --tse-banner-h: 50px; }
+
+		/* Reserve 50px inside .content (border-box keeps its 100vh).
+		   The swiper inherits height:100% from the padded content area,
+		   so footer:fixed and the mobile URL bar are not affected. */
+		.content { padding-top: var(--tse-banner-h); }
+
+		/* Profile/author pages have their own 100vh main wrapper. */
+		body.author main,
+		body.profile main {
+			min-height: calc(100vh - var(--tse-banner-h));
+		}
 
 		#tikswipe-top-banner {
 			position: fixed;
@@ -221,7 +230,7 @@ function tikswipe_child_top_banner() {
 			left: 50%;
 			transform: translateX(-50%);
 			width: 300px;
-			height: 50px;
+			height: var(--tse-banner-h);
 			z-index: 99999;
 			text-align: center;
 			line-height: 0;
@@ -231,7 +240,7 @@ function tikswipe_child_top_banner() {
 		#tikswipe-top-banner ins {
 			display: block;
 			width: 300px;
-			height: 50px;
+			height: var(--tse-banner-h);
 			margin: 0;
 		}
 	</style>
