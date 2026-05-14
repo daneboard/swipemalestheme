@@ -213,44 +213,41 @@ function tikswipe_child_top_banner() {
 	<style>
 		:root { --tse-banner-h: 50px; }
 
-		/* Static-flow header on pages where it is NOT absolutely positioned
-		   (grid/profile/author/search) gets its room via .content padding. */
-		.content { padding-top: var(--tse-banner-h); }
-
-		/* On swiper pages, main is position:absolute with top:0 / height:100%
-		   which ignores .content padding. Shift it down by the banner height
-		   and shrink so the swiper fits the visible viewport exactly. */
-		body.media-body main,
-		body.grid main {
-			top: var(--tse-banner-h);
-			height: calc(100% - var(--tse-banner-h));
-		}
-
-		/* Profile/author/main has its own min-height:100vh — clamp it so
-		   the page does not overflow past the footer. */
-		body.author main,
-		body.profile main {
-			min-height: calc(100vh - var(--tse-banner-h));
-		}
-
+		/* Sticky takes 50px of body flow + stays glued to viewport top.
+		   No need to override main/header positions because .content
+		   simply starts 50px lower in document flow. */
 		#tikswipe-top-banner {
-			position: fixed;
+			position: sticky;
 			top: 0;
-			left: 50%;
-			transform: translateX(-50%);
-			width: 300px;
-			height: var(--tse-banner-h);
 			z-index: 99999;
-			text-align: center;
-			line-height: 0;
-			pointer-events: auto;
+			width: 100%;
+			height: var(--tse-banner-h);
 			background: #000;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			pointer-events: auto;
+			line-height: 0;
 		}
 		#tikswipe-top-banner ins {
 			display: block;
 			width: 300px;
 			height: var(--tse-banner-h);
 			margin: 0;
+		}
+
+		/* The banner ate 50px at the top of body, so any 100vh fill
+		   has to drop by 50px to stay inside the viewport. Specificity
+		   (0,0,2) beats the mobile media query rule (0,0,1). */
+		body .content {
+			min-height: calc(100vh - var(--tse-banner-h));
+		}
+		body.admin-bar .content {
+			min-height: calc(100vh - var(--wp-admin--admin-bar--height, 32px) - var(--tse-banner-h));
+		}
+		body.author main,
+		body.profile main {
+			min-height: calc(100vh - var(--tse-banner-h));
 		}
 	</style>
 	<?php
