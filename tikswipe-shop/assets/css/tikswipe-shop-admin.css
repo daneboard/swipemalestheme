@@ -16,6 +16,44 @@
 .tss-badge-preview { width: 80px !important; min-height: 80px !important; border-radius: 50%; }
 .tss-image-picker .tss-image-preview img { max-width: 100%; max-height: 180px; }
 
+.tss-tag-icon-preview { width: 80px !important; min-height: 80px !important; }
+
+.tss-dashicon-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+	gap: 6px;
+	max-width: 560px;
+	margin-top: 6px;
+}
+.tss-dashicon-item {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 44px;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	background: #fff;
+	cursor: pointer;
+	transition: all .12s ease;
+	font-size: 11px;
+	color: #50575e;
+}
+.tss-dashicon-item input { position: absolute; opacity: 0; pointer-events: none; }
+.tss-dashicon-item .dashicons {
+	font-size: 22px;
+	width: 22px;
+	height: 22px;
+	color: #1d2327;
+}
+.tss-dashicon-item:hover { border-color: #2271b1; }
+.tss-dashicon-item.is-selected {
+	border-color: #2271b1;
+	box-shadow: inset 0 0 0 1px #2271b1;
+	background: #f0f6fc;
+}
+.tss-dashicon-none { font-weight: 500; }
+
 .tss-post-picker { position: relative; }
 .tss-post-results {
 	position: absolute;

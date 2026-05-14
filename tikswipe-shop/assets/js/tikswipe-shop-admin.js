@@ -104,4 +104,10 @@ jQuery(function ($) {
 			$results.removeClass('is-open');
 		}
 	});
+
+	$(document).on('change', '.tss-dashicon-grid input[type=radio]', function () {
+		var $grid = $(this).closest('.tss-dashicon-grid');
+		$grid.find('.tss-dashicon-item').removeClass('is-selected');
+		$(this).closest('.tss-dashicon-item').addClass('is-selected');
+	});
 });

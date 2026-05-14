@@ -2,11 +2,11 @@
 /**
  * Admin meta boxes for the shop item CPT.
  *
- * Provides:
- *  - Product fields (affiliate URL, button URL, description, price, shipping label)
- *  - Image: upload (media library) OR raw URL
- *  - Targets: explicit post IDs (multi-select via AJAX search) and/or categories
- *  - Badge: name, icon (upload OR URL), color
+ * Sections:
+ *  - Product fields (affiliate URL, button URL, description, price, position label)
+ *  - Product image (upload OR raw URL)
+ *  - Tag (label + icon: dashicon picker OR custom upload/URL)
+ *  - Targets: explicit post IDs (AJAX search) + category checkboxes
  *
  * @package TikSwipe_Shop
  */
@@ -30,6 +30,7 @@ class TSS_Admin {
 			return;
 		}
 		wp_enqueue_media();
+		wp_enqueue_style( 'dashicons' );
 		wp_enqueue_style(
 			'tss-admin',
 			TSS_PLUGIN_URL . 'assets/css/tikswipe-shop-admin.css',
@@ -52,9 +53,8 @@ class TSS_Admin {
 				'i18n'        => array(
 					'pickImage'    => __( 'Select image', 'tikswipe-shop' ),
 					'useImage'     => __( 'Use this image', 'tikswipe-shop' ),
-					'pickIcon'     => __( 'Select badge icon', 'tikswipe-shop' ),
+					'pickIcon'     => __( 'Select icon image', 'tikswipe-shop' ),
 					'useIcon'      => __( 'Use this icon', 'tikswipe-shop' ),
-					'remove'       => __( 'Remove', 'tikswipe-shop' ),
 					'searchPosts'  => __( 'Type to search posts…', 'tikswipe-shop' ),
 					'noResults'    => __( 'No matches.', 'tikswipe-shop' ),
 				),
@@ -80,19 +80,19 @@ class TSS_Admin {
 			'default'
 		);
 		add_meta_box(
-			'tss_targets',
-			__( 'Where to display', 'tikswipe-shop' ),
-			array( __CLASS__, 'render_targets_box' ),
+			'tss_tag',
+			__( 'Tag (label + icon)', 'tikswipe-shop' ),
+			array( __CLASS__, 'render_tag_box' ),
 			TSS_CPT,
 			'normal',
 			'default'
 		);
 		add_meta_box(
-			'tss_badge',
-			__( 'Badge', 'tikswipe-shop' ),
-			array( __CLASS__, 'render_badge_box' ),
+			'tss_targets',
+			__( 'Where to display', 'tikswipe-shop' ),
+			array( __CLASS__, 'render_targets_box' ),
 			TSS_CPT,
-			'side',
+			'normal',
 			'default'
 		);
 	}
@@ -104,18 +104,17 @@ class TSS_Admin {
 		$button_url  = get_post_meta( $post->ID, '_tss_button_url', true );
 		$description = get_post_meta( $post->ID, '_tss_description', true );
 		$price       = get_post_meta( $post->ID, '_tss_price', true );
-		$shipping    = get_post_meta( $post->ID, '_tss_shipping_label', true );
 		$position    = get_post_meta( $post->ID, '_tss_position_label', true );
 		?>
 		<p>
 			<label for="tss_affiliate_url"><strong><?php esc_html_e( 'Affiliate product URL', 'tikswipe-shop' ); ?></strong></label>
 			<input type="url" id="tss_affiliate_url" name="tss_affiliate_url" value="<?php echo esc_attr( $affiliate ); ?>" class="widefat" placeholder="https://">
-			<span class="description"><?php esc_html_e( 'Source/affiliate URL for the product (used as a fallback if the button URL is empty).', 'tikswipe-shop' ); ?></span>
+			<span class="description"><?php esc_html_e( 'Source / affiliate URL (used as fallback if the Buy button URL is empty).', 'tikswipe-shop' ); ?></span>
 		</p>
 		<p>
 			<label for="tss_button_url"><strong><?php esc_html_e( 'Buy button URL', 'tikswipe-shop' ); ?></strong></label>
 			<input type="url" id="tss_button_url" name="tss_button_url" value="<?php echo esc_attr( $button_url ); ?>" class="widefat" placeholder="https://">
-			<span class="description"><?php esc_html_e( 'Where the Buy button takes the user.', 'tikswipe-shop' ); ?></span>
+			<span class="description"><?php esc_html_e( 'Where the Buy button (and clicks on title / price / image) take the user.', 'tikswipe-shop' ); ?></span>
 		</p>
 		<p>
 			<label for="tss_description"><strong><?php esc_html_e( 'Description', 'tikswipe-shop' ); ?></strong></label>
@@ -127,14 +126,10 @@ class TSS_Admin {
 				<input type="text" id="tss_price" name="tss_price" value="<?php echo esc_attr( $price ); ?>" class="widefat" placeholder="$12.00">
 			</p>
 			<p>
-				<label for="tss_shipping_label"><strong><?php esc_html_e( 'Shipping label', 'tikswipe-shop' ); ?></strong></label>
-				<input type="text" id="tss_shipping_label" name="tss_shipping_label" value="<?php echo esc_attr( $shipping ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'Free shipping', 'tikswipe-shop' ); ?>">
+				<label for="tss_position_label"><strong><?php esc_html_e( 'Number badge (top-left of image)', 'tikswipe-shop' ); ?></strong></label>
+				<input type="text" id="tss_position_label" name="tss_position_label" value="<?php echo esc_attr( $position ); ?>" class="small-text" placeholder="01">
 			</p>
 		</div>
-		<p>
-			<label for="tss_position_label"><strong><?php esc_html_e( 'Number badge (top-left)', 'tikswipe-shop' ); ?></strong></label>
-			<input type="text" id="tss_position_label" name="tss_position_label" value="<?php echo esc_attr( $position ); ?>" class="small-text" placeholder="01">
-		</p>
 		<?php
 	}
 
@@ -159,6 +154,50 @@ class TSS_Admin {
 				<input type="url" name="tss_image_url" value="<?php echo esc_attr( $image_url ); ?>" class="widefat tss-image-url" placeholder="https://">
 				<span class="description"><?php esc_html_e( 'Uploaded image takes priority over the URL.', 'tikswipe-shop' ); ?></span>
 			</p>
+		</div>
+		<?php
+	}
+
+	public static function render_tag_box( $post ) {
+		$label        = get_post_meta( $post->ID, '_tss_tag_label', true );
+		$dashicon     = (string) get_post_meta( $post->ID, '_tss_tag_dashicon', true );
+		$icon_id      = (int) get_post_meta( $post->ID, '_tss_tag_icon_id', true );
+		$icon_url     = get_post_meta( $post->ID, '_tss_tag_icon_url', true );
+		$preview      = $icon_id ? wp_get_attachment_image_url( $icon_id, 'thumbnail' ) : $icon_url;
+		?>
+		<p>
+			<label for="tss_tag_label"><strong><?php esc_html_e( 'Tag label', 'tikswipe-shop' ); ?></strong></label>
+			<input type="text" id="tss_tag_label" name="tss_tag_label" value="<?php echo esc_attr( $label ); ?>" class="widefat" placeholder="Free shipping">
+			<span class="description"><?php esc_html_e( 'Short label shown next to the icon on the card (e.g. "Free shipping", "New", "Sale").', 'tikswipe-shop' ); ?></span>
+		</p>
+
+		<p><strong><?php esc_html_e( 'Icon — pick a Dashicon', 'tikswipe-shop' ); ?></strong></p>
+		<div class="tss-dashicon-grid">
+			<label class="tss-dashicon-item<?php echo '' === $dashicon ? ' is-selected' : ''; ?>">
+				<input type="radio" name="tss_tag_dashicon" value="" <?php checked( '', $dashicon ); ?>>
+				<span class="tss-dashicon-none"><?php esc_html_e( 'None', 'tikswipe-shop' ); ?></span>
+			</label>
+			<?php foreach ( tss_dashicon_choices() as $slug => $name ) : ?>
+				<label class="tss-dashicon-item<?php echo $slug === $dashicon ? ' is-selected' : ''; ?>" title="<?php echo esc_attr( $name ); ?>">
+					<input type="radio" name="tss_tag_dashicon" value="<?php echo esc_attr( $slug ); ?>" <?php checked( $slug, $dashicon ); ?>>
+					<span class="dashicons dashicons-<?php echo esc_attr( $slug ); ?>"></span>
+				</label>
+			<?php endforeach; ?>
+		</div>
+
+		<p style="margin-top:14px;"><strong><?php esc_html_e( 'Or use a custom image (overrides the Dashicon above)', 'tikswipe-shop' ); ?></strong></p>
+		<div class="tss-image-picker" data-target="icon">
+			<div class="tss-image-preview tss-tag-icon-preview">
+				<?php if ( $preview ) : ?>
+					<img src="<?php echo esc_url( $preview ); ?>" alt="">
+				<?php endif; ?>
+			</div>
+			<p>
+				<button type="button" class="button tss-pick-media"><?php esc_html_e( 'Upload / pick', 'tikswipe-shop' ); ?></button>
+				<button type="button" class="button-link tss-clear-image"><?php esc_html_e( 'Remove', 'tikswipe-shop' ); ?></button>
+			</p>
+			<input type="hidden" name="tss_tag_icon_id" value="<?php echo esc_attr( $icon_id ); ?>" class="tss-image-id">
+			<input type="url" name="tss_tag_icon_url" value="<?php echo esc_attr( $icon_url ); ?>" class="widefat tss-image-url" placeholder="<?php esc_attr_e( 'Or paste icon URL', 'tikswipe-shop' ); ?>">
 		</div>
 		<?php
 	}
@@ -210,43 +249,6 @@ class TSS_Admin {
 		<?php
 	}
 
-	public static function render_badge_box( $post ) {
-		$name       = get_post_meta( $post->ID, '_tss_badge_name', true );
-		$icon_id    = (int) get_post_meta( $post->ID, '_tss_badge_icon_id', true );
-		$icon_url   = get_post_meta( $post->ID, '_tss_badge_icon_url', true );
-		$color      = get_post_meta( $post->ID, '_tss_badge_color', true );
-		$preview    = $icon_id ? wp_get_attachment_image_url( $icon_id, 'thumbnail' ) : $icon_url;
-		if ( ! $color ) {
-			$color = '#22c55e';
-		}
-		?>
-		<p>
-			<label for="tss_badge_name"><strong><?php esc_html_e( 'Badge name', 'tikswipe-shop' ); ?></strong></label>
-			<input type="text" id="tss_badge_name" name="tss_badge_name" value="<?php echo esc_attr( $name ); ?>" class="widefat" placeholder="Shop">
-		</p>
-		<div class="tss-image-picker" data-target="icon">
-			<label><strong><?php esc_html_e( 'Badge icon', 'tikswipe-shop' ); ?></strong></label>
-			<div class="tss-image-preview tss-badge-preview">
-				<?php if ( $preview ) : ?>
-					<img src="<?php echo esc_url( $preview ); ?>" alt="">
-				<?php endif; ?>
-			</div>
-			<p>
-				<button type="button" class="button tss-pick-media"><?php esc_html_e( 'Upload / pick', 'tikswipe-shop' ); ?></button>
-				<button type="button" class="button-link tss-clear-image"><?php esc_html_e( 'Remove', 'tikswipe-shop' ); ?></button>
-			</p>
-			<input type="hidden" name="tss_badge_icon_id" value="<?php echo esc_attr( $icon_id ); ?>" class="tss-image-id">
-			<p>
-				<input type="url" name="tss_badge_icon_url" value="<?php echo esc_attr( $icon_url ); ?>" class="widefat tss-image-url" placeholder="<?php esc_attr_e( 'Or paste icon URL', 'tikswipe-shop' ); ?>">
-			</p>
-		</div>
-		<p>
-			<label for="tss_badge_color"><strong><?php esc_html_e( 'Badge color', 'tikswipe-shop' ); ?></strong></label>
-			<input type="color" id="tss_badge_color" name="tss_badge_color" value="<?php echo esc_attr( $color ); ?>">
-		</p>
-		<?php
-	}
-
 	public static function save_meta( $post_id, $post ) {
 		if ( ! isset( $_POST['tss_nonce'] ) || ! wp_verify_nonce( wp_unslash( $_POST['tss_nonce'] ), 'tss_save_meta' ) ) {
 			return;
@@ -263,20 +265,22 @@ class TSS_Admin {
 			'_tss_button_url'     => 'tss_button_url',
 			'_tss_description'    => 'tss_description',
 			'_tss_price'          => 'tss_price',
-			'_tss_shipping_label' => 'tss_shipping_label',
 			'_tss_position_label' => 'tss_position_label',
 			'_tss_image_url'      => 'tss_image_url',
-			'_tss_badge_name'     => 'tss_badge_name',
-			'_tss_badge_icon_url' => 'tss_badge_icon_url',
-			'_tss_badge_color'    => 'tss_badge_color',
+			'_tss_tag_label'      => 'tss_tag_label',
+			'_tss_tag_dashicon'   => 'tss_tag_dashicon',
+			'_tss_tag_icon_url'   => 'tss_tag_icon_url',
 		);
 
 		foreach ( $text_fields as $meta_key => $post_key ) {
 			$value = isset( $_POST[ $post_key ] ) ? wp_unslash( $_POST[ $post_key ] ) : '';
-			if ( in_array( $meta_key, array( '_tss_affiliate_url', '_tss_button_url', '_tss_image_url', '_tss_badge_icon_url' ), true ) ) {
+			if ( in_array( $meta_key, array( '_tss_affiliate_url', '_tss_button_url', '_tss_image_url', '_tss_tag_icon_url' ), true ) ) {
 				$value = esc_url_raw( $value );
 			} elseif ( '_tss_description' === $meta_key ) {
 				$value = sanitize_textarea_field( $value );
+			} elseif ( '_tss_tag_dashicon' === $meta_key ) {
+				$choices = tss_dashicon_choices();
+				$value   = isset( $choices[ $value ] ) ? $value : '';
 			} else {
 				$value = sanitize_text_field( $value );
 			}
@@ -284,7 +288,7 @@ class TSS_Admin {
 		}
 
 		update_post_meta( $post_id, '_tss_image_id', isset( $_POST['tss_image_id'] ) ? (int) $_POST['tss_image_id'] : 0 );
-		update_post_meta( $post_id, '_tss_badge_icon_id', isset( $_POST['tss_badge_icon_id'] ) ? (int) $_POST['tss_badge_icon_id'] : 0 );
+		update_post_meta( $post_id, '_tss_tag_icon_id', isset( $_POST['tss_tag_icon_id'] ) ? (int) $_POST['tss_tag_icon_id'] : 0 );
 
 		$post_ids = isset( $_POST['tss_target_post_ids'] ) ? array_map( 'intval', (array) $_POST['tss_target_post_ids'] ) : array();
 		$post_ids = array_values( array_unique( array_filter( $post_ids ) ) );
@@ -307,7 +311,6 @@ class TSS_Admin {
 
 		$results = array();
 
-		// Search by numeric ID first.
 		if ( ctype_digit( $term ) ) {
 			$p = get_post( (int) $term );
 			if ( $p && 'post' === $p->post_type ) {
@@ -329,7 +332,6 @@ class TSS_Admin {
 			$results[] = array( 'id' => $pid, 'title' => get_the_title( $pid ) );
 		}
 
-		// De-dup.
 		$seen = array();
 		$out  = array();
 		foreach ( $results as $r ) {

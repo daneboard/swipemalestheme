@@ -24,10 +24,11 @@ class TSS_Frontend {
 			return;
 		}
 
+		wp_enqueue_style( 'dashicons' );
 		wp_enqueue_style(
 			'tikswipe-shop',
 			TSS_PLUGIN_URL . 'assets/css/tikswipe-shop.css',
-			array(),
+			array( 'dashicons' ),
 			TSS_VERSION
 		);
 		wp_enqueue_script(

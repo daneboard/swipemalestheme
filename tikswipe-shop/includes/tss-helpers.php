@@ -8,8 +8,42 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Resolve the image URL for a shop item, preferring uploaded attachment over
- * the raw URL field.
+ * Curated list of Dashicons to pick from. Slug => human label.
+ * Slug is what's stored / rendered as `dashicons-<slug>`.
+ *
+ * @return array<string,string>
+ */
+function tss_dashicon_choices() {
+	return array(
+		'cart'              => 'Cart',
+		'store'             => 'Store',
+		'tag'               => 'Tag',
+		'tickets-alt'       => 'Ticket',
+		'money-alt'         => 'Money',
+		'products'          => 'Products',
+		'star-filled'       => 'Star',
+		'awards'            => 'Award',
+		'heart'             => 'Heart',
+		'thumbs-up'         => 'Thumbs up',
+		'yes-alt'           => 'Check',
+		'clock'             => 'Clock',
+		'info'              => 'Info',
+		'warning'           => 'Warning',
+		'megaphone'         => 'Megaphone',
+		'lightbulb'         => 'Lightbulb',
+		'arrow-up-alt'      => 'Arrow up',
+		'arrow-down-alt'    => 'Arrow down',
+		'flag'              => 'Flag',
+		'cover-image'       => 'Image',
+		'admin-customizer'  => 'Sparkle',
+		'controls-volumeon' => 'Sound',
+		'video-alt3'        => 'Video',
+		'visibility'        => 'Eye',
+	);
+}
+
+/**
+ * Resolve product image URL: uploaded attachment wins over URL field.
  *
  * @param int $item_id Shop item ID.
  * @return string
@@ -26,26 +60,46 @@ function tss_get_image_url( $item_id ) {
 }
 
 /**
- * Same for the badge icon image.
+ * Resolve the URL of the tag's custom icon image (if any).
  *
  * @param int $item_id Shop item ID.
  * @return string
  */
-function tss_get_badge_icon_url( $item_id ) {
-	$attachment_id = (int) get_post_meta( $item_id, '_tss_badge_icon_id', true );
+function tss_get_tag_icon_url( $item_id ) {
+	$attachment_id = (int) get_post_meta( $item_id, '_tss_tag_icon_id', true );
 	if ( $attachment_id ) {
 		$url = wp_get_attachment_image_url( $attachment_id, 'thumbnail' );
 		if ( $url ) {
 			return $url;
 		}
 	}
-	return (string) get_post_meta( $item_id, '_tss_badge_icon_url', true );
+	return (string) get_post_meta( $item_id, '_tss_tag_icon_url', true );
+}
+
+/**
+ * Build the HTML for the tag's icon. Custom image > Dashicon > empty.
+ *
+ * @param int $item_id Shop item ID.
+ * @return string Safe HTML.
+ */
+function tss_render_tag_icon( $item_id ) {
+	$custom = tss_get_tag_icon_url( $item_id );
+	if ( $custom ) {
+		return '<img class="tss-tag-icon-img" src="' . esc_url( $custom ) . '" alt="" />';
+	}
+	$dashicon = (string) get_post_meta( $item_id, '_tss_tag_dashicon', true );
+	if ( $dashicon ) {
+		$choices = tss_dashicon_choices();
+		if ( isset( $choices[ $dashicon ] ) ) {
+			return '<span class="dashicons dashicons-' . esc_attr( $dashicon ) . '" aria-hidden="true"></span>';
+		}
+	}
+	return '';
 }
 
 /**
  * Find the first published shop item targeting the given post.
- *
- * Targets are matched as: explicit post IDs first, then category IDs.
+ * Explicit post IDs win over category matches.
  *
  * @param int $post_id Post being viewed.
  * @return int|null Shop item ID or null.
@@ -93,14 +147,11 @@ function tss_find_item_for_post( $post_id ) {
 		}
 	}
 
-	if ( $by_post ) {
-		return $by_post;
-	}
-	return $by_category;
+	return $by_post ? $by_post : $by_category;
 }
 
 /**
- * Build the public payload for a shop item, used by the REST endpoint.
+ * Build the public payload for a shop item.
  *
  * @param int $item_id Shop item ID.
  * @return array|null
@@ -116,29 +167,25 @@ function tss_get_item_payload( $item_id ) {
 	$button_url  = (string) get_post_meta( $item_id, '_tss_button_url', true );
 	$affiliate   = (string) get_post_meta( $item_id, '_tss_affiliate_url', true );
 	$price       = (string) get_post_meta( $item_id, '_tss_price', true );
-	$shipping    = (string) get_post_meta( $item_id, '_tss_shipping_label', true );
 	$position    = (string) get_post_meta( $item_id, '_tss_position_label', true );
 	$image_url   = tss_get_image_url( $item_id );
 
-	$badge_name  = (string) get_post_meta( $item_id, '_tss_badge_name', true );
-	$badge_icon  = tss_get_badge_icon_url( $item_id );
-	$badge_color = (string) get_post_meta( $item_id, '_tss_badge_color', true );
+	$tag_label = (string) get_post_meta( $item_id, '_tss_tag_label', true );
+	$tag_icon  = tss_render_tag_icon( $item_id );
 
 	$final_link = $button_url ? $button_url : $affiliate;
 
 	return array(
-		'id'          => $item_id,
-		'title'       => $title,
-		'description' => $description,
-		'button_url'  => esc_url_raw( $final_link ),
-		'price'       => $price,
-		'shipping'    => $shipping ? $shipping : __( 'Free shipping', 'tikswipe-shop' ),
-		'position'    => $position ? $position : '01',
-		'image_url'   => esc_url_raw( $image_url ),
-		'badge'       => array(
-			'name'  => $badge_name,
-			'icon'  => esc_url_raw( $badge_icon ),
-			'color' => $badge_color ? $badge_color : '#22c55e',
+		'id'         => $item_id,
+		'title'      => $title,
+		'description'=> $description,
+		'button_url' => esc_url_raw( $final_link ),
+		'price'      => $price,
+		'position'   => $position ? $position : '01',
+		'image_url'  => esc_url_raw( $image_url ),
+		'tag'        => array(
+			'label'    => $tag_label,
+			'icon_html'=> $tag_icon,
 		),
 	);
 }
