@@ -87,9 +87,28 @@
 		});
 	}
 
-	function horizontalBar(canvasId, items, valueKey, color, label) {
+	function horizontalBar(canvasId, items, valueKey, color, label, clickable) {
 		var el = document.getElementById(canvasId);
-		if (!el) { return; }
+		if (!el || !items.length) { return; }
+		var opts = {
+			indexAxis: 'y',
+			responsive: true,
+			maintainAspectRatio: false,
+			plugins: { legend: { display: false } },
+			scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+		};
+		if (clickable) {
+			opts.onClick = function (evt, els) {
+				if (!els.length) { return; }
+				var item = items[els[0].index];
+				if (item && item.solo_url) {
+					window.location.href = item.solo_url;
+				}
+			};
+			opts.onHover = function (evt, els) {
+				evt.native.target.style.cursor = els.length && items[els[0].index] && items[els[0].index].solo_url ? 'pointer' : 'default';
+			};
+		}
 		new Chart(el, {
 			type: 'bar',
 			data: {
@@ -101,17 +120,13 @@
 					borderRadius: 4,
 				}],
 			},
-			options: {
-				indexAxis: 'y',
-				responsive: true,
-				maintainAspectRatio: false,
-				plugins: { legend: { display: false } },
-				scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
-			},
+			options: opts,
 		});
 	}
 
-	horizontalBar('tss-top-views',  data.topViews  || [], 'views',  '#2271b1', 'Views');
-	horizontalBar('tss-top-clicks', data.topClicks || [], 'clicks', '#16a55a', 'Clicks');
-	horizontalBar('tss-stores',     data.stores    || [], 'clicks', '#F63A61', 'Clicks');
+	if (!data.solo) {
+		horizontalBar('tss-top-views',  data.topViews  || [], 'views',  '#2271b1', 'Views',  true);
+		horizontalBar('tss-top-clicks', data.topClicks || [], 'clicks', '#16a55a', 'Clicks', true);
+		horizontalBar('tss-stores',     data.stores    || [], 'clicks', '#F63A61', 'Clicks', false);
+	}
 })();

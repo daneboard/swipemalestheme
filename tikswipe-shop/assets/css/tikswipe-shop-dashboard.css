@@ -133,3 +133,62 @@
 
 .tss-table { margin-top: 6px; }
 .tss-table th, .tss-table td { vertical-align: middle; }
+.tss-table .row-title { text-decoration: none; }
+.tss-table .row-title strong { color: #2271b1; }
+.tss-table .row-title:hover strong { text-decoration: underline; }
+
+.tss-back {
+	color: #646970;
+	text-decoration: none;
+	margin-right: 8px;
+	font-size: 13px;
+	font-weight: 400;
+	vertical-align: middle;
+}
+.tss-back:hover { color: #2271b1; }
+
+.tss-solo-header {
+	display: flex;
+	gap: 18px;
+	align-items: flex-start;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 16px;
+	margin: 0 0 18px;
+	box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+}
+.tss-solo-thumb {
+	flex: 0 0 96px;
+	width: 96px;
+	height: 96px;
+	border-radius: 8px;
+	overflow: hidden;
+	background: #f0f0f1;
+}
+.tss-solo-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+.tss-solo-meta {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.tss-solo-row { display: flex; gap: 8px; font-size: 13px; align-items: baseline; }
+.tss-solo-label {
+	min-width: 80px;
+	color: #646970;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: .02em;
+}
+.tss-solo-value { color: #1d2327; }
+.tss-solo-actions {
+	margin-top: 8px;
+	display: flex;
+	gap: 8px;
+}
