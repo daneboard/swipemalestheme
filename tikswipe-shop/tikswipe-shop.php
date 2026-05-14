@@ -25,12 +25,14 @@ require_once TSS_PLUGIN_DIR . 'includes/tss-helpers.php';
 require_once TSS_PLUGIN_DIR . 'includes/class-tss-cpt.php';
 require_once TSS_PLUGIN_DIR . 'includes/class-tss-admin.php';
 require_once TSS_PLUGIN_DIR . 'includes/class-tss-rest.php';
+require_once TSS_PLUGIN_DIR . 'includes/class-tss-tracking.php';
 require_once TSS_PLUGIN_DIR . 'includes/class-tss-frontend.php';
 
 function tss_init() {
 	TSS_CPT::init();
 	TSS_Admin::init();
 	TSS_Rest::init();
+	TSS_Tracking::init();
 	TSS_Frontend::init();
 }
 add_action( 'plugins_loaded', 'tss_init' );

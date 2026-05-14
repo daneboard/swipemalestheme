@@ -20,8 +20,6 @@ class TSS_Admin {
 		add_action( 'save_post_' . TSS_CPT, array( __CLASS__, 'save_meta' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 		add_action( 'wp_ajax_tss_search_posts', array( __CLASS__, 'ajax_search_posts' ) );
-		add_filter( 'manage_' . TSS_CPT . '_posts_columns', array( __CLASS__, 'columns' ) );
-		add_action( 'manage_' . TSS_CPT . '_posts_custom_column', array( __CLASS__, 'column_content' ), 10, 2 );
 	}
 
 	public static function enqueue_admin_assets( $hook ) {
@@ -345,34 +343,4 @@ class TSS_Admin {
 		wp_send_json_success( $out );
 	}
 
-	public static function columns( $cols ) {
-		$new = array();
-		foreach ( $cols as $k => $v ) {
-			$new[ $k ] = $v;
-			if ( 'title' === $k ) {
-				$new['tss_targets'] = __( 'Targets', 'tikswipe-shop' );
-				$new['tss_price']   = __( 'Price', 'tikswipe-shop' );
-			}
-		}
-		return $new;
-	}
-
-	public static function column_content( $col, $post_id ) {
-		if ( 'tss_price' === $col ) {
-			echo esc_html( get_post_meta( $post_id, '_tss_price', true ) );
-			return;
-		}
-		if ( 'tss_targets' === $col ) {
-			$pids = (array) get_post_meta( $post_id, '_tss_target_post_ids', true );
-			$cids = (array) get_post_meta( $post_id, '_tss_target_categories', true );
-			$bits = array();
-			if ( $pids ) {
-				$bits[] = sprintf( _n( '%d post', '%d posts', count( $pids ), 'tikswipe-shop' ), count( $pids ) );
-			}
-			if ( $cids ) {
-				$bits[] = sprintf( _n( '%d category', '%d categories', count( $cids ), 'tikswipe-shop' ), count( $cids ) );
-			}
-			echo $bits ? esc_html( implode( ' · ', $bits ) ) : '—';
-		}
-	}
 }

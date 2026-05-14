@@ -162,7 +162,9 @@ function tss_get_item_payload( $item_id ) {
 		return null;
 	}
 
-	$title       = get_the_title( $item_id );
+	// Decode entities so smart quotes / dashes from wp_texturize render as
+	// real UTF-8 in the card (the JS will safely re-escape).
+	$title       = html_entity_decode( get_the_title( $item_id ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 	$description = (string) get_post_meta( $item_id, '_tss_description', true );
 	$button_url  = (string) get_post_meta( $item_id, '_tss_button_url', true );
 	$affiliate   = (string) get_post_meta( $item_id, '_tss_affiliate_url', true );

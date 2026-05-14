@@ -17,11 +17,28 @@
 (function ($) {
 	'use strict';
 
-	var SHOW_MS  = (tssData && tssData.showDelayMs) || 10000;
-	var CLOSE_MS = (tssData && tssData.closeDelayMs) || 5000;
-	var REST_URL = tssData && tssData.restUrl;
+	var SHOW_MS   = (tssData && tssData.showDelayMs) || 10000;
+	var CLOSE_MS  = (tssData && tssData.closeDelayMs) || 5000;
+	var REST_URL  = tssData && tssData.restUrl;
+	var TRACK_URL = tssData && tssData.trackUrl;
 
 	var cache = {};
+
+	function track(itemId, event) {
+		if (!TRACK_URL || !itemId) { return; }
+		var data = new FormData();
+		data.append('item_id', String(itemId));
+		data.append('event', event);
+		try {
+			if (navigator.sendBeacon) {
+				navigator.sendBeacon(TRACK_URL, data);
+				return;
+			}
+		} catch (e) {}
+		try {
+			fetch(TRACK_URL, { method: 'POST', body: data, keepalive: true, credentials: 'same-origin' });
+		} catch (e) {}
+	}
 
 	function fetchItem(postId) {
 		if (cache[postId]) {
@@ -86,7 +103,13 @@
 	function injectMarkup($slide, item) {
 		if ($slide.data('tssInjected')) { return; }
 		$slide.data('tssInjected', true);
+		$slide.data('tssItemId', item.id);
 		$slide.append(buildCard(item));
+
+		// Buy button + card link both count as a click.
+		$slide.on('click', '.tss-shop-card__buy, .tss-shop-card__link', function () {
+			track($slide.data('tssItemId'), 'click');
+		});
 	}
 
 	function arm($slide) {
@@ -106,6 +129,7 @@
 			if (state.activated) { return; }
 			state.activated = true;
 			$slide.addClass('tss-active');
+			track($slide.data('tssItemId'), 'view');
 			clearInterval(state.intervalId);
 			state.intervalId = null;
 			setTimeout(function () {
@@ -146,6 +170,7 @@
 		$slide.on('click', '.tss-shop-card__close', function (e) {
 			e.preventDefault();
 			e.stopPropagation();
+			track($slide.data('tssItemId'), 'close');
 			$slide.removeClass('tss-active tss-can-close');
 			state.activated = false;
 			state.elapsed   = 0;

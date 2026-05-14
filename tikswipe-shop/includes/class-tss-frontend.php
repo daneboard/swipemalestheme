@@ -42,7 +42,8 @@ class TSS_Frontend {
 			'tikswipe-shop',
 			'tssData',
 			array(
-				'restUrl' => esc_url_raw( rest_url( 'tikswipe-shop/v1/lookup' ) ),
+				'restUrl'      => esc_url_raw( rest_url( 'tikswipe-shop/v1/lookup' ) ),
+				'trackUrl'     => esc_url_raw( rest_url( 'tikswipe-shop/v1/track' ) ),
 				'showDelayMs'  => 10000,
 				'closeDelayMs' => 5000,
 				'i18n'    => array(
