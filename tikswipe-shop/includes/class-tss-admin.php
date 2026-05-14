@@ -33,13 +33,13 @@ class TSS_Admin {
 			'tss-admin',
 			TSS_PLUGIN_URL . 'assets/css/tikswipe-shop-admin.css',
 			array(),
-			TSS_VERSION
+			tss_asset_ver( 'assets/css/tikswipe-shop-admin.css' )
 		);
 		wp_enqueue_script(
 			'tss-admin',
 			TSS_PLUGIN_URL . 'assets/js/tikswipe-shop-admin.js',
 			array( 'jquery' ),
-			TSS_VERSION,
+			tss_asset_ver( 'assets/js/tikswipe-shop-admin.js' ),
 			true
 		);
 		wp_localize_script(

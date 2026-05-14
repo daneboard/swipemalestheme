@@ -238,7 +238,7 @@ class TSS_Dashboard {
 			'tss-dashboard',
 			TSS_PLUGIN_URL . 'assets/css/tikswipe-shop-dashboard.css',
 			array(),
-			TSS_VERSION
+			tss_asset_ver( 'assets/css/tikswipe-shop-dashboard.css' )
 		);
 		wp_enqueue_script(
 			'chartjs',
@@ -251,7 +251,7 @@ class TSS_Dashboard {
 			'tss-dashboard',
 			TSS_PLUGIN_URL . 'assets/js/tikswipe-shop-dashboard.js',
 			array( 'chartjs' ),
-			TSS_VERSION,
+			tss_asset_ver( 'assets/js/tikswipe-shop-dashboard.js' ),
 			true
 		);
 	}

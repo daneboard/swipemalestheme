@@ -29,13 +29,13 @@ class TSS_Frontend {
 			'tikswipe-shop',
 			TSS_PLUGIN_URL . 'assets/css/tikswipe-shop.css',
 			array( 'dashicons' ),
-			TSS_VERSION
+			tss_asset_ver( 'assets/css/tikswipe-shop.css' )
 		);
 		wp_enqueue_script(
 			'tikswipe-shop',
 			TSS_PLUGIN_URL . 'assets/js/tikswipe-shop.js',
 			array( 'jquery' ),
-			TSS_VERSION,
+			tss_asset_ver( 'assets/js/tikswipe-shop.js' ),
 			true
 		);
 		wp_localize_script(

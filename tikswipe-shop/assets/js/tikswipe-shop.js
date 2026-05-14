@@ -116,12 +116,20 @@
 		if ($slide.data('tssArmed')) { return; }
 		$slide.data('tssArmed', true);
 
-		var TICK_MS = 250;
-		var state   = {
+		var TICK_MS    = 250;
+		// If the slide is marked as video but no <video> element appears in
+		// this many ms (e.g. iframe embed, or videojs init still pending and
+		// autoplay is on so wall-clock is acceptable), fall back to counting
+		// based on wall-clock time only.
+		var NO_VIDEO_FALLBACK_MS = 1500;
+
+		var state = {
 			elapsed:      0,
 			activated:    false,
 			isVideoSlide: $slide.hasClass('swiper-video-slide'),
 			intervalId:   null,
+			armedAt:      Date.now(),
+			lastVideoSeenAt: 0,
 		};
 		$slide.data('tssState', state);
 
@@ -143,13 +151,28 @@
 			if (state.activated) { return false; }
 			if (!$slide.hasClass('swiper-slide-active')) { return false; }
 			if (document.hidden) { return false; }
-			if (state.isVideoSlide) {
-				var v = $slide.find('video').get(0);
-				if (v && (v.paused || v.ended || v.readyState < 2)) {
+
+			if (!state.isVideoSlide) {
+				return true;
+			}
+
+			var v = $slide.find('video').get(0);
+			if (v) {
+				state.lastVideoSeenAt = Date.now();
+				// readyState is intentionally NOT checked — Video.js with
+				// preload=none keeps it at 0 while playback is technically
+				// happening (the <video>.paused flag is the reliable one).
+				if (v.paused || v.ended) {
 					return false;
 				}
+				return true;
 			}
-			return true;
+
+			// No <video> yet. After a short grace period, count wall-clock
+			// time — this covers iframe embeds (no <video> at all) and the
+			// videojs AJAX-init gap when autoplay is on so we know playback
+			// will start shortly.
+			return ( Date.now() - state.armedAt ) >= NO_VIDEO_FALLBACK_MS;
 		}
 
 		function startInterval() {
@@ -174,6 +197,7 @@
 			$slide.removeClass('tss-active tss-can-close');
 			state.activated = false;
 			state.elapsed   = 0;
+			state.armedAt   = Date.now();
 			startInterval();
 		});
 	}
@@ -229,6 +253,40 @@
 			attributeFilter: ['class'],
 		});
 	}
+
+	// Console helper: window.tssDebug() prints the timer state of the
+	// active slide. Used to diagnose why the card might not appear.
+	window.tssDebug = function () {
+		var $active = $('.swiper-slide-active');
+		if (!$active.length) {
+			console.log('[tss] no .swiper-slide-active found');
+			return;
+		}
+		var state = $active.data('tssState');
+		var video = $active.find('video').get(0);
+		var info  = {
+			post_id:        $active.data('id'),
+			is_video_slide: $active.hasClass('swiper-video-slide'),
+			has_card:       !!$active.find('.tss-shop-card').length,
+			card_active:    $active.hasClass('tss-active'),
+			document_hidden: document.hidden,
+			video_found:    !!video,
+			video_paused:   video ? video.paused : null,
+			video_ended:    video ? video.ended : null,
+			video_readyState: video ? video.readyState : null,
+			video_currentTime: video ? video.currentTime : null,
+			state: state ? {
+				elapsed_ms: state.elapsed,
+				target_ms:  SHOW_MS,
+				progress:   ((state.elapsed / SHOW_MS) * 100).toFixed(1) + '%',
+				activated:  state.activated,
+				armed_age_ms: Date.now() - state.armedAt,
+				ticking:    !!state.intervalId,
+			} : null,
+		};
+		console.table(info);
+		return info;
+	};
 
 	$(function () {
 		if (!REST_URL) { return; }

@@ -15,11 +15,26 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TSS_VERSION', '1.0.0' );
+define( 'TSS_VERSION', '1.1.0' );
 define( 'TSS_PLUGIN_FILE', __FILE__ );
 define( 'TSS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TSS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'TSS_CPT', 'tss_shop_item' );
+
+/**
+ * Cache-bust assets based on file mtime so updates land without needing to
+ * bump the version constant.
+ *
+ * @param string $relative Path relative to the plugin root (e.g. assets/js/file.js).
+ * @return string
+ */
+function tss_asset_ver( $relative ) {
+	$file = TSS_PLUGIN_DIR . ltrim( $relative, '/' );
+	if ( is_readable( $file ) ) {
+		return TSS_VERSION . '.' . filemtime( $file );
+	}
+	return TSS_VERSION;
+}
 
 require_once TSS_PLUGIN_DIR . 'includes/tss-helpers.php';
 require_once TSS_PLUGIN_DIR . 'includes/class-tss-cpt.php';
