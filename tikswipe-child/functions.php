@@ -237,17 +237,22 @@ function tikswipe_child_top_banner() {
 		}
 
 		/* The banner ate 50px at the top of body, so any 100vh fill
-		   has to drop by 50px to stay inside the viewport. Specificity
-		   (0,0,2) beats the mobile media query rule (0,0,1). */
+		   has to drop by 50px. Use dvh (dynamic viewport height) so
+		   the layout follows the Chrome / Safari URL bar as it
+		   shows / hides, instead of letting content slide under it.
+		   vh kept as fallback for browsers older than 2022. */
 		body .content {
 			min-height: calc(100vh - var(--tse-banner-h));
+			min-height: calc(100dvh - var(--tse-banner-h));
 		}
 		body.admin-bar .content {
 			min-height: calc(100vh - var(--wp-admin--admin-bar--height, 32px) - var(--tse-banner-h));
+			min-height: calc(100dvh - var(--wp-admin--admin-bar--height, 32px) - var(--tse-banner-h));
 		}
 		body.author main,
 		body.profile main {
 			min-height: calc(100vh - var(--tse-banner-h));
+			min-height: calc(100dvh - var(--tse-banner-h));
 		}
 	</style>
 	<?php
