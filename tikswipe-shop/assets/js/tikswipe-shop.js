@@ -116,13 +116,12 @@
 		if ($slide.data('tssArmed')) { return; }
 		$slide.data('tssArmed', true);
 
-		var state = {
-			elapsed: 0,
-			lastTick: null,
+		var TICK_MS = 250;
+		var state   = {
+			elapsed:      0,
+			activated:    false,
 			isVideoSlide: $slide.hasClass('swiper-video-slide'),
-			activated: false,
-			closable: false,
-			rafId: null,
+			intervalId:   null,
 		};
 		$slide.data('tssState', state);
 
@@ -130,6 +129,8 @@
 			if (state.activated) { return; }
 			state.activated = true;
 			$slide.addClass('tss-active');
+			clearInterval(state.intervalId);
+			state.intervalId = null;
 			setTimeout(function () {
 				if ($slide.hasClass('tss-active')) {
 					$slide.addClass('tss-can-close');
@@ -137,57 +138,29 @@
 			}, CLOSE_MS);
 		}
 
-		function tickWall() {
-			if (state.activated || !$slide.hasClass('swiper-slide-active')) {
-				state.lastTick = null;
-				return;
+		function shouldCount() {
+			if (state.activated) { return false; }
+			if (!$slide.hasClass('swiper-slide-active')) { return false; }
+			if (document.hidden) { return false; }
+			if (state.isVideoSlide) {
+				var v = $slide.find('video').get(0);
+				// If there's a real <video> and it's paused/not ready, hold.
+				// If there's no <video> (iframe embed), count wall-clock anyway.
+				if (v && (v.paused || v.ended || v.readyState < 2)) {
+					return false;
+				}
 			}
-			var now = Date.now();
-			if (state.lastTick) {
-				state.elapsed += now - state.lastTick;
-			}
-			state.lastTick = now;
-			if (state.elapsed >= SHOW_MS) {
-				activate();
-				return;
-			}
-			state.rafId = requestAnimationFrame(tickWall);
+			return true;
 		}
 
-		if (state.isVideoSlide) {
-			// Listen for any <video> playback inside the slide. Each timeupdate
-			// represents real playback progress, so paused video pauses the
-			// countdown automatically.
-			var lastTime = null;
-			$slide.on('timeupdate', 'video', function () {
-				if (state.activated) { return; }
-				var v = this;
-				if (v.paused || !$slide.hasClass('swiper-slide-active')) {
-					lastTime = v.currentTime;
-					return;
-				}
-				if (lastTime !== null && v.currentTime > lastTime) {
-					state.elapsed += (v.currentTime - lastTime) * 1000;
-				}
-				lastTime = v.currentTime;
+		state.intervalId = setInterval(function () {
+			if (shouldCount()) {
+				state.elapsed += TICK_MS;
 				if (state.elapsed >= SHOW_MS) {
 					activate();
 				}
-			});
-			// Reset reference on play (handles seeks).
-			$slide.on('play seeked', 'video', function () {
-				lastTime = this.currentTime;
-			});
-			// Fallback: if no video element is present after 1s (e.g. embed
-			// iframe), fall back to wall-clock counting.
-			setTimeout(function () {
-				if (!state.activated && $slide.find('video').length === 0) {
-					tickWall();
-				}
-			}, 1000);
-		} else {
-			tickWall();
-		}
+			}
+		}, TICK_MS);
 
 		// Close handler.
 		$slide.on('click', '.tss-shop-card__close', function (e) {
@@ -195,9 +168,17 @@
 			e.stopPropagation();
 			$slide.removeClass('tss-active tss-can-close');
 			state.activated = false;
-			state.closable  = false;
 			state.elapsed   = 0;
-			state.lastTick  = null;
+			if (!state.intervalId) {
+				state.intervalId = setInterval(function () {
+					if (shouldCount()) {
+						state.elapsed += TICK_MS;
+						if (state.elapsed >= SHOW_MS) {
+							activate();
+						}
+					}
+				}, TICK_MS);
+			}
 		});
 	}
 
@@ -212,13 +193,6 @@
 			if (!res || !res.item) { return; }
 			injectMarkup($slide, res.item);
 			arm($slide);
-			// If slide is currently active, start the wall-clock now.
-			if ($slide.hasClass('swiper-slide-active')) {
-				var state = $slide.data('tssState');
-				if (state && !state.isVideoSlide && !state.activated) {
-					state.lastTick = Date.now();
-				}
-			}
 		});
 	}
 
