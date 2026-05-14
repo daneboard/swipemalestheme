@@ -56,6 +56,7 @@ add_action( 'plugins_loaded', 'tss_init' );
 
 function tss_activate() {
 	TSS_CPT::register_cpt();
+	TSS_Tracking::install();
 	flush_rewrite_rules();
 }
 register_activation_hook( __FILE__, 'tss_activate' );

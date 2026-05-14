@@ -1,11 +1,12 @@
 <?php
 /**
- * Admin Dashboard page — aggregate stats + charts.
+ * Admin Dashboard page — date-filtered analytics with period comparison.
  *
- * Registers a submenu page under the Shop Items CPT. Aggregates per-item
- * counters into KPIs, a clicks/closes/ignored donut, top products by
- * views and clicks, and top stores by clicks. Chart.js is loaded from a
- * CDN only on this page.
+ * Reads the events table (wp_tss_events) for date-window queries and falls
+ * back to the lifetime post-meta counters for an "all time" panel. Renders
+ * KPI tiles with delta-vs-previous-period, a daily time-series line chart,
+ * a clicks/closes/ignored donut, top products + top stores bar charts, and
+ * a per-product table.
  *
  * @package TikSwipe_Shop
  */
@@ -31,85 +32,167 @@ class TSS_Dashboard {
 		);
 	}
 
-	private static function gather() {
-		$query = new WP_Query(
-			array(
-				'post_type'      => TSS_CPT,
-				'post_status'    => 'publish',
-				'posts_per_page' => -1,
-				'fields'         => 'ids',
-				'no_found_rows'  => true,
-			)
+	/**
+	 * Aggregate counters from the events table within a date window.
+	 *
+	 * @param string $from  Y-m-d.
+	 * @param string $to    Y-m-d.
+	 * @return array<int,array{views:int,clicks:int,closes:int}> Keyed by item_id.
+	 */
+	private static function totals_by_item( $from, $to ) {
+		global $wpdb;
+		$table = TSS_Tracking::table_name();
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT item_id, event_type, COUNT(*) AS c
+				FROM {$table}
+				WHERE created_at >= %s AND created_at < %s
+				GROUP BY item_id, event_type",
+				$from . ' 00:00:00',
+				date( 'Y-m-d', strtotime( $to . ' +1 day' ) ) . ' 00:00:00'
+			),
+			ARRAY_A
+		);
+		$out = array();
+		foreach ( (array) $rows as $r ) {
+			$id = (int) $r['item_id'];
+			if ( ! isset( $out[ $id ] ) ) {
+				$out[ $id ] = array( 'views' => 0, 'clicks' => 0, 'closes' => 0 );
+			}
+			$bucket = TSS_Tracking::EVENTS;
+			if ( 'view'  === $r['event_type'] ) { $out[ $id ]['views']  = (int) $r['c']; }
+			if ( 'click' === $r['event_type'] ) { $out[ $id ]['clicks'] = (int) $r['c']; }
+			if ( 'close' === $r['event_type'] ) { $out[ $id ]['closes'] = (int) $r['c']; }
+		}
+		return $out;
+	}
+
+	/**
+	 * Per-day counts of each event type inside the window.
+	 *
+	 * @return array<string,array{views:int,clicks:int,closes:int}> Keyed by Y-m-d.
+	 */
+	private static function per_day( $from, $to ) {
+		global $wpdb;
+		$table = TSS_Tracking::table_name();
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT DATE(created_at) AS day, event_type, COUNT(*) AS c
+				FROM {$table}
+				WHERE created_at >= %s AND created_at < %s
+				GROUP BY day, event_type
+				ORDER BY day",
+				$from . ' 00:00:00',
+				date( 'Y-m-d', strtotime( $to . ' +1 day' ) ) . ' 00:00:00'
+			),
+			ARRAY_A
+		);
+		$out = array();
+		// Pre-fill every day in range with zeros for a continuous chart.
+		$cursor = strtotime( $from );
+		$end    = strtotime( $to );
+		while ( $cursor <= $end ) {
+			$out[ date( 'Y-m-d', $cursor ) ] = array( 'views' => 0, 'clicks' => 0, 'closes' => 0 );
+			$cursor = strtotime( '+1 day', $cursor );
+		}
+		foreach ( (array) $rows as $r ) {
+			$day = $r['day'];
+			if ( ! isset( $out[ $day ] ) ) {
+				$out[ $day ] = array( 'views' => 0, 'clicks' => 0, 'closes' => 0 );
+			}
+			if ( 'view'  === $r['event_type'] ) { $out[ $day ]['views']  = (int) $r['c']; }
+			if ( 'click' === $r['event_type'] ) { $out[ $day ]['clicks'] = (int) $r['c']; }
+			if ( 'close' === $r['event_type'] ) { $out[ $day ]['closes'] = (int) $r['c']; }
+		}
+		return $out;
+	}
+
+	/**
+	 * Resolve a preset / custom range from GET params. Returns
+	 * [from, to, label, preset_slug].
+	 */
+	private static function resolve_range() {
+		$preset = isset( $_GET['range'] ) ? sanitize_key( $_GET['range'] ) : 'last_30';
+		$tz     = wp_timezone();
+		$now    = new DateTime( 'now', $tz );
+		$today  = $now->format( 'Y-m-d' );
+
+		$ranges = array(
+			'today'      => array( $today, $today, __( 'Today', 'tikswipe-shop' ) ),
+			'yesterday'  => array(
+				( new DateTime( 'yesterday', $tz ) )->format( 'Y-m-d' ),
+				( new DateTime( 'yesterday', $tz ) )->format( 'Y-m-d' ),
+				__( 'Yesterday', 'tikswipe-shop' ),
+			),
+			'last_7'     => array(
+				( new DateTime( '-6 days', $tz ) )->format( 'Y-m-d' ),
+				$today,
+				__( 'Last 7 days', 'tikswipe-shop' ),
+			),
+			'last_30'    => array(
+				( new DateTime( '-29 days', $tz ) )->format( 'Y-m-d' ),
+				$today,
+				__( 'Last 30 days', 'tikswipe-shop' ),
+			),
+			'last_90'    => array(
+				( new DateTime( '-89 days', $tz ) )->format( 'Y-m-d' ),
+				$today,
+				__( 'Last 90 days', 'tikswipe-shop' ),
+			),
+			'mtd'        => array(
+				$now->format( 'Y-m-01' ),
+				$today,
+				__( 'Month to date', 'tikswipe-shop' ),
+			),
+			'last_month' => array(
+				( new DateTime( 'first day of last month', $tz ) )->format( 'Y-m-d' ),
+				( new DateTime( 'last day of last month', $tz ) )->format( 'Y-m-d' ),
+				__( 'Last month', 'tikswipe-shop' ),
+			),
 		);
 
-		$items   = array();
-		$stores  = array();
-		$totals  = array(
-			'views'   => 0,
-			'clicks'  => 0,
-			'closes'  => 0,
-			'ignored' => 0,
-		);
-
-		foreach ( $query->posts as $id ) {
-			$views  = (int) get_post_meta( $id, '_tss_views', true );
-			$clicks = (int) get_post_meta( $id, '_tss_clicks', true );
-			$closes = (int) get_post_meta( $id, '_tss_closes', true );
-			$ignored= max( 0, $views - $clicks );
-
-			$totals['views']   += $views;
-			$totals['clicks']  += $clicks;
-			$totals['closes']  += $closes;
-			$totals['ignored'] += $ignored;
-
-			$store = (string) get_post_meta( $id, '_tss_store', true );
-			if ( '' === $store ) {
-				$store = __( '(no store)', 'tikswipe-shop' );
+		if ( 'custom' === $preset ) {
+			$from = isset( $_GET['from'] ) ? sanitize_text_field( wp_unslash( $_GET['from'] ) ) : $today;
+			$to   = isset( $_GET['to'] )   ? sanitize_text_field( wp_unslash( $_GET['to'] ) )   : $today;
+			// Validate / normalise.
+			$from = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $from ) ? $from : $today;
+			$to   = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $to )   ? $to   : $today;
+			if ( strtotime( $from ) > strtotime( $to ) ) {
+				$tmp = $from; $from = $to; $to = $tmp;
 			}
-			if ( ! isset( $stores[ $store ] ) ) {
-				$stores[ $store ] = array(
-					'name'   => $store,
-					'views'  => 0,
-					'clicks' => 0,
-					'closes' => 0,
-				);
-			}
-			$stores[ $store ]['views']  += $views;
-			$stores[ $store ]['clicks'] += $clicks;
-			$stores[ $store ]['closes'] += $closes;
-
-			$items[] = array(
-				'id'     => $id,
-				'title'  => html_entity_decode( get_the_title( $id ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
-				'store'  => (string) get_post_meta( $id, '_tss_store', true ),
-				'views'  => $views,
-				'clicks' => $clicks,
-				'closes' => $closes,
-				'ignored'=> $ignored,
-				'ctr'    => $views > 0 ? round( ( $clicks / $views ) * 100, 1 ) : 0,
-			);
+			return array( $from, $to, __( 'Custom range', 'tikswipe-shop' ), 'custom' );
 		}
 
-		usort(
-			$items,
-			function ( $a, $b ) {
-				return $b['views'] <=> $a['views'];
-			}
-		);
+		$r = isset( $ranges[ $preset ] ) ? $ranges[ $preset ] : $ranges['last_30'];
+		return array( $r[0], $r[1], $r[2], $preset );
+	}
 
-		$store_list = array_values( $stores );
-		usort(
-			$store_list,
-			function ( $a, $b ) {
-				return $b['clicks'] <=> $a['clicks'];
-			}
-		);
+	/**
+	 * Previous comparable window (same length, ending immediately before $from).
+	 */
+	private static function previous_range( $from, $to ) {
+		$days  = (int) ( ( strtotime( $to ) - strtotime( $from ) ) / DAY_IN_SECONDS ) + 1;
+		$pTo   = date( 'Y-m-d', strtotime( $from . ' -1 day' ) );
+		$pFrom = date( 'Y-m-d', strtotime( $pTo . ' -' . ( $days - 1 ) . ' days' ) );
+		return array( $pFrom, $pTo );
+	}
 
-		return array(
-			'totals' => $totals,
-			'items'  => $items,
-			'stores' => $store_list,
-		);
+	private static function summarise( $by_item ) {
+		$views = 0; $clicks = 0; $closes = 0;
+		foreach ( $by_item as $row ) {
+			$views  += $row['views'];
+			$clicks += $row['clicks'];
+			$closes += $row['closes'];
+		}
+		$ignored = max( 0, $views - $clicks );
+		return compact( 'views', 'clicks', 'closes', 'ignored' );
+	}
+
+	private static function delta( $current, $previous ) {
+		if ( $previous <= 0 ) {
+			return $current > 0 ? 100.0 : 0.0;
+		}
+		return round( ( ( $current - $previous ) / $previous ) * 100, 1 );
 	}
 
 	public static function render_page() {
@@ -117,65 +200,192 @@ class TSS_Dashboard {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'tikswipe-shop' ) );
 		}
 
-		$data   = self::gather();
-		$totals = $data['totals'];
-		$items  = $data['items'];
-		$stores = $data['stores'];
+		list( $from, $to, $range_label, $preset ) = self::resolve_range();
+		$compare = ! empty( $_GET['compare'] );
 
-		$pct = function ( $part, $whole ) {
-			if ( $whole <= 0 ) {
-				return 0;
-			}
-			return round( ( $part / $whole ) * 100, 1 );
-		};
+		$by_item   = self::totals_by_item( $from, $to );
+		$current   = self::summarise( $by_item );
+		$per_day   = self::per_day( $from, $to );
 
-		// Top 10 lists for the charts.
-		$top_views  = array_slice( $items, 0, 10 );
-		$top_clicks = $items;
-		usort(
-			$top_clicks,
-			function ( $a, $b ) {
-				return $b['clicks'] <=> $a['clicks'];
-			}
+		$prev_summary = array( 'views' => 0, 'clicks' => 0, 'closes' => 0, 'ignored' => 0 );
+		if ( $compare ) {
+			list( $pFrom, $pTo ) = self::previous_range( $from, $to );
+			$prev_by_item        = self::totals_by_item( $pFrom, $pTo );
+			$prev_summary        = self::summarise( $prev_by_item );
+		}
+
+		// Pull product metadata once.
+		$query = new WP_Query(
+			array(
+				'post_type'      => TSS_CPT,
+				'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+			)
 		);
+		$items   = array();
+		$stores  = array();
+		$life    = array( 'views' => 0, 'clicks' => 0, 'closes' => 0, 'ignored' => 0 );
+
+		foreach ( $query->posts as $id ) {
+			$life_views  = (int) get_post_meta( $id, '_tss_views', true );
+			$life_clicks = (int) get_post_meta( $id, '_tss_clicks', true );
+			$life_closes = (int) get_post_meta( $id, '_tss_closes', true );
+			$life['views']   += $life_views;
+			$life['clicks']  += $life_clicks;
+			$life['closes']  += $life_closes;
+
+			$views  = isset( $by_item[ $id ] ) ? $by_item[ $id ]['views']  : 0;
+			$clicks = isset( $by_item[ $id ] ) ? $by_item[ $id ]['clicks'] : 0;
+			$closes = isset( $by_item[ $id ] ) ? $by_item[ $id ]['closes'] : 0;
+			$ignored= max( 0, $views - $clicks );
+
+			$store_raw = (string) get_post_meta( $id, '_tss_store', true );
+			$store     = '' === $store_raw ? __( '(no store)', 'tikswipe-shop' ) : $store_raw;
+			if ( ! isset( $stores[ $store ] ) ) {
+				$stores[ $store ] = array( 'name' => $store, 'views' => 0, 'clicks' => 0, 'closes' => 0 );
+			}
+			$stores[ $store ]['views']  += $views;
+			$stores[ $store ]['clicks'] += $clicks;
+			$stores[ $store ]['closes'] += $closes;
+
+			$items[] = array(
+				'id'           => $id,
+				'title'        => html_entity_decode( get_the_title( $id ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
+				'store'        => $store_raw,
+				'views'        => $views,
+				'clicks'       => $clicks,
+				'closes'       => $closes,
+				'ignored'      => $ignored,
+				'ctr'          => $views > 0 ? round( ( $clicks / $views ) * 100, 1 ) : 0,
+				'life_views'   => $life_views,
+				'life_clicks'  => $life_clicks,
+				'life_closes'  => $life_closes,
+			);
+		}
+		$life['ignored'] = max( 0, $life['views'] - $life['clicks'] );
+
+		// Sort and build top-N lists.
+		usort( $items, function ( $a, $b ) { return $b['views']  <=> $a['views']; } );
+		$top_views = array_slice( $items, 0, 10 );
+		$top_clicks = $items;
+		usort( $top_clicks, function ( $a, $b ) { return $b['clicks'] <=> $a['clicks']; } );
 		$top_clicks = array_slice( $top_clicks, 0, 10 );
+		$store_list = array_values( $stores );
+		usort( $store_list, function ( $a, $b ) { return $b['clicks'] <=> $a['clicks']; } );
 
 		$payload = array(
-			'totals'    => $totals,
+			'current'   => $current,
+			'previous'  => $prev_summary,
+			'compare'   => $compare,
+			'perDay'    => $per_day,
 			'topViews'  => $top_views,
 			'topClicks' => $top_clicks,
-			'stores'    => array_slice( $stores, 0, 10 ),
+			'stores'    => array_slice( $store_list, 0, 10 ),
+			'life'      => $life,
 		);
+
+		$pct = function ( $part, $whole ) {
+			return $whole > 0 ? round( ( $part / $whole ) * 100, 1 ) : 0;
+		};
+
+		$base_url = admin_url( 'edit.php?post_type=' . TSS_CPT . '&page=' . self::HOOK );
 		?>
 		<div class="wrap tss-dashboard">
 			<h1><?php esc_html_e( 'TikSwipe Shop — Dashboard', 'tikswipe-shop' ); ?></h1>
 
+			<form method="get" class="tss-filter-bar">
+				<input type="hidden" name="post_type" value="<?php echo esc_attr( TSS_CPT ); ?>">
+				<input type="hidden" name="page" value="<?php echo esc_attr( self::HOOK ); ?>">
+				<label class="tss-filter__field">
+					<span><?php esc_html_e( 'Range', 'tikswipe-shop' ); ?></span>
+					<select name="range" class="tss-range-select">
+						<?php
+						$opts = array(
+							'today'      => __( 'Today', 'tikswipe-shop' ),
+							'yesterday'  => __( 'Yesterday', 'tikswipe-shop' ),
+							'last_7'     => __( 'Last 7 days', 'tikswipe-shop' ),
+							'last_30'    => __( 'Last 30 days', 'tikswipe-shop' ),
+							'last_90'    => __( 'Last 90 days', 'tikswipe-shop' ),
+							'mtd'        => __( 'Month to date', 'tikswipe-shop' ),
+							'last_month' => __( 'Last month', 'tikswipe-shop' ),
+							'custom'     => __( 'Custom…', 'tikswipe-shop' ),
+						);
+						foreach ( $opts as $v => $label ) :
+							?>
+							<option value="<?php echo esc_attr( $v ); ?>" <?php selected( $preset, $v ); ?>><?php echo esc_html( $label ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<label class="tss-filter__field tss-filter__custom">
+					<span><?php esc_html_e( 'From', 'tikswipe-shop' ); ?></span>
+					<input type="date" name="from" value="<?php echo esc_attr( $from ); ?>">
+				</label>
+				<label class="tss-filter__field tss-filter__custom">
+					<span><?php esc_html_e( 'To', 'tikswipe-shop' ); ?></span>
+					<input type="date" name="to" value="<?php echo esc_attr( $to ); ?>">
+				</label>
+				<label class="tss-filter__field tss-filter__compare">
+					<input type="checkbox" name="compare" value="1" <?php checked( $compare ); ?>>
+					<span><?php esc_html_e( 'Compare to previous period', 'tikswipe-shop' ); ?></span>
+				</label>
+				<button type="submit" class="button button-primary"><?php esc_html_e( 'Apply', 'tikswipe-shop' ); ?></button>
+				<span class="tss-filter__summary">
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: 1: range label, 2: from, 3: to */
+							__( '%1$s — %2$s → %3$s', 'tikswipe-shop' ),
+							$range_label,
+							$from,
+							$to
+						)
+					);
+					?>
+				</span>
+			</form>
+
 			<div class="tss-kpis">
-				<div class="tss-kpi">
-					<span class="tss-kpi__label"><?php esc_html_e( 'Views', 'tikswipe-shop' ); ?></span>
-					<span class="tss-kpi__value"><?php echo esc_html( number_format_i18n( $totals['views'] ) ); ?></span>
-				</div>
-				<div class="tss-kpi tss-kpi--good">
-					<span class="tss-kpi__label"><?php esc_html_e( 'Clicks (wanted)', 'tikswipe-shop' ); ?></span>
-					<span class="tss-kpi__value"><?php echo esc_html( number_format_i18n( $totals['clicks'] ) ); ?></span>
-					<span class="tss-kpi__pct"><?php echo esc_html( $pct( $totals['clicks'], $totals['views'] ) ); ?>%</span>
-				</div>
-				<div class="tss-kpi tss-kpi--bad">
-					<span class="tss-kpi__label"><?php esc_html_e( 'Manual closes', 'tikswipe-shop' ); ?></span>
-					<span class="tss-kpi__value"><?php echo esc_html( number_format_i18n( $totals['closes'] ) ); ?></span>
-					<span class="tss-kpi__pct"><?php echo esc_html( $pct( $totals['closes'], $totals['views'] ) ); ?>%</span>
-				</div>
-				<div class="tss-kpi tss-kpi--muted">
-					<span class="tss-kpi__label"><?php esc_html_e( 'Ignored', 'tikswipe-shop' ); ?></span>
-					<span class="tss-kpi__value"><?php echo esc_html( number_format_i18n( $totals['ignored'] ) ); ?></span>
-					<span class="tss-kpi__pct"><?php echo esc_html( $pct( $totals['ignored'], $totals['views'] ) ); ?>%</span>
-				</div>
+				<?php
+				$kpis = array(
+					array( 'label' => __( 'Views', 'tikswipe-shop' ), 'value' => $current['views'], 'prev' => $prev_summary['views'], 'good' => true, 'mod' => '' ),
+					array( 'label' => __( 'Clicks (wanted)', 'tikswipe-shop' ), 'value' => $current['clicks'], 'prev' => $prev_summary['clicks'], 'good' => true, 'mod' => 'good', 'pct' => $pct( $current['clicks'], $current['views'] ) ),
+					array( 'label' => __( 'Manual closes', 'tikswipe-shop' ), 'value' => $current['closes'], 'prev' => $prev_summary['closes'], 'good' => false, 'mod' => 'bad', 'pct' => $pct( $current['closes'], $current['views'] ) ),
+					array( 'label' => __( 'Ignored', 'tikswipe-shop' ), 'value' => $current['ignored'], 'prev' => $prev_summary['ignored'], 'good' => false, 'mod' => 'muted', 'pct' => $pct( $current['ignored'], $current['views'] ) ),
+				);
+				foreach ( $kpis as $k ) :
+					$delta_pct = self::delta( $k['value'], $k['prev'] );
+					$delta_up  = $delta_pct >= 0;
+					// For "good" metrics up is good (green); for "bad" metrics up is bad (red).
+					$delta_color_good = ( $k['good'] && $delta_up ) || ( ! $k['good'] && ! $delta_up );
+					?>
+					<div class="tss-kpi tss-kpi--<?php echo esc_attr( $k['mod'] ); ?>">
+						<span class="tss-kpi__label"><?php echo esc_html( $k['label'] ); ?></span>
+						<span class="tss-kpi__value"><?php echo esc_html( number_format_i18n( $k['value'] ) ); ?></span>
+						<?php if ( isset( $k['pct'] ) ) : ?>
+							<span class="tss-kpi__pct"><?php echo esc_html( $k['pct'] ); ?>% <?php esc_html_e( 'of views', 'tikswipe-shop' ); ?></span>
+						<?php endif; ?>
+						<?php if ( $compare ) : ?>
+							<span class="tss-kpi__delta <?php echo $delta_color_good ? 'is-good' : 'is-bad'; ?>">
+								<?php echo $delta_up ? '▲' : '▼'; ?>
+								<?php echo esc_html( ( $delta_up ? '+' : '' ) . $delta_pct ); ?>%
+								<small><?php esc_html_e( 'vs prev', 'tikswipe-shop' ); ?></small>
+							</span>
+						<?php endif; ?>
+					</div>
+				<?php endforeach; ?>
+			</div>
+
+			<div class="tss-card">
+				<h2><?php esc_html_e( 'Daily activity', 'tikswipe-shop' ); ?></h2>
+				<canvas id="tss-timeseries" height="220"></canvas>
 			</div>
 
 			<div class="tss-grid">
 				<div class="tss-card">
 					<h2><?php esc_html_e( 'Engagement split', 'tikswipe-shop' ); ?></h2>
-					<canvas id="tss-donut" height="240"></canvas>
+					<canvas id="tss-donut" height="220"></canvas>
 				</div>
 				<div class="tss-card">
 					<h2><?php esc_html_e( 'Top products by views', 'tikswipe-shop' ); ?></h2>
@@ -191,8 +401,18 @@ class TSS_Dashboard {
 				</div>
 			</div>
 
+			<div class="tss-card tss-lifetime">
+				<h2><?php esc_html_e( 'All-time totals (since plugin install)', 'tikswipe-shop' ); ?></h2>
+				<div class="tss-life-grid">
+					<div><strong><?php echo esc_html( number_format_i18n( $life['views'] ) ); ?></strong> <span><?php esc_html_e( 'Views', 'tikswipe-shop' ); ?></span></div>
+					<div><strong><?php echo esc_html( number_format_i18n( $life['clicks'] ) ); ?></strong> <span><?php esc_html_e( 'Clicks', 'tikswipe-shop' ); ?></span></div>
+					<div><strong><?php echo esc_html( number_format_i18n( $life['closes'] ) ); ?></strong> <span><?php esc_html_e( 'Closes', 'tikswipe-shop' ); ?></span></div>
+					<div><strong><?php echo esc_html( number_format_i18n( $life['ignored'] ) ); ?></strong> <span><?php esc_html_e( 'Ignored', 'tikswipe-shop' ); ?></span></div>
+				</div>
+			</div>
+
 			<div class="tss-card">
-				<h2><?php esc_html_e( 'All products', 'tikswipe-shop' ); ?></h2>
+				<h2><?php esc_html_e( 'Per-product breakdown (selected range)', 'tikswipe-shop' ); ?></h2>
 				<table class="widefat striped tss-table">
 					<thead>
 						<tr>
@@ -203,6 +423,7 @@ class TSS_Dashboard {
 							<th><?php esc_html_e( 'CTR', 'tikswipe-shop' ); ?></th>
 							<th><?php esc_html_e( 'Closes', 'tikswipe-shop' ); ?></th>
 							<th><?php esc_html_e( 'Ignored', 'tikswipe-shop' ); ?></th>
+							<th><?php esc_html_e( 'All-time views', 'tikswipe-shop' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -215,10 +436,11 @@ class TSS_Dashboard {
 								<td><?php echo esc_html( $it['ctr'] ); ?>%</td>
 								<td><?php echo esc_html( number_format_i18n( $it['closes'] ) ); ?></td>
 								<td><?php echo esc_html( number_format_i18n( $it['ignored'] ) ); ?></td>
+								<td><?php echo esc_html( number_format_i18n( $it['life_views'] ) ); ?></td>
 							</tr>
 						<?php endforeach; ?>
 						<?php if ( ! $items ) : ?>
-							<tr><td colspan="7"><?php esc_html_e( 'No shop items yet.', 'tikswipe-shop' ); ?></td></tr>
+							<tr><td colspan="8"><?php esc_html_e( 'No shop items yet.', 'tikswipe-shop' ); ?></td></tr>
 						<?php endif; ?>
 					</tbody>
 				</table>
@@ -230,7 +452,6 @@ class TSS_Dashboard {
 	}
 
 	public static function enqueue_dashboard_assets( $hook ) {
-		// $hook is like 'tss_shop_item_page_tss_dashboard'.
 		if ( strpos( (string) $hook, self::HOOK ) === false ) {
 			return;
 		}

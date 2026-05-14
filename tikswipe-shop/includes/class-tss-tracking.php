@@ -26,6 +26,41 @@ class TSS_Tracking {
 		add_action( 'manage_' . TSS_CPT . '_posts_custom_column', array( __CLASS__, 'column_content' ), 10, 2 );
 		add_filter( 'manage_edit-' . TSS_CPT . '_sortable_columns', array( __CLASS__, 'sortable_columns' ) );
 		add_action( 'pre_get_posts', array( __CLASS__, 'maybe_sort_query' ) );
+		// dbDelta-style safety net: ensures the events table exists when the
+		// plugin is upgraded without re-activation.
+		add_action( 'admin_init', array( __CLASS__, 'maybe_install' ) );
+	}
+
+	public static function table_name() {
+		global $wpdb;
+		return $wpdb->prefix . 'tss_events';
+	}
+
+	const DB_VERSION = '1.0.0';
+
+	public static function install() {
+		global $wpdb;
+		$table = self::table_name();
+		$charset_collate = $wpdb->get_charset_collate();
+		// dbDelta requires the exact whitespace formatting below.
+		$sql = "CREATE TABLE $table (
+			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			item_id BIGINT(20) UNSIGNED NOT NULL,
+			event_type VARCHAR(8) NOT NULL,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY item_event_created (item_id, event_type, created_at),
+			KEY created (created_at)
+		) $charset_collate;";
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( $sql );
+		update_option( 'tss_db_version', self::DB_VERSION );
+	}
+
+	public static function maybe_install() {
+		if ( get_option( 'tss_db_version' ) !== self::DB_VERSION ) {
+			self::install();
+		}
 	}
 
 	public static function register_routes() {
@@ -62,6 +97,19 @@ class TSS_Tracking {
 		$key     = self::EVENTS[ $event ];
 		$current = (int) get_post_meta( $item_id, $key, true );
 		update_post_meta( $item_id, $key, $current + 1 );
+
+		// Per-event log used by the date-filtered dashboard. The lifetime
+		// post meta counters above stay authoritative for the fast list view.
+		global $wpdb;
+		$wpdb->insert(
+			self::table_name(),
+			array(
+				'item_id'    => $item_id,
+				'event_type' => $event,
+				'created_at' => current_time( 'mysql' ),
+			),
+			array( '%d', '%s', '%s' )
+		);
 
 		return new WP_REST_Response( array( 'ok' => true ), 200 );
 	}

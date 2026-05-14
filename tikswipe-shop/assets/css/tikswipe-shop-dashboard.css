@@ -1,8 +1,48 @@
 .tss-dashboard h1 { margin-bottom: 18px; }
 
+.tss-filter-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 10px 14px;
+	margin: 0 0 18px;
+	padding: 12px 14px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+}
+.tss-filter__field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 12px;
+	color: #50575e;
+}
+.tss-filter__field > span {
+	font-weight: 500;
+	color: #646970;
+}
+.tss-filter__field input[type=date],
+.tss-filter__field select {
+	min-width: 140px;
+}
+.tss-filter__compare {
+	flex-direction: row;
+	align-items: center;
+	gap: 6px;
+	padding-bottom: 4px;
+}
+.tss-filter__summary {
+	margin-left: auto;
+	color: #646970;
+	font-size: 12px;
+	font-style: italic;
+	align-self: center;
+}
+
 .tss-kpis {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 	gap: 12px;
 	margin: 0 0 18px;
 }
@@ -30,13 +70,25 @@
 	line-height: 1.1;
 }
 .tss-kpi__pct {
-	font-size: 13px;
+	font-size: 12px;
 	color: #50575e;
-	font-weight: 600;
 }
-.tss-kpi--good .tss-kpi__pct { color: #16a55a; }
-.tss-kpi--bad  .tss-kpi__pct { color: #d63638; }
-.tss-kpi--muted .tss-kpi__pct { color: #8c8f94; }
+.tss-kpi--good .tss-kpi__value { color: #16a55a; }
+.tss-kpi--bad  .tss-kpi__value { color: #d63638; }
+.tss-kpi--muted .tss-kpi__value { color: #8c8f94; }
+
+.tss-kpi__delta {
+	font-size: 12px;
+	font-weight: 600;
+	margin-top: 2px;
+}
+.tss-kpi__delta small {
+	font-weight: 400;
+	color: #8c8f94;
+	margin-left: 4px;
+}
+.tss-kpi__delta.is-good { color: #16a55a; }
+.tss-kpi__delta.is-bad  { color: #d63638; }
 
 .tss-grid {
 	display: grid;
@@ -50,6 +102,7 @@
 	border-radius: 8px;
 	padding: 16px;
 	box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+	margin-bottom: 18px;
 }
 .tss-card h2 {
 	margin: 0 0 12px;
@@ -58,6 +111,25 @@
 	color: #1d2327;
 }
 .tss-card canvas { max-height: 280px; }
+
+.tss-lifetime .tss-life-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+	gap: 12px;
+}
+.tss-lifetime .tss-life-grid > div {
+	display: flex;
+	flex-direction: column;
+	padding: 8px 0;
+}
+.tss-lifetime .tss-life-grid strong {
+	font-size: 22px;
+	color: #1d2327;
+}
+.tss-lifetime .tss-life-grid span {
+	font-size: 12px;
+	color: #646970;
+}
 
 .tss-table { margin-top: 6px; }
 .tss-table th, .tss-table td { vertical-align: middle; }
