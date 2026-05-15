@@ -91,6 +91,25 @@ $last_rejected  = $latest_request && 'rejected' === $latest_request['status'] &&
 						</div>
 					<?php endif; ?>
 
+					<?php
+					$tsar_benefits = array(
+						__( 'No ads anywhere', 'tikswipe-ad-removal' ),
+						__( 'Faster video loading', 'tikswipe-ad-removal' ),
+						__( 'Access to premium videos', 'tikswipe-ad-removal' ),
+					);
+					?>
+					<ul class="tsar-benefits">
+						<?php foreach ( $tsar_benefits as $tsar_benefit ) : ?>
+							<li>
+								<svg class="tsar-benefit-check" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+									<circle cx="12" cy="12" r="11" fill="#fd0131"/>
+									<path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+								</svg>
+								<span><?php echo esc_html( $tsar_benefit ); ?></span>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+
 					<div class="tsar-paypal-info">
 						<p>
 							<strong><?php esc_html_e( 'Send PayPal payment to:', 'tikswipe-ad-removal' ); ?></strong>

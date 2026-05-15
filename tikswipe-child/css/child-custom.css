@@ -1128,6 +1128,38 @@ body.tsar-subscription-page .tsar-subtitle {
     line-height: 1.4;
 }
 
+/* Benefits list */
+body.tsar-subscription-page .tsar-benefits {
+    list-style: none;
+    margin: 0 0 18px;
+    padding: 14px 16px;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+body.tsar-subscription-page .tsar-benefits li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.3;
+}
+body.tsar-subscription-page .tsar-benefits li::before {
+    content: none;
+}
+body.tsar-subscription-page .tsar-benefit-check {
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
 /* PayPal info box */
 body.tsar-subscription-page .tsar-paypal-info {
     margin: 0 0 16px;
