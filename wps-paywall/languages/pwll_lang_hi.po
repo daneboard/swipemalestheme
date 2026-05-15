@@ -1,0 +1,412 @@
+# Copyright (C) 2025 WPS Paywall
+# This file is distributed under the same license as the WPS Paywall package.
+msgid ""
+msgstr ""
+"Project-Id-Version: WPS Paywall\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-09-25 15:25+0000\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-KeywordsList: __;_e;_ex:1,2c;_n:1,2;_n_noop:1,2;_nx:1,2,4c;_nx_noop:1,2,3c;_x:1,2c;esc_attr__;esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c\n"
+"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPathExcluded-0: *.js\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language: \n"
+"Language-Team: \n"
+
+#: ../admin/admin-post-columns.php:6, ../admin/admin-post-columns.php:41
+msgid "WPS Paywall"
+msgstr "WPS Paywall"
+
+#: ../admin/admin-post-columns.php:42
+msgid "Premium"
+msgstr "प्रीमियम"
+
+#: ../admin/admin-post-columns.php:119
+msgid "Edit this item inline"
+msgstr "इस मद को इनलाइन संपादित करें"
+
+#: ../admin/admin-post-columns.php:121
+msgid "Quick Edit"
+msgstr "त्वरित संपादन"
+
+#: ../classes/class-pwll.php:44, ../classes/class-pwll.php:53
+msgid "Do not clone or wake up this class"
+msgstr "इस वर्ग को क्लोन या जगाना नहीं है"
+
+#: ../classes/class-pwll.php:389
+msgid "An error occured during the suppression:"
+msgstr "दमन के दौरान एक त्रुटि हुई:"
+
+#: ../classes/class-pwll.php:390
+msgid "Select a WP category"
+msgstr "WP श्रेणी चुनें"
+
+#: ../classes/class-pwll.php:391
+msgid "Select Videos status"
+msgstr "वीडियो स्थिति का चयन करें"
+
+#: ../classes/class-pwll.php:392
+msgid "AND"
+msgstr "और"
+
+#: ../classes/class-pwll.php:393
+msgid "Insert at least 1 valid url in the textarea above"
+msgstr "ऊपर textarea में कम से कम 1 वैध url डालें"
+
+#: ../classes/class-pwll.php:394
+msgid "Check at least 1 video"
+msgstr "कम से कम 1 वीडियो चेक"
+
+#: ../classes/class-pwll.php:395
+msgid "to enable this button"
+msgstr "इस बटन को सक्षम करना"
+
+#: ../classes/class-pwll.php:396
+msgid "Import"
+msgstr "आयात"
+
+#: ../classes/class-pwll.php:397
+msgid "videos and save this search as a Feed. All your Feeds are displayed at the bottom of this page."
+msgstr "वीडियो और इस खोज को फ़ीड के रूप में सहेजते हैं। आपके सभी फ़ीड इस पृष्ठ के नीचे प्रदर्शित होते हैं।."
+
+#: ../public/paywall-modal.php:106
+msgid "12 months"
+msgstr "12 महीने"
+
+#: ../public/paywall-modal.php:131
+msgid "6 months"
+msgstr "6 महीने"
+
+#: ../public/paywall-modal.php:150
+msgid "3 months"
+msgstr "3 महीने"
+
+#: ../public/paywall-modal.php:169
+msgid "1 month"
+msgstr "1 महीना"
+
+#: ../tgmpa/config.php:45
+msgid "Install Required Plugins"
+msgstr "आवश्यक प्लगइन स्थापित करें"
+
+#: ../tgmpa/config.php:46
+msgid "Install Plugins"
+msgstr "प्लगइन स्थापित करें"
+
+#. translators: %s: plugin name.
+#: ../tgmpa/config.php:48
+msgid "Installing Plugin: %s"
+msgstr "प्लगइन स्थापित करना: %"
+
+#. translators: %s: plugin name.
+#: ../tgmpa/config.php:50
+msgid "Updating Plugin: %s"
+msgstr "अद्यतन प्लगइन: %"
+
+#: ../tgmpa/config.php:51
+msgid "Something went wrong with the plugin API."
+msgstr "कुछ प्लगइन एपीआई के साथ गलत हो गया।."
+
+#. translators: 1: plugin name(s).
+#: ../tgmpa/config.php:53
+msgid "WP-Script products requires the following plugin: %1$s."
+msgid_plural "WP-Script products requires the following plugins: %1$s."
+msgstr[0] "WP-Script उत्पादों को निम्नलिखित प्लगइन की आवश्यकता है: %1$s."
+msgstr[1] "WP-Script उत्पादों को निम्नलिखित प्लगइन्स की आवश्यकता होती है: %1$s।."
+
+#. translators: 1: plugin name(s).
+#: ../tgmpa/config.php:59
+msgid "WP-Script products recommends the following plugin: %1$s."
+msgid_plural "WP-Script products recommends the following plugins: %1$s."
+msgstr[0] "WP-Script उत्पाद निम्नलिखित प्लगइन की सिफारिश करते हैं: %1$s।."
+msgstr[1] "WP-Script उत्पाद निम्नलिखित प्लगइन्स की सिफारिश करते हैं: %1$s।."
+
+#. translators: 1: plugin name(s).
+#: ../tgmpa/config.php:65
+msgid "%1$s needs to be updated to its latest version to ensure maximum compatibility with WP-Script products"
+msgid_plural "%1$s need to be updated to their latest version to ensure maximum compatibility with WP-Script products"
+msgstr[0] "%1$s को WP-Script उत्पादों के साथ अधिकतम संगतता सुनिश्चित करने के लिए अपने नवीनतम संस्करण में अद्यतन करने की आवश्यकता है"
+msgstr[1] "WP-Script उत्पादों के साथ अधिकतम संगतता सुनिश्चित करने के लिए %1$s को अपने नवीनतम संस्करण में अद्यतन करने की आवश्यकता है"
+
+#: ../admin/pages/page-options-x.php:32
+msgid "Options"
+msgstr "विकल्प"
+
+#: ../admin/pages/page-options-x.php:65
+msgid "General"
+msgstr "जनरल"
+
+#: ../admin/pages/page-options-x.php:66
+msgid "Paywall Popup"
+msgstr "पेवल पॉपअप"
+
+#: ../admin/pages/page-options-x.php:67
+msgid "Pricing"
+msgstr "मूल्य निर्धारण"
+
+#: ../admin/pages/page-options-x.php:68
+msgid "Checkout"
+msgstr "चेकआउट"
+
+#: ../admin/pages/page-options-x.php:84
+msgid "Navigate as premium member"
+msgstr "प्रीमियम सदस्य के रूप में नेविगेट करें"
+
+#: ../admin/pages/page-options-x.php:89
+msgid "Enable this option to navigate on your site as premium member with unlocked content."
+msgstr "इस विकल्प को अपनी साइट पर प्रीमियम सदस्य के रूप में अनलॉक करने के लिए सक्षम करें।."
+
+#: ../admin/pages/page-options-x.php:117
+msgid "Main color"
+msgstr "मुख्य रंग"
+
+#: ../admin/pages/page-options-x.php:120
+msgid "Set the color of the lock button, the active pricing plan, etc."
+msgstr "लॉक बटन का रंग, सक्रिय मूल्य निर्धारण योजना आदि सेट करें।."
+
+#: ../admin/pages/page-options-x.php:127
+msgid "Round corners"
+msgstr "गोल कोने"
+
+#: ../admin/pages/page-options-x.php:132
+msgid "Round the corners of the paywall popup, buttons, inputs, etc."
+msgstr "पेवॉल पॉपअप, बटन, इनपुट आदि के कोनों को गोल करें।."
+
+#: ../admin/pages/page-options-x.php:139
+msgid "Locked content area text"
+msgstr "बंद सामग्री क्षेत्र पाठ"
+
+#: ../admin/pages/page-options-x.php:143
+msgid "Set locked content area text (eg. Unlock Video)."
+msgstr "सेट बंद सामग्री क्षेत्र पाठ (जैसे अनलॉक वीडियो)।."
+
+#: ../admin/pages/page-options-x.php:149
+msgid "Badge featured images"
+msgstr "बैज चित्रित छवियां"
+
+#: ../admin/pages/page-options-x.php:154
+msgid "Add a lock badge on archive's featured images for your premium posts."
+msgstr "अपने प्रीमियम पोस्ट के लिए अभिलेखागार की चित्रित छवियों पर एक लॉक बैज जोड़ें।."
+
+#: ../admin/pages/page-options-x.php:161
+msgid "Badge settings"
+msgstr "बैज सेटिंग्स"
+
+#: ../admin/pages/page-options-x.php:193
+msgid "Badge text"
+msgstr "बैज पाठ"
+
+#: ../admin/pages/page-options-x.php:197
+msgid "Set the badge text."
+msgstr "बैज टेक्स्ट सेट करें।."
+
+#: ../admin/pages/page-options-x.php:212
+msgid "Title"
+msgstr "शीर्षक"
+
+#: ../admin/pages/page-options-x.php:216
+msgid "Set the title of the paywall popup (eg. Premium Membership)."
+msgstr "पेवॉल पॉपअप (जैसे प्रीमियम सदस्यता) का खिताब सेट करें।."
+
+#: ../admin/pages/page-options-x.php:223
+msgid "Description"
+msgstr "विवरण"
+
+#: ../admin/pages/page-options-x.php:227
+msgid "Set the description of the paywall popup (eg. Become a Premium Member and Get Access to All our Exclusive Videos)"
+msgstr "पेवॉल पॉपअप का विवरण सेट करें (उदाहरण के लिए प्रीमियम सदस्य बनें और हमारे सभी विशेष वीडियो तक पहुंच प्राप्त करें)"
+
+#: ../admin/pages/page-options-x.php:255
+msgid "Button text"
+msgstr "बटन टेक्स्ट"
+
+#: ../admin/pages/page-options-x.php:259
+msgid "Set the paywall popup button text."
+msgstr "पेवल पॉपअप बटन टेक्स्ट सेट करें।."
+
+#: ../admin/pages/page-options-x.php:711
+msgid "Subscription Plans"
+msgstr "सदस्यता योजना"
+
+#: ../admin/pages/page-options-x.php:277
+msgid "Enable 1 month"
+msgstr "1 महीना"
+
+#: ../admin/pages/page-options-x.php:282
+msgid "Offer the possibility to your users to pay every month in order to access to your Premium content."
+msgstr "अपने उपयोगकर्ताओं को अपनी प्रीमियम सामग्री तक पहुंचने के लिए हर महीने भुगतान करने की संभावना प्रदान करें।."
+
+#: ../admin/pages/page-options-x.php:290
+msgid "1 month settings"
+msgstr "1 महीना"
+
+#: ../admin/pages/page-options-x.php:300, ../admin/pages/page-options-x.php:408, ../admin/pages/page-options-x.php:516, ../admin/pages/page-options-x.php:624, ../admin/pages/page-options-x.php:750
+msgid "Price"
+msgstr "मूल्य"
+
+#: ../admin/pages/page-options-x.php:318, ../admin/pages/page-options-x.php:426, ../admin/pages/page-options-x.php:534, ../admin/pages/page-options-x.php:642
+msgid "Sign-up fee"
+msgstr "साइन अप शुल्क"
+
+#: ../admin/pages/page-options-x.php:335, ../admin/pages/page-options-x.php:443, ../admin/pages/page-options-x.php:551, ../admin/pages/page-options-x.php:659
+msgid "Free trial"
+msgstr "फ्री ट्रायल"
+
+#: ../admin/pages/page-options-x.php:340
+msgid "Offer the possibility to your users to test before subscribing for 1 month."
+msgstr "1 महीने के लिए सदस्यता लेने से पहले अपने उपयोगकर्ताओं को परीक्षण करने की संभावना प्रदान करें।."
+
+#: ../admin/pages/page-options-x.php:347, ../admin/pages/page-options-x.php:455, ../admin/pages/page-options-x.php:563, ../admin/pages/page-options-x.php:671
+msgid "Free trial length"
+msgstr "नि: शुल्क परीक्षण लंबाई"
+
+#: ../admin/pages/page-options-x.php:364, ../admin/pages/page-options-x.php:472, ../admin/pages/page-options-x.php:580, ../admin/pages/page-options-x.php:688
+msgid "Free trial period"
+msgstr "नि: शुल्क परीक्षण अवधि"
+
+#: ../admin/pages/page-options-x.php:369, ../admin/pages/page-options-x.php:585, ../admin/pages/page-options-x.php:693
+msgid "Day"
+msgstr "दिवस"
+
+#: ../admin/pages/page-options-x.php:370, ../admin/pages/page-options-x.php:586, ../admin/pages/page-options-x.php:694
+msgid "Week"
+msgstr "सप्ताह"
+
+#: ../admin/pages/page-options-x.php:371, ../admin/pages/page-options-x.php:587, ../admin/pages/page-options-x.php:695
+msgid "Month"
+msgstr "महीना"
+
+#: ../admin/pages/page-options-x.php:372, ../admin/pages/page-options-x.php:588, ../admin/pages/page-options-x.php:696
+msgid "Year"
+msgstr "वर्ष"
+
+#: ../admin/pages/page-options-x.php:385
+msgid "Enable 3 months"
+msgstr "3 महीने"
+
+#: ../admin/pages/page-options-x.php:390
+msgid "Offer the possibility to your users to pay every 3 months in order to access to your Premium content."
+msgstr "अपने उपयोगकर्ताओं को अपनी प्रीमियम सामग्री तक पहुंचने के लिए हर 3 महीने का भुगतान करने की संभावना प्रदान करें।."
+
+#: ../admin/pages/page-options-x.php:398
+msgid "3 months settings"
+msgstr "3 महीने की सेटिंग्स"
+
+#: ../admin/pages/page-options-x.php:448
+msgid "Offer the possibility to your users to test before subscribing for 3 months."
+msgstr "3 महीने के लिए सदस्यता लेने से पहले अपने उपयोगकर्ताओं को परीक्षण करने की संभावना प्रदान करें।."
+
+#: ../admin/pages/page-options-x.php:464
+#: ../admin/pages/page-options-x.php:493
+msgid "Enable 6 months"
+msgstr "6 महीने"
+
+#: ../admin/pages/page-options-x.php:498
+msgid "Offer the possibility to your users to pay every 6 months in order to access to your Premium content."
+msgstr "अपने उपयोगकर्ताओं को अपनी प्रीमियम सामग्री तक पहुंचने के लिए हर 6 महीने का भुगतान करने की संभावना प्रदान करें।."
+
+#: ../admin/pages/page-options-x.php:506
+msgid "6 months settings"
+msgstr "6 महीने की सेटिंग्स"
+
+#: ../admin/pages/page-options-x.php:556
+msgid "Offer the possibility to your users to test before subscribing for 6 months."
+msgstr "6 महीने के लिए सदस्यता लेने से पहले अपने उपयोगकर्ताओं को परीक्षण करने की संभावना प्रदान करें।."
+
+#: ../admin/pages/page-options-x.php:601
+msgid "Enable 12 months"
+msgstr "12 महीने"
+
+#: ../admin/pages/page-options-x.php:606
+msgid "Offer the possibility to your users to pay every year in order to access to your Premium content."
+msgstr "अपने उपयोगकर्ताओं को अपनी प्रीमियम सामग्री तक पहुंचने के लिए हर साल भुगतान करने की संभावना प्रदान करें।."
+
+#: ../admin/pages/page-options-x.php:614
+msgid "12 months settings"
+msgstr "12 महीने की सेटिंग्स"
+
+#: ../admin/pages/page-options-x.php:664
+msgid "Offer the possibility to your users to test before subscribing for 12 months."
+msgstr "12 महीने के लिए सदस्यता लेने से पहले अपने उपयोगकर्ताओं को परीक्षण करने की संभावना प्रदान करें।."
+
+#: ../admin/pages/page-options-x.php:727
+msgid "Lifetime Plan"
+msgstr "लाइफटाइम प्लान"
+
+#: ../admin/pages/page-options-x.php:732
+msgid "Offer the possibility to your users to pay only one-time in order to access to your Premium content for life."
+msgstr "अपने उपयोगकर्ताओं को जीवन के लिए अपनी प्रीमियम सामग्री तक पहुंचने के लिए केवल एक बार भुगतान करने की संभावना प्रदान करें।."
+
+#: ../admin/pages/page-options-x.php:740
+msgid "Lifetime settings"
+msgstr "लाइफटाइम सेटिंग्स"
+
+#: ../admin/pages/page-options-x.php:775
+msgid "First name"
+msgstr "पहला नाम"
+
+#: ../admin/pages/page-options-x.php:780
+msgid "Ask for the user's first name on the checkout section."
+msgstr "चेकआउट अनुभाग पर उपयोगकर्ता के पहले नाम के लिए पूछें।."
+
+#: ../admin/pages/page-options-x.php:786
+msgid "Last name"
+msgstr "अंतिम नाम"
+
+#: ../admin/pages/page-options-x.php:791
+msgid "Ask for the user's last name on the checkout section."
+msgstr "चेकआउट अनुभाग पर उपयोगकर्ता के अंतिम नाम के लिए पूछें।."
+
+#: ../admin/pages/page-options-x.php:797
+msgid "Address"
+msgstr "पता"
+
+#: ../admin/pages/page-options-x.php:802
+msgid "Ask for the user's address on the checkout section."
+msgstr "चेकआउट अनुभाग पर उपयोगकर्ता के पते के लिए पूछें।."
+
+#: ../admin/pages/page-options-x.php:808
+msgid "City"
+msgstr "शहर"
+
+#: ../admin/pages/page-options-x.php:813
+msgid "Ask for the user's city on the checkout section."
+msgstr "चेकआउट अनुभाग पर उपयोगकर्ता के शहर के लिए पूछो।."
+
+#: ../admin/pages/page-options-x.php:819
+msgid "Postcode"
+msgstr "पोस्टकोड"
+
+#: ../admin/pages/page-options-x.php:824
+msgid "Ask for the user's postcode on the checkout section."
+msgstr "चेकआउट अनुभाग पर उपयोगकर्ता के पोस्टकोड के लिए पूछें।."
+
+#: ../admin/pages/page-options-x.php:830
+msgid "Country"
+msgstr "देश"
+
+#: ../admin/pages/page-options-x.php:835
+msgid "Ask for the user's country on the checkout section."
+msgstr "चेकआउट अनुभाग पर उपयोगकर्ता के देश के लिए पूछो।."
+
+#: ../admin/pages/page-options-x.php:841
+msgid "Phone"
+msgstr "फ़ोन"
+
+#: ../admin/pages/page-options-x.php:846
+msgid "Ask for the user's phone on the checkout section."
+msgstr "चेकआउट अनुभाग पर उपयोगकर्ता के फोन के लिए पूछो।."
+
+#: ../woocommerce/checkout/thankyou.php:24
+msgid "Thank you! You have now access to all our exclusive content."
+msgstr "धन्यवाद! अब आप हमारी सभी विशेष सामग्री तक पहुंच सकते हैं।."
+
+#: ../woocommerce/checkout/thankyou.php:26
+msgid "Back to home"
+msgstr "घर वापस"

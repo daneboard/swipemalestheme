@@ -193,8 +193,42 @@ function tikswipe_child_enqueue_scripts() {
 			});
 		})();
 	" );
+
+	// Reload the page after a successful registration (parent does this
+	// for login but not register). Loaded only on the frontend.
+	wp_enqueue_script(
+		'tikswipe-child-auth-redirect',
+		get_stylesheet_directory_uri() . '/js/auth-redirect.js',
+		array( 'jquery' ),
+		$js_version . '.' . filemtime( get_stylesheet_directory() . '/js/auth-redirect.js' ),
+		true
+	);
 }
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
+
+/**
+ * Auto-login a user immediately after they register through the parent
+ * theme's wpst_register_member AJAX endpoint. The parent calls
+ * wp_insert_user but stops there ("Registration complete. You can now
+ * login."), which means a freshly registered user was still logged out
+ * when the auth-redirect.js reload fired. Hook user_register, scoped to
+ * the wpst register AJAX flow, and set the auth cookie so the reload
+ * lands on a logged-in session.
+ */
+function tikswipe_child_auto_login_on_register( $user_id ) {
+	if ( is_user_logged_in() ) {
+		return;
+	}
+	if ( ! wp_doing_ajax() ) {
+		return;
+	}
+	if ( empty( $_REQUEST['action'] ) || 'wpst_register_member' !== $_REQUEST['action'] ) {
+		return;
+	}
+	wp_set_current_user( $user_id );
+	wp_set_auth_cookie( $user_id, true );
+}
+add_action( 'user_register', 'tikswipe_child_auto_login_on_register' );
 
 /**
  * Sticky top banner — Magsrv 300x50 zone 5920214. Skips admin and oEmbed
@@ -208,6 +242,12 @@ add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
  */
 function tikswipe_child_top_banner() {
 	if ( is_admin() || is_embed() || is_customize_preview() ) {
+		return;
+	}
+	// Premium users have ad-free status — skip the entire banner so the
+	// 50px sticky strip doesn't leave a black bar at the top. Guarded by
+	// class_exists so the theme keeps working with the plugin disabled.
+	if ( class_exists( 'TSAR_Membership' ) && TSAR_Membership::is_premium() ) {
 		return;
 	}
 	?>

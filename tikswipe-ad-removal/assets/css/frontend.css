@@ -1,0 +1,14 @@
+/* TikSwipe Ad Removal — minimal functional CSS only.
+ * Visual styling for the subscription page lives in the child theme
+ * (tikswipe-child/css/child-custom.css). Only the bits below are kept here
+ * because they are functional or fix theme-wide rules that would otherwise
+ * break the page (e.g. theme's `input { width: 100% }`).
+ */
+
+/* Theme has `input { width: 100% }`. Force radios/checkboxes back to auto. */
+.tsar-card input[type=radio],
+.tsar-card input[type=checkbox]{width:auto !important;}
+
+/* Spinner animation (functional, not a theme concern). */
+@keyframes tsar-spin{to{transform:rotate(360deg);}}
+.tsar-spinner{animation:tsar-spin 1s linear infinite;}

@@ -1,0 +1,233 @@
+/**
+ * Checkbox Toggle UI
+ */
+input[type="checkbox"].wppd-ui-toggle {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	-webkit-tap-highlight-color: transparent;
+	width: auto;
+	height: auto;
+	vertical-align: middle;
+	position: relative;
+	border: 0 !important;
+	outline: 0 !important;
+	cursor: pointer;
+	margin: 0 4px;
+	background: none;
+	box-shadow: none;
+}
+input[type="checkbox"].wppd-ui-toggle:focus {
+	box-shadow: none;
+}
+input[type="checkbox"].wppd-ui-toggle:after {
+	content: "";
+	font-size: 11px;
+	font-weight: 400;
+	line-height: 23px;
+	text-indent: -18px;
+	color: #ffffff;
+	width: 50px;
+	height: 24px;
+	display: inline-block;
+	background-color: #a7aaad;
+	border-radius: 72px;
+	box-shadow: 0 0 12px rgb(0 0 0 / 15%) inset;
+}
+input[type="checkbox"].wppd-ui-toggle:before {
+	content: "";
+	width: 20px;
+	height: 20px;
+	display: block;
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	margin: 0 !important;
+	border-radius: 50%;
+	background-color: #ffffff;
+}
+input[type="checkbox"].wppd-ui-toggle:checked:before {
+	left: 28px;
+	margin: 0;
+	background-color: #ffffff;
+}
+input[type="checkbox"].wppd-ui-toggle,
+input[type="checkbox"].wppd-ui-toggle:before,
+input[type="checkbox"].wppd-ui-toggle:after,
+input[type="checkbox"].wppd-ui-toggle:checked:before,
+input[type="checkbox"].wppd-ui-toggle:checked:after {
+	transition: ease 0.15s;
+}
+input[type="checkbox"].wppd-ui-toggle:checked:after,
+input[type="radio"].wppd-ui-toggle:checked:after {
+	content: "ON";
+	background: #932493;
+	background: -moz-linear-gradient(45deg, #932493 0%, #dd3e88 100%);
+	background: -webkit-linear-gradient(45deg, #932493 0%, #dd3e88 100%);
+	background: linear-gradient(45deg, #932493 0%, #dd3e88 100%);
+	filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#932493', endColorstr='#dd3e88', GradientType=1);
+}
+
+label.pwll-label {
+	display: block;
+	width: 100%;
+	font-weight: 700;
+	margin-bottom: 15px;
+	font-size: 14px;
+}
+
+.pwll-post-status {	
+	width: 28px;
+	height: 28px;
+	border-radius: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.pwll-post-status svg path {
+	fill: #932493;
+}
+
+/*
+tr.sub-option {
+	border-bottom: 40px solid #f0f0f1;
+}
+
+.pwll-inline-col label span.title {
+	display: block !important;
+	width: 100% !important;
+	font-weight: bold;
+	float: none !important;
+}
+
+.pwll-inline-col label span.input-text-wrap {
+	margin-left: 0 !important;
+	margin-bottom: 20px;
+}
+
+#pwll_settings form h2 {
+	display: none;
+} */
+
+/* #pwll_settings span.description {
+	display: block;
+	padding: 6px 2px;
+	font-style: italic;
+	opacity: 0.9;
+	margin-top: 2px;
+}
+
+#badge_icon_lock,
+#badge_icon_star {
+	display: none;
+}
+
+#badge_icon_label_lock:before {
+	content: url("../img/lock.svg");
+	width: 30px;
+	height: 30px;
+}
+
+#badge_icon_label_star:before {
+	content: url("../img/star.svg");
+	width: 30px;
+	height: 30px;
+}
+
+.option-field {
+	margin-bottom: 20px;
+}
+
+.tab-content {
+	padding: 30px;
+} */
+
+/* .pwll__logo {
+	height: 35px;
+	width: auto;
+} */
+
+
+
+/* .free-content {
+	background: #00e0a2;
+}
+
+.metabox-option {
+	margin-top: 20px;
+}
+
+.metabox-option .title,
+body .quick-edit-row-post fieldset.inline-edit-col-left span.title.block {
+	font-weight: 700;
+	margin-bottom: 10px;
+	display: block;
+}
+
+input[type="radio"].content-status-radio {
+	opacity: 0 !important;
+	position: fixed !important;
+	width: 0 !important;
+} */
+
+/* .content-status-box {
+	display: flex;
+	gap: 15px;
+	margin-bottom: 10px;
+}
+
+.content-radio-btn {
+	display: flex;
+	justify-content: center;
+}
+
+.content-radio-btn label,
+body .inline-edit-row fieldset .content-radio-btn label {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	background-color: #ddd;
+	opacity: 0.6;
+	font-weight: 700;
+	line-height: inherit;
+	padding: 10px 0;
+	width: 80px;
+	border-radius: 5px;
+	transition: all 0.3s ease-out;
+}
+
+.content-radio-btn.checked label,
+body .content-radio-btn.checked label:hover,
+body .inline-edit-row fieldset .content-radio-btn.checked label,
+body .inline-edit-row fieldset .content-radio-btn label:hover {
+	color: #ffffff;
+	opacity: 1;
+} */
+
+/* .content-radio-btn label svg,
+body .inline-edit-row fieldset .content-radio-btn label svg {
+	margin-bottom: 3px;
+}
+
+.content-radio-btn.checked label svg path,
+.content-radio-btn.checked label:hover svg path,
+body .inline-edit-row fieldset .content-radio-btn.checked label svg path,
+body .inline-edit-row fieldset .content-radio-btn label:hover svg path {
+	fill: #ffffff;
+	transition: all 0.3s ease-out;
+}
+
+.content-radio-btn.free-btn.checked label,
+.content-radio-btn.free-btn.checked label:hover,
+body .inline-edit-row fieldset .content-radio-btn.free-btn.checked label,
+body .inline-edit-row fieldset .content-radio-btn.free-btn label:hover {
+	background: #00e0a2;
+}
+
+.content-radio-btn.premium-btn.checked label,
+.content-radio-btn.premium-btn.checked label:hover,
+body .inline-edit-row fieldset .content-radio-btn.premium-btn.checked label,
+body .inline-edit-row fieldset .content-radio-btn.premium-btn label:hover {
+	background: #cfa240;
+} */

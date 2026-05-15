@@ -53,7 +53,34 @@ if ( wp_is_mobile() ) :
 				<?php get_template_part( 'templates/content', 'logo' ); ?>
 			</div>
 			<div class="menu">
-				<button id="wpst-pwa-install" class="wpst-pwa-btn" style="display:none;">Fav this app</button>
+				<?php
+				// Header CTA slot (same place as the original "Fav this app"
+				// PWA button). Three mutually exclusive states, only on the
+				// home / front page:
+				//   1. logged in + premium  → "Fav this app" PWA install
+				//      button. The child's PWA JS (in functions.php) only
+				//      reveals it when beforeinstallprompt fires (Android)
+				//      or on iOS Safari outside standalone — so it stays
+				//      hidden when the site is already opened from the
+				//      installed PWA.
+				//   2. free user                → "Remove Ads" CTA pointing
+				//      at /subscription.
+				//   3. anything else (not home) → empty slot.
+				// Guarded by class_exists so the theme works without the plugin.
+				$tsar_is_premium = class_exists( 'TSAR_Membership' ) && TSAR_Membership::is_premium();
+				$tsar_on_home    = is_home() || is_front_page();
+				if ( $tsar_on_home && $tsar_is_premium ) :
+					?>
+					<button id="wpst-pwa-install" class="wpst-pwa-btn" style="display:none;"><?php esc_html_e( 'Fav this app', 'tikswipe-child' ); ?></button>
+				<?php elseif ( $tsar_on_home && function_exists( 'tsar_subscription_url' ) ) : ?>
+					<a class="wpst-pwa-btn tsar-remove-ads-btn" href="<?php echo esc_url( tsar_subscription_url() ); ?>">
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<path d="M12 2L4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3z" fill="#fd0131"/>
+							<path d="M8.5 12l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+						</svg>
+						<span><?php esc_html_e( 'Remove Ads', 'tikswipe-child' ); ?></span>
+					</a>
+				<?php endif; ?>
 				<?php
 				wp_nav_menu(
 					array(

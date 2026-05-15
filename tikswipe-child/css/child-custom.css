@@ -41,6 +41,47 @@
     }
 }
 
+/* ========================================
+   Pure-black baseline for every non-video page
+   Targets everything that isn't the video reel (media-body) or the grid
+   view, so the standalone pages (subscription, search, favorites, profile,
+   author, single-post-non-video, regular WP pages) all share a black UI
+   and don't show the parent theme's white header / page background.
+   ======================================== */
+body:not(.media-body):not(.grid) {
+    background-color: #000 !important;
+}
+body:not(.media-body):not(.grid) header {
+    background-color: #000 !important;
+}
+body:not(.media-body):not(.grid) .logo {
+    background-color: #000;
+}
+/* Parent theme's site wrapper has background:#fff and is only overridden
+   on video pages. Force it black here too so no white strip leaks between
+   the header and the page content. */
+body:not(.media-body):not(.grid) .content {
+    background-color: #000 !important;
+}
+body:not(.media-body):not(.grid) .footer-menu,
+body:not(.media-body):not(.grid) footer {
+    background-color: #000 !important;
+}
+/* Hide the desktop nav menu next to the logo, regardless of what's set
+   in Appearance → Menus. The PWA install button stays so users can still
+   install the app. */
+body:not(.media-body):not(.grid) header .menu ul,
+body:not(.media-body):not(.grid) header .menu nav {
+    display: none !important;
+}
+/* The global video progress bar (#wpst-global-progress) is rendered by
+   the parent theme footer.php on every page. It only makes sense on
+   video pages, so hide it everywhere else. */
+body:not(.media-body):not(.grid) #wpst-global-progress,
+body:not(.media-body):not(.grid) .wpst-progress-bar {
+    display: none !important;
+}
+
 /* Font: Inter instead of Poppins */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -264,6 +305,29 @@ body.wpst-is-fullscreen .wpst-pwa-btn {
     white-space: nowrap;
     line-height: 1;
     height: auto !important;
+}
+
+/* "Remove Ads" CTA in the home header — inherits the discreet pill look
+   from .wpst-pwa-btn (translucent black + white text). The brand-red
+   shield icon is the only color accent, so the button doesn't compete
+   with the video reel behind it. */
+.tsar-remove-ads-btn {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    color: #fff !important;
+    text-decoration: none;
+    transition: background .15s, transform .05s;
+}
+.tsar-remove-ads-btn:hover {
+    background: rgba(0, 0, 0, 0.85) !important;
+    color: #fff !important;
+}
+.tsar-remove-ads-btn:active {
+    transform: translateY(1px);
+}
+.tsar-remove-ads-btn svg {
+    flex: 0 0 14px;
 }
 
 /* ========================================
@@ -811,11 +875,13 @@ body.page-template-template-favorites-php .alert-info {
 }
 
 /* ========================================
-   Footer fix for search/favorites: proper position
+   Footer position + colors for every non-video page.
+   Mirrors the behaviour the parent only applied to search / favorites
+   — pure black, full width, fixed at bottom, icons + labels white —
+   so every standalone page (subscription, search, favorites, profile,
+   author, single-non-video, regular WP pages) has the same bottom nav.
    ======================================== */
-body.page-template-template-search-php footer,
-body.search footer,
-body.page-template-template-favorites-php footer {
+body:not(.media-body):not(.grid) footer {
     position: fixed !important;
     bottom: 0 !important;
     left: 50% !important;
@@ -823,38 +889,22 @@ body.page-template-template-favorites-php footer {
     width: 100% !important;
     z-index: 10 !important;
     background-color: #000 !important;
+    max-width: 100% !important;
 }
-
-body.page-template-template-search-php .footer-menu,
-body.search .footer-menu,
-body.page-template-template-favorites-php .footer-menu {
+body:not(.media-body):not(.grid) .footer-menu {
     background-color: rgba(0, 0, 0, 0.95) !important;
 }
-
-/* Footer icons: use currentColor for proper dark/light */
-body.page-template-template-search-php .footer-menu svg path,
-body.search .footer-menu svg path,
-body.page-template-template-favorites-php .footer-menu svg path {
+body:not(.media-body):not(.grid) .footer-menu a,
+body:not(.media-body):not(.grid) .footer-menu a small {
+    color: #fff;
+}
+body:not(.media-body):not(.grid) .footer-menu svg path {
     fill: currentColor;
 }
-
-body.page-template-template-search-php .footer-menu a,
-body.search .footer-menu a,
-body.page-template-template-favorites-php .footer-menu a {
-    color: #fff;
-}
-
-body.page-template-template-search-php .footer-menu #fav-menu svg path,
-body.search .footer-menu #fav-menu svg path,
-body.page-template-template-favorites-php .footer-menu #fav-menu svg path {
+/* Favorites heart icon uses stroke for its outline state */
+body:not(.media-body):not(.grid) .footer-menu #fav-menu svg path {
     stroke: #fff;
     fill: none;
-}
-
-body.page-template-template-search-php .footer-menu a small,
-body.search .footer-menu a small,
-body.page-template-template-favorites-php .footer-menu a small {
-    color: #fff;
 }
 
 body.page-template-template-favorites-php .remove-fav svg path {
@@ -1042,4 +1092,855 @@ body.page-template-template-favorites-php main {
     position: absolute;
     inset: 0;
     z-index: 101;
+}
+
+/* ========================================
+   Subscription page (TikSwipe Ad Removal plugin)
+   Pure black bg + #fd0131 brand red. Designed to feel premium.
+   ======================================== */
+
+/* Body / header / footer dark mode for the subscription page */
+body.tsar-subscription-page {
+    background-color: #000;
+    color: #fff;
+}
+body.tsar-subscription-page header,
+body.tsar-subscription-page .logo {
+    background-color: #000 !important;
+}
+body.tsar-subscription-page .content-wrapper {
+    background-color: #000;
+    padding: 0 14px 80px;
+    max-width: 520px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+body.tsar-subscription-page main.tsar-page {
+    padding: 12px 0 96px;
+    max-width: 100%;
+    margin: 0;
+    width: 100%;
+}
+
+/* Footer behaviour for /subscription is covered by the generic
+   body:not(.media-body):not(.grid) footer block above. */
+
+/* Card — pure black with a soft red ambient halo behind it */
+body.tsar-subscription-page .tsar-card {
+    position: relative;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 28px 20px 26px;
+    color: #fff;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-shadow:
+        0 24px 60px -20px rgba(253, 1, 49, 0.25),
+        0 0 0 1px rgba(253, 1, 49, 0.04);
+}
+body.tsar-subscription-page .tsar-card * {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+/* Hero with icon + glow */
+body.tsar-subscription-page .tsar-hero {
+    position: relative;
+    text-align: center;
+    margin: 0 0 22px;
+    padding: 6px 0 0;
+    background: transparent !important;
+}
+body.tsar-subscription-page .tsar-hero-glow {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(253, 1, 49, 0.35) 0%, rgba(253, 1, 49, 0) 65%);
+    pointer-events: none;
+    z-index: 0;
+    /* The radial gradient already feathers the edge — a tiny blur is enough
+       for a soft glow without the hazy look we don't use elsewhere. */
+    filter: blur(2px);
+}
+body.tsar-subscription-page .tsar-hero-icon {
+    position: relative;
+    z-index: 1;
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    border: 1px solid rgba(253, 1, 49, 0.4);
+    border-radius: 50%;
+    box-shadow:
+        0 0 0 6px rgba(253, 1, 49, 0.06),
+        0 8px 24px rgba(253, 1, 49, 0.35);
+}
+body.tsar-subscription-page .tsar-title {
+    position: relative;
+    z-index: 1;
+    font-size: 26px;
+    margin: 0 0 6px;
+    color: #fff !important;
+    font-weight: 800;
+    padding: 0 !important;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+}
+body.tsar-subscription-page .tsar-subtitle {
+    position: relative;
+    z-index: 1;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+    padding: 0;
+    line-height: 1.45;
+}
+
+/* Section labels above each form group */
+body.tsar-subscription-page .tsar-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 6px 2px 8px;
+}
+
+/* Benefits list — richer rows with icon + description */
+body.tsar-subscription-page .tsar-benefits {
+    list-style: none;
+    margin: 0 0 22px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+body.tsar-subscription-page .tsar-benefit {
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    padding: 12px 14px;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    color: #fff;
+    line-height: 1.3;
+}
+body.tsar-subscription-page .tsar-benefit::before {
+    content: none;
+}
+body.tsar-subscription-page .tsar-benefit-icon {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(253, 1, 49, 0.1);
+    border: 1px solid rgba(253, 1, 49, 0.3);
+    border-radius: 10px;
+}
+body.tsar-subscription-page .tsar-benefit-text {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+body.tsar-subscription-page .tsar-benefit-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+body.tsar-subscription-page .tsar-benefit-desc {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.4;
+}
+
+/* PayPal payment row — icon + label + email */
+body.tsar-subscription-page .tsar-paypal-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 8px;
+    padding: 14px;
+    background: #000;
+    border: 1px solid rgba(253, 1, 49, 0.35);
+    border-radius: 12px;
+}
+body.tsar-subscription-page .tsar-paypal-icon {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(253, 1, 49, 0.1);
+    border-radius: 10px;
+}
+body.tsar-subscription-page .tsar-paypal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+body.tsar-subscription-page .tsar-paypal-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.55);
+}
+body.tsar-subscription-page .tsar-paypal-email {
+    display: block;
+    background: transparent;
+    padding: 0;
+    border: 0;
+    font-size: 14px;
+    color: #fd0131;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 600;
+    word-break: break-all;
+}
+body.tsar-subscription-page .tsar-disclaimer {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.5;
+    margin: 0 0 14px;
+    padding: 0 2px;
+}
+
+/* Form */
+body.tsar-subscription-page .tsar-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+}
+body.tsar-subscription-page .tsar-plans {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0 0 18px;
+}
+
+/* Plan cards — pill-shaped rows with custom radio + amount */
+body.tsar-subscription-page .tsar-plan {
+    position: relative;
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 16px;
+    margin: 0;
+    background: #000;
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    cursor: pointer;
+    color: #fff;
+    font-weight: 400;
+    transition: border-color .15s, background .15s, box-shadow .2s;
+    min-height: 0;
+    width: 100%;
+}
+body.tsar-subscription-page .tsar-plan:hover {
+    border-color: rgba(253, 1, 49, 0.55);
+}
+/* Hide the native radio (we draw our own pill) but keep it for a11y / state */
+body.tsar-subscription-page .tsar-plan input[type=radio] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 1px !important;
+    height: 1px;
+    margin: 0 !important;
+}
+body.tsar-subscription-page .tsar-plan-radio {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    background: #000;
+    position: relative;
+    transition: border-color .15s, background .15s;
+}
+body.tsar-subscription-page .tsar-plan-radio::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: #fd0131;
+    transform: scale(0);
+    transition: transform .15s;
+}
+body.tsar-subscription-page .tsar-plan input[type=radio]:checked ~ .tsar-plan-radio {
+    border-color: #fd0131;
+}
+body.tsar-subscription-page .tsar-plan input[type=radio]:checked ~ .tsar-plan-radio::after {
+    transform: scale(1);
+}
+body.tsar-subscription-page .tsar-plan-info {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+body.tsar-subscription-page .tsar-plan-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+body.tsar-subscription-page .tsar-plan-meta {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.3;
+}
+body.tsar-subscription-page .tsar-plan-amount {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 1px;
+    color: #fff;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+body.tsar-subscription-page .tsar-plan-currency {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 700;
+}
+body.tsar-subscription-page .tsar-plan-price {
+    font-size: 22px;
+    color: #fff;
+    font-weight: 800;
+}
+/* Selected state — strong red glow */
+body.tsar-subscription-page .tsar-plan:has(input[type=radio]:checked) {
+    border-color: #fd0131;
+    background: linear-gradient(180deg, rgba(253, 1, 49, 0.10) 0%, rgba(253, 1, 49, 0.04) 100%);
+    box-shadow: 0 8px 24px -10px rgba(253, 1, 49, 0.55);
+}
+body.tsar-subscription-page .tsar-plan:has(input[type=radio]:checked) .tsar-plan-price {
+    color: #fd0131;
+}
+/* "Best value" badge on the lifetime plan */
+body.tsar-subscription-page .tsar-plan-best {
+    border-color: rgba(253, 1, 49, 0.5);
+}
+body.tsar-subscription-page .tsar-plan-badge {
+    position: absolute;
+    top: -10px;
+    right: 14px;
+    background: #fd0131;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(253, 1, 49, 0.5);
+}
+
+/* Fields */
+body.tsar-subscription-page .tsar-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    color: #fff;
+    margin: 0 0 4px;
+    font-weight: 400;
+}
+body.tsar-subscription-page .tsar-field > span {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 12px;
+}
+body.tsar-subscription-page .tsar-field input,
+body.tsar-subscription-page .tsar-field textarea {
+    width: 100%;
+    padding: 12px 14px;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    color: #fff;
+    font: inherit;
+    box-sizing: border-box;
+    transition: border-color .15s;
+}
+body.tsar-subscription-page .tsar-field input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+body.tsar-subscription-page .tsar-field input:focus,
+body.tsar-subscription-page .tsar-field textarea:focus {
+    outline: none;
+    border-color: #fd0131;
+}
+body.tsar-subscription-page .tsar-confirm {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.4;
+    cursor: pointer;
+    padding: 8px 0 4px;
+    margin: 4px 0 8px;
+    font-size: 13px;
+}
+body.tsar-subscription-page .tsar-confirm input {
+    width: 18px !important;
+    height: 18px;
+    margin: 1px 0 0 !important;
+    accent-color: #fd0131;
+    flex: 0 0 18px;
+}
+body.tsar-subscription-page .tsar-confirm span {
+    color: rgba(255, 255, 255, 0.85);
+    flex: 1;
+    font-size: 13px;
+}
+
+/* Submit button — big, glowing, with arrow icon */
+body.tsar-subscription-page .tsar-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 15px 18px;
+    background: linear-gradient(180deg, #ff1a47 0%, #fd0131 100%);
+    color: #fff;
+    border: 0;
+    border-radius: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    transition: transform .08s, box-shadow .2s, background .2s;
+    width: 100%;
+    margin: 4px 0 0;
+    text-transform: uppercase;
+    box-shadow:
+        0 8px 20px -4px rgba(253, 1, 49, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+body.tsar-subscription-page .tsar-submit svg {
+    transition: transform .15s;
+}
+body.tsar-subscription-page .tsar-submit:hover {
+    background: linear-gradient(180deg, #ff2d5a 0%, #ff0f3f 100%);
+    box-shadow:
+        0 12px 28px -4px rgba(253, 1, 49, 0.7),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+body.tsar-subscription-page .tsar-submit:hover svg {
+    transform: translateX(3px);
+}
+body.tsar-subscription-page .tsar-submit:active {
+    transform: translateY(1px);
+}
+body.tsar-subscription-page .tsar-submit[disabled] {
+    opacity: 0.7;
+    cursor: wait;
+    box-shadow: none;
+}
+
+/* Feedback line */
+body.tsar-subscription-page .tsar-feedback {
+    min-height: 18px;
+    font-size: 13px;
+    text-align: center;
+    color: #fff;
+}
+body.tsar-subscription-page .tsar-feedback.is-error {
+    color: #ff8a8a;
+}
+body.tsar-subscription-page .tsar-feedback.is-success {
+    color: #8aff9d;
+}
+
+/* Notices */
+body.tsar-subscription-page .tsar-notice {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 14px;
+    margin: 0 0 14px;
+    line-height: 1.5;
+}
+body.tsar-subscription-page .tsar-notice p {
+    margin: 6px 0 0;
+    color: inherit;
+}
+body.tsar-subscription-page .tsar-notice-info {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+body.tsar-subscription-page .tsar-notice-success {
+    border-color: #2dd87a;
+    color: #bdffd0;
+}
+body.tsar-subscription-page .tsar-notice-warn {
+    border-color: #fd0131;
+    color: #ffd9a8;
+}
+body.tsar-subscription-page .tsar-login-btn {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 10px 18px;
+    background: #fd0131;
+    color: #fff !important;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+}
+body.tsar-subscription-page .tsar-login-btn:hover {
+    background: #e1012b;
+}
+
+/* Pending state + countdown */
+body.tsar-subscription-page .tsar-state {
+    text-align: center;
+    padding: 14px 8px;
+}
+body.tsar-subscription-page .tsar-state-title {
+    font-size: 18px;
+    margin: 14px 0 6px;
+    color: #fff !important;
+    padding: 0 !important;
+    font-weight: 700;
+    line-height: 1.3;
+}
+body.tsar-subscription-page .tsar-state-desc {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 18px;
+}
+body.tsar-subscription-page .tsar-state.is-overdue .tsar-state-desc {
+    color: #ffd9a8;
+}
+body.tsar-subscription-page .tsar-spinner {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 3px solid rgba(253, 1, 49, 0.2);
+    border-top-color: #fd0131;
+    margin: 0 auto;
+}
+body.tsar-subscription-page .tsar-countdown {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 14px 22px;
+    background: #000;
+    border-radius: 12px;
+    border: 1px solid #fd0131;
+}
+body.tsar-subscription-page .tsar-countdown-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.55);
+}
+body.tsar-subscription-page .tsar-countdown-time {
+    font-size: 28px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #fd0131;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    line-height: 1;
+}
+
+/* Mobile tightening */
+@media (max-width: 480px) {
+    body.tsar-subscription-page .content-wrapper {
+        padding: 0 12px 80px;
+    }
+    body.tsar-subscription-page .tsar-card {
+        padding: 24px 16px 22px;
+        border-radius: 18px;
+    }
+    body.tsar-subscription-page .tsar-hero-icon {
+        width: 64px;
+        height: 64px;
+    }
+    body.tsar-subscription-page .tsar-title {
+        font-size: 22px;
+    }
+    body.tsar-subscription-page .tsar-plan {
+        padding: 14px;
+        gap: 10px;
+    }
+    body.tsar-subscription-page .tsar-plan-name {
+        font-size: 14px;
+    }
+    body.tsar-subscription-page .tsar-plan-price {
+        font-size: 20px;
+    }
+    body.tsar-subscription-page .tsar-plan-currency {
+        font-size: 13px;
+    }
+    body.tsar-subscription-page .tsar-benefit {
+        padding: 11px 12px;
+    }
+    body.tsar-subscription-page .tsar-benefit-icon {
+        flex: 0 0 32px;
+        width: 32px;
+        height: 32px;
+    }
+    body.tsar-subscription-page .tsar-countdown-time {
+        font-size: 26px;
+    }
+}
+
+/* ========================================
+   Hide the in-video creator avatar (the "profile" icon that sits in the
+   right-hand side action stack between the mute toggle and the like
+   button, rendered by templates/post-content.php inside .swiper-side).
+   ======================================== */
+.swiper-side .avatar-img,
+.swiper-side a.avatar-img {
+    display: none !important;
+}
+
+/* ========================================
+   Hide the footer "Profile" icon entirely.
+   Footer is grid-rendered with footer-menu-N columns based on how many
+   items were emitted server-side, so we also reclaim the column the
+   profile would have taken so the remaining icons stay evenly spaced.
+   ======================================== */
+#menu-profil,
+.footer-menu .menu-profile,
+.footer-menu a[id="menu-profil"] {
+    display: none !important;
+}
+/* creators on, regular user: was 4 (Home / Search / Favorites / Profile) → 3 */
+.footer-menu.footer-menu-4 {
+    grid-template-columns: repeat(3, 1fr) !important;
+}
+/* creators on, admin/author: was 5 (… / Add Content / Profile) → 4 */
+.footer-menu.footer-menu-5 {
+    grid-template-columns: repeat(4, 1fr) !important;
+}
+
+/* ========================================
+   Dark-theme override for the parent theme's login / register / reset
+   password modal (#main-nav .slideup-box, rendered to wp_footer by
+   inc/ajax/ajax-login-register.php). Defaults are a white card with
+   #333 text — completely off-brand on our pure-black UI.
+   ======================================== */
+#main-nav.slideup-box,
+body #main-nav.slideup-box {
+    background: #0a0a0a;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(253, 1, 49, 0.08);
+}
+#main-nav.slideup-box * {
+    box-sizing: border-box;
+}
+/* The dark-bg overlay behind the modal — make it deeper than the parent's
+   rgba(0,0,0,0.8) so the dark card has contrast. */
+body.tsar-subscription-page .dark-bg,
+body:not(.media-body):not(.grid) .dark-bg {
+    background: rgba(0, 0, 0, 0.85);
+}
+
+/* Tabs row (Login / Register / close button) */
+#main-nav .login-nav {
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+#main-nav .login-nav a {
+    color: rgba(255, 255, 255, 0.6) !important;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    padding: 14px 16px;
+    font-weight: 600;
+    transition: color .15s, border-color .15s;
+    flex: 1;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+#main-nav .login-nav a:hover {
+    color: #fff !important;
+}
+#main-nav .login-nav a.active {
+    color: #fff !important;
+    border-bottom-color: #fd0131;
+}
+#main-nav .login-nav a svg {
+    fill: currentColor;
+    color: currentColor;
+}
+#main-nav .login-nav a svg path,
+#main-nav .login-nav a svg circle {
+    fill: currentColor;
+}
+#main-nav .close-main-nav {
+    background: transparent !important;
+    border: 0 !important;
+    color: #fff;
+    padding: 10px;
+    flex: 0 0 auto;
+    line-height: 0;
+}
+#main-nav .close-main-nav svg path {
+    fill: rgba(255, 255, 255, 0.7);
+}
+#main-nav .close-main-nav:hover svg path {
+    fill: #fff;
+}
+
+/* Form sections + fields */
+#main-nav .wpst-login-section {
+    padding: 20px 22px 24px;
+    background: transparent;
+}
+#main-nav .form-field {
+    margin: 0 0 14px;
+}
+#main-nav .form-field label {
+    display: block;
+    color: rgba(255, 255, 255, 0.65) !important;
+    font-size: 12px;
+    font-weight: 500;
+    margin: 0 0 4px;
+}
+#main-nav .form-field input,
+#main-nav input.form-control,
+#main-nav input[type="text"],
+#main-nav input[type="email"],
+#main-nav input[type="password"] {
+    width: 100%;
+    background: #000 !important;
+    color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 10px !important;
+    padding: 10px 12px !important;
+    font: inherit;
+    box-shadow: none !important;
+    transition: border-color .15s;
+}
+#main-nav .form-field input:focus,
+#main-nav input.form-control:focus,
+#main-nav input[type="text"]:focus,
+#main-nav input[type="email"]:focus,
+#main-nav input[type="password"]:focus {
+    outline: none !important;
+    border-color: #fd0131 !important;
+}
+#main-nav .form-field input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Submit buttons (Login / Register / Reset) */
+#main-nav .button.button-color,
+#main-nav button.button-color,
+#main-nav button[type="submit"] {
+    background: #fd0131 !important;
+    color: #fff !important;
+    border: 0 !important;
+    border-radius: 12px !important;
+    padding: 12px 18px !important;
+    font-weight: 700 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: background .15s, transform .05s;
+    box-shadow: 0 4px 14px -2px rgba(253, 1, 49, 0.55);
+}
+#main-nav .button.button-color:hover,
+#main-nav button.button-color:hover,
+#main-nav button[type="submit"]:hover {
+    background: #e1012b !important;
+}
+#main-nav .button.button-color:active,
+#main-nav button.button-color:active,
+#main-nav button[type="submit"]:active {
+    transform: translateY(1px);
+}
+
+/* "Lost password?" link */
+#main-nav .form-field.lost-password {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+#main-nav a#ms-reset-password,
+#main-nav .slideup-box a#ms-reset-password,
+body #main-nav a#ms-reset-password {
+    color: rgba(255, 255, 255, 0.55) !important;
+    font-size: 12px;
+    margin-left: auto;
+    text-decoration: none;
+}
+#main-nav a#ms-reset-password:hover {
+    color: #fd0131 !important;
+}
+
+/* Reset password section */
+#main-nav .wpst-reset-password h3 {
+    color: #fff !important;
+    font-size: 16px;
+    margin: 0 0 8px;
+}
+#main-nav .wpst-reset-password p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    margin: 0 0 14px;
+    line-height: 1.45;
+}
+
+/* Error + alert blocks */
+#main-nav .wpst-errors {
+    margin: 8px 0 0;
+    color: #ff8a8a;
+    font-size: 13px;
+    min-height: 18px;
+}
+#main-nav .wpst-errors:empty {
+    display: none;
+}
+#main-nav .alert,
+#main-nav .alert-danger {
+    background: rgba(255, 138, 138, 0.08) !important;
+    border: 1px solid rgba(255, 138, 138, 0.35) !important;
+    color: #ffb4b4 !important;
+    border-radius: 10px !important;
+    padding: 12px 14px !important;
+}
+
+/* Loading state */
+#main-nav .wpst-loading {
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    padding: 14px;
+}
+
+/* Registration-complete success state */
+#main-nav .registration-complete .wpst-login-section {
+    color: #bdffd0;
 }
