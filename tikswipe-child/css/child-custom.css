@@ -307,6 +307,35 @@ body.wpst-is-fullscreen .wpst-pwa-btn {
     height: auto !important;
 }
 
+/* Shared header CTA pill — same geometry as the old PWA "Fav this app"
+   button. Two variants below: outlined for the neutral Login action,
+   filled brand-red for the Remove Ads conversion. */
+.tsar-header-cta {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: background .15s, transform .05s, border-color .15s;
+}
+.tsar-header-cta:active {
+    transform: translateY(1px);
+}
+.tsar-header-cta svg {
+    flex: 0 0 14px;
+}
+
+/* Login variant — outlined, neutral so it doesn't compete with Remove Ads */
+.tsar-login-cta {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+}
+.tsar-login-cta:hover {
+    background: rgba(255, 255, 255, 0.18) !important;
+    border-color: #fff !important;
+    color: #fff !important;
+}
+
 /* "Remove Ads" CTA in the home header — same pill geometry as the old PWA
    button, brand red so it stands out against the video reel behind it. */
 .tsar-remove-ads-btn {
