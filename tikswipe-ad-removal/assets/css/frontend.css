@@ -1,0 +1,27 @@
+.tsar-wrap{max-width:520px;margin:24px auto;padding:24px;background:#0f0f10;color:#f5f5f5;border-radius:14px;font-family:inherit;}
+.tsar-wrap *{box-sizing:border-box;}
+.tsar-paypal-info{margin-bottom:18px;padding:14px;background:rgba(255,255,255,.04);border-radius:10px;}
+.tsar-paypal-info p{margin:0 0 6px;}
+.tsar-paypal-email{display:inline-block;background:#000;padding:2px 8px;border-radius:4px;font-size:14px;color:#fff;}
+.tsar-disclaimer{font-size:12px;opacity:.75;line-height:1.45;}
+.tsar-form{display:flex;flex-direction:column;gap:12px;}
+.tsar-plan{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid rgba(255,255,255,.12);border-radius:10px;cursor:pointer;transition:border-color .15s,background .15s;}
+.tsar-plan:hover{border-color:rgba(255,255,255,.3);}
+.tsar-plan input[type=radio]{margin:0;}
+.tsar-plan input[type=radio]:checked + .tsar-plan-label{font-weight:600;}
+.tsar-plan-label{flex:1;}
+.tsar-plan-price{font-weight:700;color:#ffd479;}
+.tsar-field{display:flex;flex-direction:column;gap:4px;font-size:13px;}
+.tsar-field input,.tsar-field textarea{width:100%;padding:8px 10px;background:#1a1a1c;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font:inherit;}
+.tsar-field input:focus,.tsar-field textarea:focus{outline:none;border-color:#ffd479;}
+.tsar-confirm{flex-direction:row;align-items:center;gap:8px;font-size:13px;}
+.tsar-confirm input{width:auto;}
+.tsar-submit{padding:12px 16px;background:#ffd479;color:#111;border:0;border-radius:10px;font-weight:700;cursor:pointer;font-size:15px;}
+.tsar-submit:hover{background:#ffe9b3;}
+.tsar-submit[disabled]{opacity:.6;cursor:wait;}
+.tsar-feedback{min-height:18px;font-size:13px;}
+.tsar-feedback.is-error{color:#ff7676;}
+.tsar-feedback.is-success{color:#76ff8d;}
+.tsar-notice{padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.06);font-size:14px;margin-bottom:12px;}
+.tsar-notice-info{background:rgba(80,140,255,.15);}
+.tsar-notice-success{background:rgba(80,255,140,.12);color:#bdffd0;}

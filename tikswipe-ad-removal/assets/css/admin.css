@@ -1,0 +1,8 @@
+.tsar-wrap-admin .tsar-status{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+.tsar-wrap-admin .tsar-status-pending{background:#fff3cd;color:#7a5b00;}
+.tsar-wrap-admin .tsar-status-approved{background:#d4f5dd;color:#0a6b22;}
+.tsar-wrap-admin .tsar-status-rejected{background:#f8d7da;color:#7a0c1c;}
+.tsar-wrap-admin .tsar-row-form{display:inline-flex;gap:4px;align-items:center;margin-right:6px;}
+.tsar-wrap-admin .tsar-row-form input[type=number]{width:60px;}
+.tsar-grant-form .form-table input[type=text]{max-width:360px;}
+.tsar-wrap-admin table.widefat td form{margin:0;}
