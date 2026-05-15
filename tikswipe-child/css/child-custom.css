@@ -41,6 +41,34 @@
     }
 }
 
+/* ========================================
+   Pure-black baseline for every non-video page
+   Targets everything that isn't the video reel (media-body) or the grid
+   view, so the standalone pages (subscription, search, favorites, profile,
+   author, single-post-non-video, regular WP pages) all share a black UI
+   and don't show the parent theme's white header / page background.
+   ======================================== */
+body:not(.media-body):not(.grid) {
+    background-color: #000 !important;
+}
+body:not(.media-body):not(.grid) header {
+    background-color: #000 !important;
+}
+body:not(.media-body):not(.grid) .logo {
+    background-color: #000;
+}
+body:not(.media-body):not(.grid) .footer-menu,
+body:not(.media-body):not(.grid) footer {
+    background-color: #000 !important;
+}
+/* Hide the desktop nav menu next to the logo, regardless of what's set
+   in Appearance → Menus. The PWA install button stays so users can still
+   install the app. */
+body:not(.media-body):not(.grid) header .menu ul,
+body:not(.media-body):not(.grid) header .menu nav {
+    display: none !important;
+}
+
 /* Font: Inter instead of Poppins */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
