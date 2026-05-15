@@ -53,7 +53,23 @@ if ( wp_is_mobile() ) :
 				<?php get_template_part( 'templates/content', 'logo' ); ?>
 			</div>
 			<div class="menu">
-				<button id="wpst-pwa-install" class="wpst-pwa-btn" style="display:none;">Fav this app</button>
+				<?php
+				// "Remove Ads" CTA replaces the old "Fav this app" PWA install
+				// button. Only renders on the home/front page, only for users
+				// who do not already have ad-free status (guarded by
+				// class_exists so the theme keeps working without the plugin).
+				$tsar_is_premium = class_exists( 'TSAR_Membership' ) && TSAR_Membership::is_premium();
+				$tsar_on_home    = is_home() || is_front_page();
+				if ( $tsar_on_home && ! $tsar_is_premium && function_exists( 'tsar_subscription_url' ) ) :
+					?>
+					<a class="wpst-pwa-btn tsar-remove-ads-btn" href="<?php echo esc_url( tsar_subscription_url() ); ?>">
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<path d="M12 2L4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3z" fill="currentColor"/>
+							<path d="M8.5 12l2.5 2.5L16 9.5" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+						</svg>
+						<span><?php esc_html_e( 'Remove Ads', 'tikswipe-child' ); ?></span>
+					</a>
+				<?php endif; ?>
 				<?php
 				wp_nav_menu(
 					array(
