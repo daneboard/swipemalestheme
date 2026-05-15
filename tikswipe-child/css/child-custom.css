@@ -1733,6 +1733,16 @@ body.tsar-subscription-page .tsar-countdown-time {
 }
 
 /* ========================================
+   Hide the in-video creator avatar (the "profile" icon that sits in the
+   right-hand side action stack between the mute toggle and the like
+   button, rendered by templates/post-content.php inside .swiper-side).
+   ======================================== */
+.swiper-side .avatar-img,
+.swiper-side a.avatar-img {
+    display: none !important;
+}
+
+/* ========================================
    Hide the footer "Profile" icon entirely.
    Footer is grid-rendered with footer-menu-N columns based on how many
    items were emitted server-side, so we also reclaim the column the
