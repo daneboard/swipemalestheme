@@ -187,7 +187,7 @@ $plans = tsar_plans();
 								</code>
 							</div>
 						</div>
-						<p class="tsar-disclaimer"><?php echo esc_html( $settings['disclaimer'] ); ?></p>
+						<p class="tsar-disclaimer"><?php echo wp_kses_post( $settings['disclaimer'] ); ?></p>
 
 						<label class="tsar-field">
 							<span><?php esc_html_e( 'PayPal email used (optional)', 'tikswipe-ad-removal' ); ?></span>

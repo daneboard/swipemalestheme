@@ -45,6 +45,12 @@
 		if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
 	}
 
+	// Selectors removed when transitioning between states. Keep .tsar-hero
+	// and .tsar-benefits visible; everything else (form, payment info,
+	// previous notices, previous state) is cleared so each state is the
+	// only block below the hero.
+	var TRANSIENT_BLOCKS = '.tsar-state, .tsar-form, .tsar-paypal-card, .tsar-paypal-info, .tsar-disclaimer, .tsar-notice';
+
 	function renderResult(state, message) {
 		stopTimers();
 		var $card = $('.tsar-card');
@@ -58,7 +64,7 @@
 			+     '<p>' + $('<i/>').text(message).html() + '</p>'
 			+   '</div>'
 			+ '</div>';
-		$card.find('.tsar-state, .tsar-form, .tsar-paypal-info, .tsar-notice').remove();
+		$card.find(TRANSIENT_BLOCKS).remove();
 		$card.append(html);
 	}
 
@@ -106,7 +112,7 @@
 			+     '<span class="tsar-countdown-time" data-tsar-clock>—</span>'
 			+   '</div>'
 			+ '</div>';
-		$card.find('.tsar-form, .tsar-paypal-info, .tsar-notice').remove();
+		$card.find(TRANSIENT_BLOCKS).remove();
 		$card.append(html);
 		startClock($card.find('.tsar-state-pending'));
 		startPolling();
@@ -118,10 +124,18 @@
 		var $form = $(this);
 		var $btn = $form.find('.tsar-submit');
 		var $fb = $form.find('[data-tsar-feedback]');
-		var origLabel = $btn.text();
+		// Snapshot the full inner HTML (including the SVG arrow) so we can
+		// restore it on failure without flattening the button to text.
+		var origHtml = $btn.html();
 
 		$fb.removeClass('is-error is-success').text('');
-		$btn.prop('disabled', true).text(cfg.i18n.submitting);
+		$btn.prop('disabled', true).html(
+			'<span>' + $('<i/>').text(cfg.i18n.submitting || 'Submitting…').html() + '</span>'
+		);
+
+		var restoreBtn = function () {
+			$btn.prop('disabled', false).html(origHtml);
+		};
 
 		$.ajax({
 			url: cfg.ajaxUrl,
@@ -141,7 +155,7 @@
 			} else {
 				var msg = (resp && resp.data && resp.data.message) || cfg.i18n.genericErr;
 				$fb.addClass('is-error').text(msg);
-				$btn.prop('disabled', false).text(origLabel);
+				restoreBtn();
 			}
 		}).fail(function (xhr) {
 			var msg = cfg.i18n.genericErr;
@@ -149,7 +163,7 @@
 				msg = xhr.responseJSON.data.message;
 			}
 			$fb.addClass('is-error').text(msg);
-			$btn.prop('disabled', false).text(origLabel);
+			restoreBtn();
 		});
 	});
 

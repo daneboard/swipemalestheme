@@ -23,12 +23,13 @@ class TSAR_Admin {
 		add_action( 'admin_post_tsar_member_update', array( __CLASS__, 'handle_member_update' ) );
 		add_action( 'admin_post_tsar_member_revoke', array( __CLASS__, 'handle_member_revoke' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'flash_notices' ) );
-		add_action( 'update_option_' . TSAR_OPTION_KEY, array( __CLASS__, 'maybe_flush_rewrites' ), 10, 2 );
+		add_action( 'update_option_' . TSAR_OPTION_KEY, array( __CLASS__, 'maybe_flush_rewrites' ), 10, 3 );
 	}
 
-	public static function maybe_flush_rewrites( $old, $new ) {
-		$old_slug = isset( $old['subscription_slug'] ) ? $old['subscription_slug'] : '';
-		$new_slug = isset( $new['subscription_slug'] ) ? $new['subscription_slug'] : '';
+	public static function maybe_flush_rewrites( $old, $new, $option_name = '' ) {
+		unset( $option_name ); // accepted for signature compatibility.
+		$old_slug = is_array( $old ) && isset( $old['subscription_slug'] ) ? $old['subscription_slug'] : '';
+		$new_slug = is_array( $new ) && isset( $new['subscription_slug'] ) ? $new['subscription_slug'] : '';
 		if ( $old_slug !== $new_slug ) {
 			TSAR_Frontend::register_rewrite();
 			flush_rewrite_rules();
@@ -169,9 +170,13 @@ class TSAR_Admin {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'tikswipe-ad-removal' ) );
 		}
 		global $wpdb;
+		// Lifetime members (meta_value='0') first, then the rest by latest
+		// expiration descending.
 		$members = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT user_id, meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s ORDER BY CAST(meta_value AS UNSIGNED) DESC",
+				"SELECT user_id, meta_value FROM {$wpdb->usermeta}
+				WHERE meta_key = %s
+				ORDER BY (meta_value = '0') DESC, CAST(meta_value AS UNSIGNED) DESC",
 				TSAR_USER_META
 			)
 		);
@@ -248,7 +253,12 @@ class TSAR_Admin {
 										<input type="number" name="days" min="0" value="30" class="small-text">
 										<button type="submit" class="button"><?php esc_html_e( 'Add', 'tikswipe-ad-removal' ); ?></button>
 									</form>
-									<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=tsar_member_revoke&user_id=' . (int) $user->ID ), 'tsar_member_revoke_' . (int) $user->ID ) ); ?>" class="button button-link-delete tsar-confirm" data-confirm="<?php esc_attr_e( 'Revoke ad-free for this user?', 'tikswipe-ad-removal' ); ?>"><?php esc_html_e( 'Revoke', 'tikswipe-ad-removal' ); ?></a>
+									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block">
+										<input type="hidden" name="action" value="tsar_member_revoke">
+										<input type="hidden" name="user_id" value="<?php echo (int) $user->ID; ?>">
+										<?php wp_nonce_field( 'tsar_member_revoke_' . (int) $user->ID ); ?>
+										<button type="submit" class="button button-link-delete tsar-confirm" data-confirm="<?php esc_attr_e( 'Revoke ad-free for this user?', 'tikswipe-ad-removal' ); ?>"><?php esc_html_e( 'Revoke', 'tikswipe-ad-removal' ); ?></button>
+									</form>
 								</td>
 							</tr>
 						<?php endforeach; ?>
@@ -388,19 +398,44 @@ class TSAR_Admin {
 
 		$expires_ts = TSAR_Membership::grant( (int) $row['user_id'], $days );
 
-		$wpdb->update(
-			$table,
-			array(
-				'status'       => 'approved',
-				'days_granted' => $days,
-				'expires_at'   => 0 === $days ? null : (int) $expires_ts,
-				'processed_at' => time(),
-				'processed_by' => get_current_user_id(),
-			),
-			array( 'id' => $id ),
-			array( '%s', '%d', '%d', '%d', '%d' ),
-			array( '%d' )
-		);
+		if ( 0 === $days ) {
+			// Lifetime — keep expires_at as SQL NULL (the schema column is NULL).
+			// $wpdb->update with %d would coerce null→0, so write the NULL
+			// directly with a tiny dedicated query and update the rest via
+			// $wpdb->update afterwards.
+			$wpdb->query(
+				$wpdb->prepare(
+					"UPDATE {$table} SET expires_at = NULL WHERE id = %d",
+					$id
+				)
+			);
+			$wpdb->update(
+				$table,
+				array(
+					'status'       => 'approved',
+					'days_granted' => 0,
+					'processed_at' => time(),
+					'processed_by' => get_current_user_id(),
+				),
+				array( 'id' => $id ),
+				array( '%s', '%d', '%d', '%d' ),
+				array( '%d' )
+			);
+		} else {
+			$wpdb->update(
+				$table,
+				array(
+					'status'       => 'approved',
+					'days_granted' => $days,
+					'expires_at'   => (int) $expires_ts,
+					'processed_at' => time(),
+					'processed_by' => get_current_user_id(),
+				),
+				array( 'id' => $id ),
+				array( '%s', '%d', '%d', '%d', '%d' ),
+				array( '%d' )
+			);
+		}
 
 		self::redirect_back( 'success', sprintf(
 			/* translators: 1: request ID, 2: days. */
@@ -418,8 +453,17 @@ class TSAR_Admin {
 		check_admin_referer( 'tsar_reject_' . $id );
 
 		global $wpdb;
+		$table  = tsar_table();
+		$status = $wpdb->get_var( $wpdb->prepare( "SELECT status FROM {$table} WHERE id = %d", $id ) );
+		if ( ! $status ) {
+			self::redirect_back( 'error', __( 'Request not found.', 'tikswipe-ad-removal' ) );
+		}
+		if ( 'pending' !== $status ) {
+			self::redirect_back( 'error', __( 'Request already processed.', 'tikswipe-ad-removal' ) );
+		}
+
 		$wpdb->update(
-			tsar_table(),
+			$table,
 			array(
 				'status'       => 'rejected',
 				'processed_at' => time(),
