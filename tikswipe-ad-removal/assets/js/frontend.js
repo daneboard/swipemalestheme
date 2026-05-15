@@ -2,6 +2,7 @@
 	'use strict';
 
 	var cfg = window.TSAR_Frontend || {};
+	cfg.i18n = cfg.i18n || {};
 	var pollTimer = null;
 	var clockTimer = null;
 

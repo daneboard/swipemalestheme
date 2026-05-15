@@ -91,6 +91,11 @@ class TSAR_Frontend {
 		$wp_query->is_archive  = false;
 		status_header( 200 );
 
+		// `template_redirect` fires before `wp_enqueue_scripts`, so the
+		// register_assets hook hasn't run yet — register the handles now
+		// so wp_localize_script below can attach data to them.
+		self::register_assets();
+
 		wp_enqueue_style( 'tsar-frontend' );
 		wp_enqueue_script( 'tsar-frontend' );
 
