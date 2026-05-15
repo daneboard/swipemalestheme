@@ -19,9 +19,22 @@ Lets logged-in users pay (manual PayPal) to remove ExoClick / VAST ads delivered
 * After submission the user sees a "thanks" screen with a 1h30 countdown
   (configurable) and the page polls in the background — when the admin
   approves or rejects, the page updates without a reload.
-* Suppresses every TikSwipe ad surface for premium users without touching the
-  theme: HTML ad slide, VAST preroll, VAST midroll, ExoClick interstitial.
-* Defensive CSS hides leftover ExoClick iframes for premium users.
+* Defense-in-depth ad suppression for premium users:
+    1. theme_mod_wpst_* filters prevent the theme from enqueuing the HTML
+       slide-ad, VAST preroll, VAST midroll and ExoClick interstitial.
+    2. script_loader_src / style_loader_src filters drop any WP-enqueued
+       asset whose URL points at ExoClick / Magsrv / Pemsrv / etc.
+    3. A template_redirect output buffer scrubs the final HTML, removing
+       <script src="...adcdn..."></script>, <ins class="eas..."> blocks,
+       inline scripts matching AdProvider / popMagic / adConfig
+       signatures, and iframes from ad CDNs — independent of whether the
+       tags came from the theme, the customizer, or a "header HTML"
+       plugin.
+    4. A tiny inline JS printed first in <head> stubs AdProvider /
+       popMagic / exoJsPop101 so leftover call sites no-op, intercepts
+       document.createElement('script') so scripts whose src is an ad
+       CDN never load, and a MutationObserver removes any ad node
+       inserted at any point in the page lifecycle.
 * Admin dashboard with pending/approved/rejected filters and one-click approval
   (custom days or lifetime).
 * Members tab to grant or revoke ad-free manually.

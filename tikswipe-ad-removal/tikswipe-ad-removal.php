@@ -26,6 +26,7 @@ define( 'TSAR_USER_META', '_tsar_premium_expires' );
 require_once TSAR_PLUGIN_DIR . 'includes/tsar-helpers.php';
 require_once TSAR_PLUGIN_DIR . 'includes/class-tsar-install.php';
 require_once TSAR_PLUGIN_DIR . 'includes/class-tsar-membership.php';
+require_once TSAR_PLUGIN_DIR . 'includes/class-tsar-ad-blocker.php';
 require_once TSAR_PLUGIN_DIR . 'includes/class-tsar-frontend.php';
 require_once TSAR_PLUGIN_DIR . 'includes/class-tsar-ajax.php';
 
@@ -39,6 +40,7 @@ function tsar_bootstrap() {
 
 	TSAR_Install::maybe_upgrade();
 	TSAR_Membership::init();
+	TSAR_Ad_Blocker::init();
 	TSAR_Frontend::init();
 	TSAR_Ajax::init();
 

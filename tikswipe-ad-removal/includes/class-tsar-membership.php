@@ -20,8 +20,6 @@ class TSAR_Membership {
 		add_filter( 'theme_mod_wpst_vast_enabled', array( __CLASS__, 'filter_off_for_premium' ), 100 );
 		add_filter( 'theme_mod_wpst_vast_midroll_enabled', array( __CLASS__, 'filter_off_for_premium' ), 100 );
 		add_filter( 'theme_mod_wpst_interstitial_enabled', array( __CLASS__, 'filter_off_for_premium' ), 100 );
-
-		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_premium_assets' ) );
 	}
 
 	public static function filter_off_for_premium( $value ) {
@@ -29,23 +27,6 @@ class TSAR_Membership {
 			return false;
 		}
 		return $value;
-	}
-
-	public static function enqueue_premium_assets() {
-		if ( ! self::is_premium() ) {
-			return;
-		}
-		$css = TSAR_PLUGIN_DIR . 'assets/css/frontend.css';
-		wp_enqueue_style(
-			'tsar-premium-hide',
-			TSAR_PLUGIN_URL . 'assets/css/frontend.css',
-			array(),
-			file_exists( $css ) ? filemtime( $css ) : TSAR_VERSION
-		);
-		wp_add_inline_style(
-			'tsar-premium-hide',
-			'.swiper-slide-happy,iframe[src*="exoclick.com"],iframe[src*="exosrv.com"],iframe[src*="pemsrv.com"],iframe[src*="magsrv.com"]{display:none!important;}'
-		);
 	}
 
 	/**
