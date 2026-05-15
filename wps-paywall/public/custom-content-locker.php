@@ -30,9 +30,8 @@ function pwll_premium_badge( $content, $post_id = null, $params = array() ) {
 		return '';
 	}
 
-	// Return buffer when user has premium access.
-	$has_premium_access = get_user_meta( get_current_user_id(), '_has_premium_access', true );
-	if ( 'on' === $has_premium_access ) {
+	// Return buffer when user has premium access (Woo, Ad-Removal, or admin preview).
+	if ( pwll_user_has_premium_access() ) {
 		return '';
 	}
 
@@ -85,15 +84,8 @@ function pwll_media_content_locker( $content, $post_id ) {
 		return $content;
 	}
 
-	// Return default content when user has premium access.
-	$has_premium_access = get_user_meta( get_current_user_id(), '_has_premium_access', true );
-	if ( 'on' === $has_premium_access ) {
-		return $content;
-	}
-
-	// Return default content when admin navigates as premium member.
-	$pwll_navigate_as_premium_member = xbox_get_field_value( 'pwll-options', 'pwll-navigate-as-premium-member', 'off' );
-	if ( 'on' === $pwll_navigate_as_premium_member && current_user_can( 'manage_options' ) ) {
+	// Return default content when user has premium access (Woo, Ad-Removal, or admin preview).
+	if ( pwll_user_has_premium_access() ) {
 		return $content;
 	}
 

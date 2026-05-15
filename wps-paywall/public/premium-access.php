@@ -1,6 +1,14 @@
 <?php
-add_action( 'init', 'pwll_user_has_premium_access' );
-function pwll_user_has_premium_access() {
+/**
+ * Refreshes the `_has_premium_access` user-meta flag for the logged-in user
+ * based on their latest WooCommerce order / subscription status.
+ *
+ * The "does this user have premium access right now?" check lives in
+ * `inc/ad-removal-compat.php::pwll_user_has_premium_access()` and also folds in
+ * the TikSwipe Ad Removal membership.
+ */
+add_action( 'init', 'pwll_refresh_premium_access_flag' );
+function pwll_refresh_premium_access_flag() {
 	if ( ! is_user_logged_in() ) {
 		return;
 	}

@@ -1,13 +1,8 @@
 <?php
 	global $post;
-	$current_user_id                 = get_current_user_id();
-	$pwll_post_status                = get_post_meta( get_the_id(), 'pwll_post_status', true );
-	$has_premium_access              = 'on' === get_user_meta( $current_user_id, '_has_premium_access', true );
-	$pwll_navigate_as_premium_member = xbox_get_field_value( 'pwll-options', 'pwll-navigate-as-premium-member', 'off' );
-
-if ( $pwll_navigate_as_premium_member && current_user_can( 'administrator' ) ) {
-	$has_premium_access = true;
-}
+	$current_user_id    = get_current_user_id();
+	$pwll_post_status   = get_post_meta( get_the_id(), 'pwll_post_status', true );
+	$has_premium_access = pwll_user_has_premium_access( $current_user_id );
 
 	$pwll_atmosphere           = xbox_get_field_value( 'pwll-options', 'pwll-atmosphere', 'dark' );
 	$pwll_main_color           = xbox_get_field_value( 'pwll-options', 'pwll-main-color', '#cc8403' );

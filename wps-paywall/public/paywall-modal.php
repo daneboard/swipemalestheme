@@ -199,7 +199,8 @@ function pwll_unlock_box() {
 				}
 				?>
 				<div class="lifetime-row">
-					<div data-product-id="<?php echo $lifetime_id; ?>" class="pwll-pricing-plan">
+					<div data-product-id="<?php echo $lifetime_id; ?>" class="pwll-pricing-plan pwll-pricing-plan-best">
+						<span class="pwll-best-badge"><?php esc_html_e( 'Best value', 'pwll_lang' ); ?></span>
 						<div class="pwll-plan-title"><?php echo esc_html( 'Lifetime membership', 'pwll_lang' ); ?></div>
 						<div class="pwll-price"><?php echo wc_price( $lifetime_price ); ?></div>
 						<div class="pwll-plan-description"><?php echo esc_html( 'Pay only one time. No subscription.', 'pwll_lang' ); ?></div>
