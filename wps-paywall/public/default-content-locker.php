@@ -5,15 +5,9 @@ function pwll_premium_excerpt( $excerpt ) {
 		return;
 	}
 	global $post;
-	$premium_post                    = get_post_meta( $post->ID, 'pwll_post_status', true );
-	$unlock_button_text              = xbox_get_field_value( 'pwll-options', 'pwll-locked-content-area-text', 'Unlock Video' );
-	$current_user_id                 = get_current_user_id();
-	$has_premium_access              = 'on' === get_user_meta( $current_user_id, '_has_premium_access', true );
-	$pwll_navigate_as_premium_member = xbox_get_field_value( 'pwll-options', 'pwll-navigate-as-premium-member', 'off' );
-	if ( $pwll_navigate_as_premium_member && current_user_can( 'administrator' ) ) {
-		$has_premium_access = true;
-	}
-	if ( ! $premium_post || $has_premium_access ) {
+	$premium_post       = get_post_meta( $post->ID, 'pwll_post_status', true );
+	$unlock_button_text = xbox_get_field_value( 'pwll-options', 'pwll-locked-content-area-text', 'Unlock Video' );
+	if ( ! $premium_post || pwll_user_has_premium_access() ) {
 		return $excerpt;
 	}
 	$lock_icon     = xbox_get_field_value( 'pwll-options', 'pwll-badge-icon', 'lock' );
@@ -45,14 +39,8 @@ function pwll_premium_excerpt( $excerpt ) {
 
 add_filter( 'post_thumbnail_html', 'pwll_premium_featured_image', 10, 3 );
 function pwll_premium_featured_image( $html, $post_id, $post_image_id ) {
-	$premium_post                    = get_post_meta( $post_id, 'pwll_post_status', true );
-	$current_user_id                 = get_current_user_id();
-	$has_premium_access              = 'on' === get_user_meta( $current_user_id, '_has_premium_access', true );
-	$pwll_navigate_as_premium_member = xbox_get_field_value( 'pwll-options', 'pwll-navigate-as-premium-member', 'off' );
-	if ( $pwll_navigate_as_premium_member === 'on' && current_user_can( 'administrator' ) ) {
-		$has_premium_access = true;
-	}
-	if ( ! $premium_post || $has_premium_access ) {
+	$premium_post = get_post_meta( $post_id, 'pwll_post_status', true );
+	if ( ! $premium_post || pwll_user_has_premium_access() ) {
 		return $html;
 	}
 	if ( ! is_single() ) {
@@ -64,14 +52,8 @@ function pwll_premium_featured_image( $html, $post_id, $post_image_id ) {
 add_filter( 'the_content', 'pwll_premium_content', -1 );
 function pwll_premium_content( $content ) {
 	global $post;
-	$premium_post                    = get_post_meta( $post->ID, 'pwll_post_status', true );
-	$current_user_id                 = get_current_user_id();
-	$has_premium_access              = 'on' === get_user_meta( $current_user_id, '_has_premium_access', true );
-	$pwll_navigate_as_premium_member = xbox_get_field_value( 'pwll-options', 'pwll-navigate-as-premium-member', 'off' );
-	if ( $pwll_navigate_as_premium_member === 'on' && current_user_can( 'administrator' ) ) {
-		$has_premium_access = true;
-	}
-	if ( ! $premium_post || $has_premium_access ) {
+	$premium_post = get_post_meta( $post->ID, 'pwll_post_status', true );
+	if ( ! $premium_post || pwll_user_has_premium_access() ) {
 		return $content;
 	}
 	$unlock_button_text = xbox_get_field_value( 'pwll-options', 'pwll-locked-content-area-text', 'Unlock Video' );

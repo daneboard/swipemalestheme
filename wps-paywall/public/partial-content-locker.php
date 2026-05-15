@@ -8,13 +8,7 @@ function pwll_single_set_up_buffer() {
 	if ( $pwll_post_status === 'premium' ) {
 		return;
 	}
-	$current_user_id                 = get_current_user_id();
-	$has_premium_access              = 'on' === get_user_meta( $current_user_id, '_has_premium_access', true );
-	$pwll_navigate_as_premium_member = xbox_get_field_value( 'pwll-options', 'pwll-navigate-as-premium-member', 'off' );
-	if ( $pwll_navigate_as_premium_member === 'on' && current_user_can( 'administrator' ) ) {
-		$has_premium_access = true;
-	}
-	if ( $has_premium_access ) {
+	if ( pwll_user_has_premium_access() ) {
 		return;
 	}
 	eval( WPSCORE()->eval_product_data( 'PWLL', 'pwll_partial_content_locker_eval_1' ) );

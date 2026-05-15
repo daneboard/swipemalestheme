@@ -1,3 +1,14 @@
+/* WPS Paywall — frontend styles.
+ *
+ * Restyled to match the TikSwipe child theme + Ad Removal subscription page:
+ * pure-black background, brand red (#fd0131) accents, radio-pill plan cards,
+ * dark lock overlays. Specificity / !important calibrated to win over the
+ * dynamic-style.php inline overrides (admin-configurable color & atmosphere).
+ *
+ * The class names match the markup emitted by public/paywall-modal.php and
+ * the *-content-locker.php files. Behavior is unchanged.
+ */
+
 body.woocommerce-checkout,
 body.woocommerce-account {
 	font-size: 1rem;
@@ -34,171 +45,126 @@ body .woocommerce form .form-row label.error {
 	font-size: 14px;
 }
 
-.pwll-close-modal {
-	position: absolute;
-	top: -10px;
-	right: -10px;
-	padding: 0;
-	border: 2px solid transparent;
-	border-radius: 100% !important;
-	-webkit-border-radius: 100% !important;
-	-moz-border-radius: 100% !important;
-	width: 30px;
-	height: 30px;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	transition: all 0.2s ease-in-out;
-	cursor: pointer;
-	z-index: 3;
-}
-
-.unlock-box {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	gap: 15px;
-}
-
-.unlock-box .duration {
-	background-color: rgba(0, 0, 0, 0.3);
-	padding: 2px 8px;
-}
-
-.unlock-box .duration svg {
-	position: relative;
-	top: -1px;
-}
-
-.theme-famoustube .video-block,
-.theme-kolortube .video-block,
-.theme-vtube .video-block {
-	position: relative;
-}
-
+/* ============================================================
+   Premium badge (on thumbnails / cards) — dark red pill
+   ============================================================ */
 .pwll-badge {
 	position: absolute;
-	top: 5px;
-	right: 5px;
-	background-color: rgba(0, 0, 0, 0.5);
-	color: #fff;
+	top: 8px;
+	right: 8px;
 	z-index: 999;
-	display: flex !important;
-	justify-content: center;
+	display: inline-flex !important;
 	align-items: center;
-	text-transform: uppercase;
-	font-size: 75%;
-	font-weight: 700;
-	/* height: 20px; */
+	padding: 4px 8px !important;
+	background: #fd0131 !important;
+	color: #fff !important;
+	font-size: 10.5px;
+	font-weight: 800;
 	line-height: 1;
-	padding: 0 !important;
-	letter-spacing: 1px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	border-radius: 999px !important;
+	box-shadow: none !important;
 }
 
 .swiper-slide .pwll-badge {
-	top: calc(50% - 50px);
-	left: 50%;
-	right: inherit;
-	transform: translate(-50%, -50%);
-	border-style: solid;
-	border-width: 1px;
+	top: 14px;
+	left: 14px;
+	right: auto;
+	transform: none;
 }
 
 #load-more-fav-vids-content .media-item .pwll-badge {
-	right: inherit;
-	left: 5px;
+	right: auto;
+	left: 8px;
 }
 
-/* .pwll-badge:hover {
-	background-color: #333333 !important;
-	border-color: #333333 !important;
-} */
-
 .pwll-badge .badge-icon {
-	display: flex;
-	justify-content: center;
+	display: inline-flex;
 	align-items: center;
-	padding: 3px;
-	/* height: 20px; */
+	justify-content: center;
+	padding: 0 !important;
+	background: transparent !important;
 }
 
 .pwll-badge .badge-icon svg {
-	width: 13px;
-	height: 13px;
+	width: 12px;
+	height: 12px;
+	top: 0;
 	position: relative;
-	top: -1px;
+}
+
+.pwll-badge .badge-icon svg path {
+	fill: #fff !important;
 }
 
 .pwll-badge .badge-text {
-	/* height: 20px; */
 	line-height: 1;
-	padding: 0 5px;
+	padding: 0;
 }
 
 aside .pwll-badge {
-	font-size: 70%;
-	padding: 0 !important;
+	font-size: 10px;
 }
 
-aside .pwll-badge svg {
-	width: 15;
-	height: 15px;
-}
-
+/* ============================================================
+   "Unlock Video" lock-button (overlay on thumbnails / single)
+   ============================================================ */
 button.open-pwll-box {
 	border: none;
 	cursor: pointer;
-	transition: all 0.2s ease-in-out;
-	padding: 20px;
+	transition: background .15s, border-color .15s, box-shadow .2s;
+	padding: 16px;
 }
 
-.locked-button {
+body .locked-button {
 	font-size: 1rem;
 	text-align: center;
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	gap: 5px;
+	gap: 8px;
 	text-decoration: none;
-	border-radius: 0;
-	background: rgba(255, 255, 255, 0.8) !important;
-	border: 2px solid rgba(0, 0, 0, 0.05) !important;
-	transition: all 0.2s ease-in-out;
-	color: inherit !important;
+	border-radius: 14px !important;
+	background: rgba(0, 0, 0, 0.65) !important;
+	border: 1px solid rgba(253, 1, 49, 0.4) !important;
+	color: #fff !important;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+}
+
+body .locked-button:hover {
+	background: rgba(0, 0, 0, 0.5) !important;
+	border-color: #fd0131 !important;
+	box-shadow: 0 8px 24px -6px rgba(253, 1, 49, 0.55);
 }
 
 .locked-button svg {
-	width: 26px;
-	height: 26px;
-}
-
-.locked-button:hover {
-	background-color: rgba(255, 255, 255, 0.7) !important;
-	border-style: solid !important;
-	border-color: rgba(0, 0, 0, 0.1) !important;
+	width: 22px;
+	height: 22px;
 }
 
 .locked-button-large {
-	font-size: 26px;
-	font-weight: bold;
+	font-size: 18px;
+	font-weight: 800;
+	text-transform: uppercase;
 	width: 100%;
 	height: 100%;
 	aspect-ratio: 16 / 9;
 }
 
 .locked-button-large svg {
-	width: 46px;
-	height: 46px;
+	width: 38px;
+	height: 38px;
 }
 
 .premium-video-bg {
 	background-repeat: no-repeat;
 	background-size: cover;
+	background-position: center;
+	position: relative;
 }
 
 .theme-kolortube .premium-video-bg,
@@ -213,58 +179,67 @@ button.open-pwll-box {
 	width: 100%;
 	height: 100%;
 	background-position: center;
-	background-size: contain;
+	background-size: cover;
+}
+
+.premium-video-bg::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.7) 100%);
+	pointer-events: none;
 }
 
 .premium-video-bg .locked-button-large {
 	border: none !important;
+	background: transparent !important;
+	position: relative;
+	z-index: 1;
 }
 
-.lock-top {
+.premium-video-bg .locked-button-large:hover {
+	background: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Lock SVG colors — pure white to match the "Unlock" label text. */
+body .lock-top {
 	fill: none;
+	stroke: #fff;
 	stroke-width: 5;
 	stroke-linecap: round;
 	stroke-miterlimit: 10;
 	stroke-dasharray: 300;
 	stroke-dashoffset: 0;
-	transition: all 300ms ease-out;
+	transition: stroke-dashoffset 300ms ease-out;
 }
 
 .lock-top.loaded {
 	stroke-dashoffset: -30;
-	/* stroke: #02ac1e; */
 }
 
-/* .lock-top.loaded ~ .lock-body {
-	fill: #02ac1e;
-} */
 .lock-top.loading {
-	stroke: #000;
-	opacity: 0.3;
+	stroke: rgba(255, 255, 255, 0.4);
 }
-
-/* .lock-outline{
-	fill: #fff;
-} */
 
 .lock-outline {
 	fill: none;
+	stroke: rgba(255, 255, 255, 0.2);
+	stroke-width: 3;
 }
 
-.lock-body {
-	/* fill: #02ac1e; */
+body .lock-body {
+	fill: #fff;
 	opacity: 1;
-	transition: all 300ms ease-out;
+	transition: opacity 300ms ease-out;
 }
 
 .lock-body.loading {
-	/* fill: #000 !important; */
 	opacity: 0.3;
 }
 
 .lock-spinner {
 	fill: none;
-	/* stroke: #000; */
+	stroke: #fff;
 	stroke-width: 5;
 	stroke-linecap: round;
 	stroke-miterlimit: 10;
@@ -276,108 +251,164 @@ button.open-pwll-box {
 	opacity: 1;
 }
 
+/* ============================================================
+   Paywall modal — dark card with red ambient halo
+   ============================================================ */
 .pwll-modal-bg {
 	display: none;
 	position: fixed;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background: rgba(0, 0, 0, 0.8);
+	inset: 0;
+	background: rgba(0, 0, 0, 0.85);
 	z-index: 99999;
 	-webkit-overflow-scrolling: touch;
+	backdrop-filter: blur(2px);
+	-webkit-backdrop-filter: blur(2px);
 }
 
-.pwll-unlock-box {
+body .pwll-unlock-box {
 	display: none;
 	max-height: calc(100% - 30px);
-	width: calc(100% - 30px);
-	max-width: 600px;
-	background: #f5f5f5;
+	width: calc(100% - 24px);
+	max-width: 520px;
+	background: #000;
 	z-index: 99999;
 	position: fixed;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	padding: 0;
-	box-shadow: 0 12px 20px 0px rgb(0 0 0 / 10%);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 20px;
+	box-shadow:
+		0 24px 60px -20px rgba(253, 1, 49, 0.4),
+		0 0 0 1px rgba(253, 1, 49, 0.06);
+	overflow: hidden;
+	color: #fff;
 }
 
-.pwll-unlock-box .pwll-header {
+body .pwll-unlock-box * {
+	box-sizing: border-box;
+}
+
+.pwll-close-modal {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	padding: 0;
+	border: 0 !important;
+	background: rgba(255, 255, 255, 0.08) !important;
+	border-radius: 999px !important;
+	width: 32px;
+	height: 32px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	transition: background .15s, transform .1s;
+	cursor: pointer;
+	z-index: 3;
+}
+
+.pwll-close-modal:hover {
+	background: rgba(253, 1, 49, 0.2) !important;
+}
+
+.pwll-close-modal svg {
+	width: 14px;
+	height: 14px;
+}
+
+.pwll-close-modal svg path {
+	fill: #fff;
+}
+
+body .pwll-unlock-box .pwll-header {
 	position: relative;
-	background-color: #fff;
+	background: transparent;
 	text-align: center;
-	padding: 15px 25px;
+	padding: 28px 24px 6px;
 	z-index: 2;
-	box-shadow: 0 4px 2px -2px rgba(0, 0, 0, 0.07);
+	box-shadow: none;
 }
 
-.pwll-unlock-box .pwll-header h2 {
+body .pwll-unlock-box .pwll-header::before {
+	content: "";
+	position: absolute;
+	top: -40px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 240px;
+	height: 240px;
+	border-radius: 50%;
+	background: radial-gradient(circle, rgba(253, 1, 49, 0.32) 0%, rgba(253, 1, 49, 0) 65%);
+	filter: blur(2px);
+	pointer-events: none;
+	z-index: -1;
+}
+
+body .pwll-unlock-box .pwll-header h2 {
+	position: relative;
 	margin: 0;
-	font-size: 20px;
-	font-weight: bold;
-	text-transform: inherit;
-	line-height: 1.4;
-	color: #333 !important;
+	font-size: 24px;
+	font-weight: 800;
+	letter-spacing: -0.5px;
+	line-height: 1.2;
+	text-transform: none;
+	color: #fff !important;
+	padding: 0 !important;
 }
 
-.pwll-unlock-box .pwll-header p {
-	margin-bottom: 0;
-	opacity: 0.8;
-}
-
-.pwll-unlock-box .pwll-content {
-	padding: 0 30px;
-	font-size: 16px;
-	max-height: calc(100vh - 150px);
+body .pwll-unlock-box .pwll-content {
+	padding: 6px 22px 26px;
+	font-size: 14px;
+	max-height: calc(100vh - 80px);
 	overflow-y: auto;
+	color: #fff;
 }
 
-/* Width */
 .pwll-unlock-box .pwll-content::-webkit-scrollbar {
-	width: 10px;
+	width: 8px;
 }
 
-/* Track */
 .pwll-unlock-box .pwll-content::-webkit-scrollbar-track {
-	background: #ddd;
+	background: #000;
 }
 
-/* Handle */
 .pwll-unlock-box .pwll-content::-webkit-scrollbar-thumb {
-	background: #ccc;
+	background: rgba(255, 255, 255, 0.12);
+	border-radius: 8px;
+}
+
+.pwll-unlock-box .pwll-content::-webkit-scrollbar-thumb:hover {
+	background: #fd0131 !important;
 }
 
 .pwll-unlock-box .pwll-content .woocommerce {
-	margin-top: 25px;
+	margin-top: 18px;
 }
 
-.pwll-unlock-box .pwll-content .membership-desc {
+body .pwll-unlock-box .pwll-content .membership-desc {
 	display: block;
-	color: #333;
-	margin: 20px 0;
-	font-size: 14px;
+	color: rgba(255, 255, 255, 0.65);
+	margin: 4px 0 20px;
+	font-size: 13px;
 	text-align: center;
+	line-height: 1.5;
 }
 
-.pwll-unlock-box .pwll-content label {
-	color: #555;
-	font-size: 14px;
+body .pwll-unlock-box .pwll-content label {
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 13px;
 	margin-bottom: 5px;
-	font-weight: bold;
+	font-weight: 600;
 }
 
-.pwll-unlock-box h3 {
-	text-transform: inherit;
-	letter-spacing: -0.5px;
-	color: #555 !important;
-	font-size: 20px;
-	font-weight: bold;
-	margin: 0 0 20px;
-}
-
-.pwll-unlock-box h3.plan-select {
-	margin-left: 40px;
+body .pwll-unlock-box h3 {
+	color: #fff !important;
+	font-size: 16px;
+	font-weight: 700;
+	margin: 0 0 14px;
+	text-transform: none;
+	letter-spacing: -0.2px;
 }
 
 body.woocommerce-checkout h3 {
@@ -386,10 +417,312 @@ body.woocommerce-checkout h3 {
 	font-weight: bold;
 }
 
+/* ============================================================
+   Plan cards (radio-pill rows, red glow when selected)
+   ============================================================ */
+.subscription-row {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin: 6px 0 0;
+}
+
+.lifetime-row {
+	margin-top: 10px;
+}
+
+body .pwll-pricing-plan {
+	position: relative;
+	display: grid;
+	grid-template-columns: 1fr auto;
+	column-gap: 14px;
+	row-gap: 2px;
+	align-items: center;
+	padding: 16px;
+	margin: 0;
+	background: #000 !important;
+	border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+	border-radius: 14px !important;
+	cursor: pointer;
+	color: #fff !important;
+	font-weight: 400;
+	text-align: left;
+	text-decoration: none !important;
+	opacity: 1;
+	flex: 1;
+	box-sizing: border-box;
+	transition: border-color .15s, background .15s, box-shadow .2s;
+}
+
+body .pwll-pricing-plan:hover,
+body .pwll-pricing-plan:focus {
+	border-color: #fd0131 !important;
+	background: linear-gradient(180deg, rgba(253, 1, 49, 0.1) 0%, rgba(253, 1, 49, 0.04) 100%) !important;
+	box-shadow: 0 8px 24px -10px rgba(253, 1, 49, 0.55);
+	opacity: 1;
+	color: #fff !important;
+	text-decoration: none !important;
+}
+
+body .pwll-pricing-plan:hover .pwll-price,
+body .pwll-pricing-plan:focus .pwll-price {
+	color: #fd0131;
+}
+
+body .pwll-plan-title {
+	grid-column: 1;
+	grid-row: 1;
+	display: block;
+	font-size: 15px;
+	font-weight: 700;
+	color: #fff !important;
+	text-transform: none;
+	letter-spacing: 0;
+	margin: 0;
+	text-align: left;
+	line-height: 1.2;
+}
+
+body .pwll-plan-title::before {
+	display: none;
+	content: none;
+}
+
+body .pwll-plan-description {
+	grid-column: 1;
+	grid-row: 2;
+	font-size: 11.5px;
+	color: rgba(255, 255, 255, 0.55);
+	line-height: 1.35;
+	margin: 0;
+	text-align: left;
+}
+
+body .pwll-price {
+	grid-column: 2;
+	grid-row: 1 / span 2;
+	align-self: center;
+	justify-self: end;
+	display: inline-flex;
+	align-items: baseline;
+	gap: 1px;
+	text-align: right;
+	margin: 0;
+	font-size: 22px;
+	font-weight: 800;
+	color: #fff;
+	line-height: 1;
+	white-space: nowrap;
+	transition: color .15s;
+}
+
+.pwll-price-currency {
+	font-size: 14px;
+	color: rgba(255, 255, 255, 0.5);
+	font-weight: 700;
+}
+
+.pwll-price-amount {
+	font-size: 22px;
+	font-weight: 800;
+}
+
+body .pwll-free-trial {
+	display: inline-block;
+	background: rgba(253, 1, 49, 0.15);
+	color: #fd0131;
+	padding: 3px 10px;
+	border-radius: 999px;
+	font-weight: 700;
+	font-size: 10.5px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+body .pwll-sign-up-fee {
+	display: inline-block;
+	font-style: normal;
+	font-size: 11.5px;
+	color: rgba(255, 255, 255, 0.55);
+	background: rgba(255, 255, 255, 0.06);
+	padding: 3px 10px;
+	border-radius: 999px;
+}
+
+/* Legacy "Most popular" ribbon repurposed as a corner badge. */
+body .pwll-most-popular {
+	position: absolute;
+	top: -10px;
+	right: 14px;
+	left: auto;
+	width: auto;
+	height: auto;
+	margin: 0;
+	border: 0;
+	background: #fd0131 !important;
+	color: #fff !important;
+	font-size: 10px;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	padding: 4px 10px;
+	border-radius: 999px;
+	box-shadow: 0 4px 12px rgba(253, 1, 49, 0.5);
+	line-height: 1.1;
+	display: inline-flex;
+	align-items: center;
+}
+
+body .pwll-pricing-plan:hover .pwll-most-popular {
+	color: #fff !important;
+}
+
+/* "Best value" badge on the lifetime plan (added by paywall-modal.php). */
+.pwll-best-badge {
+	position: absolute;
+	top: -10px;
+	right: 14px;
+	background: #fd0131;
+	color: #fff;
+	font-size: 10px;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	padding: 4px 10px;
+	border-radius: 999px;
+	box-shadow: 0 4px 12px rgba(253, 1, 49, 0.5);
+	line-height: 1.1;
+}
+
+.pwll-plan-discount {
+	position: absolute;
+	right: -5px;
+	top: -5px;
+	background: #fd0131;
+	color: #fff;
+	padding: 3px 8px;
+	font-size: 11px;
+	border-radius: 999px;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+}
+
+/* ============================================================
+   Submit button — "Start Membership"
+   ============================================================ */
+body .pwll-button {
+	font-size: 14px;
+	font-weight: 800;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 14px 18px;
+	color: #fff !important;
+	border: 0 !important;
+	background: linear-gradient(180deg, #ff1a47 0%, #fd0131 100%) !important;
+	outline: 0;
+	text-decoration: none;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	border-radius: 14px !important;
+	transition: transform .08s, box-shadow .2s, background .2s;
+	box-shadow:
+		0 8px 20px -4px rgba(253, 1, 49, 0.55),
+		inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+body .start-membership-button {
+	font-size: 15px;
+	margin: 20px 0 20px;
+	width: 100%;
+}
+
+body .pwll-button:hover,
+body .pwll-button:focus,
+body .pwll-button:active {
+	background: linear-gradient(180deg, #ff2d5a 0%, #ff0f3f 100%) !important;
+	color: #fff !important;
+	text-decoration: none;
+	box-shadow:
+		0 12px 28px -4px rgba(253, 1, 49, 0.7),
+		inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+body .pwll-button:active {
+	transform: translateY(1px);
+}
+
+body .back-button {
+	display: inline-block;
+	text-transform: none;
+	background: rgba(255, 255, 255, 0.08) !important;
+	box-shadow: none;
+}
+
+.pwll-cancel {
+	font-size: 13px;
+	text-align: center;
+	margin: 14px 0 0;
+	color: rgba(255, 255, 255, 0.55);
+}
+
+/* ============================================================
+   Loading overlay
+   ============================================================ */
+.pwll-loading {
+	display: none;
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.65);
+	z-index: 99999;
+	backdrop-filter: blur(2px);
+	-webkit-backdrop-filter: blur(2px);
+}
+
+.pwll-spinner {
+	-webkit-animation: pwll-rotate 2s linear infinite;
+	animation: pwll-rotate 2s linear infinite;
+	z-index: 2;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	margin: -25px 0 0 -25px;
+	width: 50px;
+	height: 50px;
+}
+
+.pwll-spinner .path {
+	stroke: #fd0131;
+	stroke-linecap: round;
+	-webkit-animation: pwll-dash 1.5s ease-in-out infinite;
+	animation: pwll-dash 1.5s ease-in-out infinite;
+}
+
+@-webkit-keyframes pwll-rotate {
+	100% { transform: rotate(360deg); }
+}
+@keyframes pwll-rotate {
+	100% { transform: rotate(360deg); }
+}
+@-webkit-keyframes pwll-dash {
+	0%   { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+	50%  { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+	100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+}
+@keyframes pwll-dash {
+	0%   { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+	50%  { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+	100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+}
+
+/* ============================================================
+   WooCommerce checkout (kept; dark-themed)
+   ============================================================ */
 body form #order_review_heading:not(.elementor-widget-woocommerce-checkout-page #order_review_heading) {
 	padding: 0;
 	border: none;
 	margin: 15px 0;
+	color: #fff;
 }
 
 body form #order_review:not(.elementor-widget-woocommerce-checkout-page #order_review) {
@@ -429,227 +762,36 @@ body .payment_box fieldset p:first-of-type {
 .pwll-unlock-box .woocommerce input,
 .pwll-unlock-box .woocommerce select,
 .pwll-unlock-box .woocommerce textarea {
-	background-color: #fff;
-	border: 1px solid #e5e5e5;
+	background: #000 !important;
+	border: 1px solid rgba(255, 255, 255, 0.14) !important;
 	box-shadow: none;
-	color: #555;
+	color: #fff !important;
 	font-weight: 400;
 	transition: border-color 0.2s ease-in-out;
+	border-radius: 12px !important;
+}
+
+.pwll-unlock-box .woocommerce input:focus,
+.pwll-unlock-box .woocommerce select:focus,
+.pwll-unlock-box .woocommerce textarea:focus {
+	border-color: #fd0131 !important;
+	outline: none;
 }
 
 .pwll-unlock-box .woocommerce input,
 .pwll-unlock-box .woocommerce select {
-	height: 35px;
-	padding: 0 10px;
-}
-
-.subscription-row {
-	display: grid;
-	/* grid-template-columns: repeat(2, 1fr); */
-	gap: 15px;
-	margin: 20px 0 0;
-}
-
-.lifetime-row {
-	margin-top: 20px;
-}
-
-.pwll-pricing-plan {
-	position: relative;
-	background-color: #fff;
-	padding: 15px 15px 0;
-	border-width: 2px;
-	border-style: solid;
-	border-color: #e5e5e5;
-	-webkit-transition: all .1s ease-out;
-	-moz-transition: all .1s ease-out;
-	-ms-transition: all .1s ease-out;
-	-o-transition: all .1s ease-out;
-	transition: all .1s ease-out;
-	cursor: pointer;
-	flex: 1;
-	text-align: center;
-	opacity: 0.8;
-	z-index: 1;
-	box-sizing: initial;
-}
-
-.pwll-pricing-plan.checked {
-	opacity: 1;
-}
-
-.pwll-cancel {
-	font-size: 14px;
-	text-align: center;
-	margin: 20px 0 0;
-}
-
-.pwll-price {
-	text-align: center;
-	margin: 5px 0 0;
-	font-size: 30px;
-	font-weight: bold;
-	color: #555;
-}
-
-.pwll-most-popular {
-	background-color: #e5e5e5;
-	position: absolute;
-	color: #222;
-	top: -22px;
-	width: 100%;
-	left: 0;
-	border-width: 2px;
-	border-style: solid;
-	border-color: #e5e5e5;
-	margin: 0 -2px;
-	text-transform: uppercase;
-	font-weight: 600;
-	font-size: 12px;
-	height: 25px;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	line-height: 0;
-	box-sizing: initial;
-	-webkit-transition: all .1s ease-out;
-	-moz-transition: all .1s ease-out;
-	-ms-transition: all .1s ease-out;
-	-o-transition: all .1s ease-out;
-	transition: all .1s ease-out;
-}
-
-.pwll-pricing-plan.checked .pwll-most-popular,
-.pwll-pricing-plan:hover .pwll-most-popular {
-	color: #fff;
-}
-
-.pwll-price .woocommerce-Price-amount span.woocommerce-Price-currencySymbol {
-	font-size: 65%;
-	position: relative;
-	top: -6px;
-}
-
-.pwll-price .woocommerce-Price-amount span.decimals {
-	position: relative;
-	font-size: 65%;
-	top: -7px;
-}
-
-.pwll-price .per-month {
-	text-transform: uppercase;
-	font-size: 45%;
-	margin-left: 2px;
-	position: relative;
-	top: -2px;
-}
-
-.pwll-plan-discount {
-	position: absolute;
-	right: -5px;
-	top: -5px;
-	background: #ffd90f;
-	padding: 2px 6px;
-	font-size: 13px;
-	border-radius: 3px;
-	font-weight: 600;
-}
-
-.pwll-plan-title {
-	text-transform: uppercase;
-	font-size: 15px;
-	font-weight: 600;
-	text-align: center;
-	display: flex;
-	gap: 6px;
-	justify-content: center;
-	align-items: center;
-	color: #333;
-	margin-bottom: 10px;
-}
-
-.pwll-plan-title::before {
-	content: '';
-	width: 20px;
-	min-width: 20px;
-	height: 20px;
-	background-color: #e5e5e5;
-	background-repeat: no-repeat;
-	-webkit-border-radius: 100%;
-	-moz-border-radius: 100%;
-	border-radius: 100%;
-	display: block;
-}
-
-.pwll-pricing-plan.checked .pwll-plan-title::before {
-	background-size: 12px;
-	background-image: url('../img/check.svg');
-	background-position: center;
-}
-
-.pwll-plan-description {
-	font-size: 9px;
-	margin: 5px 0 17px;
-	color: #555;
-	line-height: 1.7;
-}
-
-.pwll-bottom-plan {
-	display: flex;
-	gap: 15px;
-	justify-content: center;
-	align-items: center;
-	margin-bottom: 17px;
-}
-
-.pwll-free-trial {
-	display: inline-block;
-	background-color: rgba(0, 0, 0, 0.6);
-	padding: 5px 15px;
-	border-radius: 30px;
-	color: #fff;
-	font-weight: 700;
-	font-size: 13px;
-	letter-spacing: 1px;
-	text-transform: uppercase;
-}
-
-.pwll-sign-up-fee {
-	font-style: italic;
-	font-size: 14px;
-}
-
-.pwll-loading {
-	display: none;
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background-color: rgba(0, 0, 0, 0.5);
-	z-index: 99999;
-}
-
-body .woocommerce #payment #place_order,
-body .woocommerce-page #payment #place_order {
-	float: none;
-	font-size: 20px;
-	transition: all 0.2s ease-in-out;
-}
-
-body .pwll-content .woocommerce #payment #place_order:hover,
-body .pwll-content .woocommerce-page #payment #place_order:hover,
-body .pwll-close-modal:hover {
-	background-color: #333 !important;
-	border-color: #333 !important;
+	height: 42px;
+	padding: 0 12px;
 }
 
 body #add_payment_method #payment div.payment_box,
 body .woocommerce-cart #payment div.payment_box,
 body .woocommerce-checkout #payment div.payment_box {
-	padding: 10px 15px;
-	background: rgba(0, 0, 0, 0.025);
+	padding: 12px 16px;
+	background: rgba(255, 255, 255, 0.04);
 	margin-top: 10px;
+	border-radius: 12px;
+	color: rgba(255, 255, 255, 0.7);
 }
 
 body .woocommerce form .form-row input.input-text,
@@ -660,24 +802,29 @@ body .woocommerce-cart #payment div.payment_box input.input-text,
 body .woocommerce-cart #payment div.payment_box textarea,
 body .woocommerce-checkout #payment div.payment_box input.input-text,
 body .woocommerce-checkout #payment div.payment_box textarea {
-	border-color: rgba(0, 0, 0, 0.15);
-	height: 40px;
-	line-height: 40px;
+	border-color: rgba(255, 255, 255, 0.14);
+	height: 42px;
+	line-height: 42px;
+	background: #000 !important;
+	color: #fff !important;
 }
 
 body .woocommerce .select2-container--default .select2-selection--single {
-	height: 40px;
-	line-height: 40px;
-	border-color: rgba(0, 0, 0, 0.15);
-	padding: 0 0.75em;
+	height: 42px;
+	line-height: 42px;
+	border-color: rgba(255, 255, 255, 0.14);
+	padding: 0 12px;
+	background: #000;
+	color: #fff;
 }
 
 body .select2-container--default .select2-selection--single .select2-selection__arrow {
-	height: 38px;
+	height: 40px;
 }
 
 body .woocommerce .select2-container--default .select2-selection--single .select2-selection__rendered {
 	line-height: inherit;
+	color: #fff;
 }
 
 body #add_payment_method #payment div.payment_box::before,
@@ -703,14 +850,23 @@ body .woocommerce-checkout #payment div.form-row {
 body .woocommerce-checkout #payment div.form-row.place-order button#place_order {
 	display: block;
 	width: 100%;
-	padding: 20px;
-	border-width: 1px;
-	border-style: solid;
+	padding: 16px;
+	border: 0 !important;
 	margin-top: 1rem;
+	background: linear-gradient(180deg, #ff1a47 0%, #fd0131 100%) !important;
+	color: #fff !important;
+	font-weight: 800 !important;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	border-radius: 14px !important;
+	box-shadow: 0 8px 20px -4px rgba(253, 1, 49, 0.55);
+	transition: background .2s, box-shadow .2s, transform .08s;
 }
 
 body .woocommerce-checkout #payment div.form-row.place-order button#place_order:hover {
-	background-color: transparent !important;
+	background: linear-gradient(180deg, #ff2d5a 0%, #ff0f3f 100%) !important;
+	color: #fff !important;
+	box-shadow: 0 12px 28px -4px rgba(253, 1, 49, 0.7);
 }
 
 body #add_payment_method #payment ul.payment_methods li,
@@ -723,6 +879,7 @@ body #add_payment_method #payment ul.payment_methods li label,
 body .woocommerce-cart #payment ul.payment_methods li label,
 body .woocommerce-checkout #payment ul.payment_methods li label {
 	cursor: pointer;
+	color: #fff;
 }
 
 body #add_payment_method #payment div.payment_box .wc-credit-card-form label,
@@ -736,14 +893,14 @@ body #add_payment_method #payment,
 body .woocommerce-cart #payment,
 body .woocommerce-checkout #payment,
 body .pwll-unlock-box .pwll-content #place_order {
-	background-color: transparent !important;
+	background: transparent !important;
 	border-radius: 0;
 }
 
 .woocommerce-account-fields,
 .woocommerce-order-details .order-again,
 .woocommerce_account_subscriptions .no_subscriptions .woocommerce-Button {
-	display: none !important
+	display: none !important;
 }
 
 .woocommerce-page.woocommerce-checkout form #order_review table tr.cart-subtotal,
@@ -753,43 +910,9 @@ body .pwll-unlock-box .pwll-content #place_order {
 	display: none;
 }
 
-.pwll-button {
-	font-size: 1rem;
-	font-weight: bold;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	padding: 12px 18px;
-	color: #fff;
-	border-width: 2px;
-	border-style: solid;
-	outline: 0;
-	text-decoration: none;
-	transition: all 0.15s ease-in-out;
-}
-
-.start-membership-button {
-	font-size: 20px;
-	text-transform: uppercase;
-	margin: 20px 0 40px;
-}
-
-.back-button {
-	display: inline-block;
-	text-transform: inherit;
-}
-
-.pwll-button:hover,
-.pwll-button:focus,
-.pwll-button:active {
-	background: transparent !important;
-	color: #333;
-	text-decoration: none;
-}
-
 .pwll-checkout {
 	display: flex;
-	gap: 50px;
+	gap: 40px;
 	justify-content: space-between;
 }
 
@@ -810,11 +933,13 @@ body .woocommerce-checkout #payment ul.payment_methods li input {
 
 .woocommerce-checkout-payment input[type=checkbox],
 .woocommerce-checkout-payment input[type=radio] {
+	--active: #fd0131;
 	--active-inner: #fff;
-	--border: #bbc1e1;
-	--background: #fff;
-	--disabled: #f6f8ff;
-	--disabled-inner: #e1e6f9;
+	--border: rgba(255, 255, 255, 0.25);
+	--border-hover: #fd0131;
+	--background: rgba(255, 255, 255, 0.05);
+	--disabled: rgba(255, 255, 255, 0.05);
+	--disabled-inner: rgba(255, 255, 255, 0.15);
 	-webkit-appearance: none;
 	-moz-appearance: none;
 	height: 21px;
@@ -893,6 +1018,7 @@ body .woocommerce-checkout #payment ul.payment_methods li input {
 	vertical-align: top;
 	cursor: pointer;
 	margin-left: 4px;
+	color: #fff;
 }
 
 .woocommerce-checkout-payment input[type=checkbox]+label {
@@ -964,101 +1090,74 @@ body .woocommerce-checkout #payment ul.payment_methods li input {
 	flex: 1;
 }
 
-.pwll-spinner {
-	-webkit-animation: rotate 2s linear infinite;
-	animation: rotate 2s linear infinite;
-	z-index: 2;
+/* ============================================================
+   Misc legacy odds & ends
+   ============================================================ */
+.unlock-box {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	margin: -25px 0 0 -25px;
-	width: 50px;
-	height: 50px;
+	transform: translate(-50%, -50%);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 12px;
 }
 
-.pwll-spinner .path {
-	stroke: #ffffff;
-	stroke-linecap: round;
-	-webkit-animation: dash 1.5s ease-in-out infinite;
-	animation: dash 1.5s ease-in-out infinite;
+.unlock-box .duration {
+	background: rgba(0, 0, 0, 0.4);
+	padding: 2px 8px;
+	color: #fff;
 }
 
-@-webkit-keyframes rotate {
-	100% {
-		transform: rotate(360deg);
-	}
+.unlock-box .duration svg {
+	position: relative;
+	top: -1px;
 }
 
-@keyframes rotate {
-	100% {
-		transform: rotate(360deg);
-	}
+.theme-famoustube .video-block,
+.theme-kolortube .video-block,
+.theme-vtube .video-block {
+	position: relative;
 }
 
-@-webkit-keyframes dash {
-	0% {
-		stroke-dasharray: 1, 150;
-		stroke-dashoffset: 0;
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 480px) {
+	body .pwll-unlock-box {
+		width: calc(100% - 16px);
+		border-radius: 18px;
 	}
-
-	50% {
-		stroke-dasharray: 90, 150;
-		stroke-dashoffset: -35;
+	body .pwll-unlock-box .pwll-header {
+		padding: 24px 20px 4px;
 	}
-
-	100% {
-		stroke-dasharray: 90, 150;
-		stroke-dashoffset: -124;
+	body .pwll-unlock-box .pwll-header h2 {
+		font-size: 22px;
 	}
-}
-
-@keyframes dash {
-	0% {
-		stroke-dasharray: 1, 150;
-		stroke-dashoffset: 0;
+	body .pwll-unlock-box .pwll-content {
+		padding: 6px 18px 22px;
 	}
-
-	50% {
-		stroke-dasharray: 90, 150;
-		stroke-dashoffset: -35;
+	body .pwll-pricing-plan {
+		padding: 14px;
+		column-gap: 12px;
 	}
-
-	100% {
-		stroke-dasharray: 90, 150;
-		stroke-dashoffset: -124;
-	}
-}
-
-@media (max-width: 991.98px) {
-	.pwll-checkout {
-		flex-direction: column;
-		gap: 0;
-	}
-
-	.pwll-unlock-box .pwll-content {
-		padding: 0 20px;
-	}
-
-	.locked-button-large {
-		font-size: 20px;
-	}
-
-	.locked-button-large svg {
-		width: 36px;
-		height: 36px;
-	}
-}
-
-@media (max-width: 767.98px) {
-	.pwll-plan-title {
+	body .pwll-plan-title {
 		font-size: 14px;
 	}
-
-	.pwll-price {
-		font-size: 26px;
+	body .pwll-price {
+		font-size: 20px;
 	}
-
-	.theme-tikswipe .premium-video-bg {
-		background-size: cover;
+	body .start-membership-button {
+		font-size: 14px;
+		padding: 14px 16px;
+	}
+	.locked-button-large {
+		font-size: 16px;
+	}
+	.locked-button-large svg {
+		width: 34px;
+		height: 34px;
 	}
 }

@@ -68,6 +68,7 @@ final class PWLL {
 			self::$instance->load_textdomain();
 			require_once PWLL_DIR . 'config.php';
 			require_once PWLL_DIR . 'admin/pages/page-options-x.php';
+			require_once PWLL_DIR . 'inc/ad-removal-compat.php';
 			if ( 'WP-Script' === $current_theme_author ) {
 				require_once PWLL_DIR . 'public/custom-content-locker.php';
 			} else {
@@ -284,7 +285,7 @@ final class PWLL {
 		/**
 		 * CSS
 		 */
-		wp_enqueue_style( 'pwll-frontend-style', PWLL_URL . 'public/assets/css/frontend.css', array(), PWLL_VERSION, 'all' );
+		wp_enqueue_style( 'pwll-frontend-style', PWLL_URL . 'public/assets/css/frontend.css', array(), (string) filemtime( PWLL_DIR . 'public/assets/css/frontend.css' ), 'all' );
 
 		/**
 		 * JS
@@ -310,17 +311,13 @@ final class PWLL {
 				$badge_icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"><path fill="#ffffff" d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z"/></svg>';
 				break;
 		}
-		$current_user_id = get_current_user_id();
-		$has_premium_access = 'on' === get_user_meta( $current_user_id, '_has_premium_access', true );
-		$pwll_navigate_as_premium_member = xbox_get_field_value( 'pwll-options', 'pwll-navigate-as-premium-member', 'off' );
-		if( $pwll_navigate_as_premium_member === 'on' && current_user_can('administrator') ){
-			$has_premium_access = true;
-		}
+		$current_user_id    = get_current_user_id();
+		$has_premium_access = pwll_user_has_premium_access( $current_user_id );
 
 		wp_enqueue_script( 'pwll-jquery-validate-js', PWLL_URL . 'public/assets/js/jquery.validate.min.js', array( 'jquery' ), '1.19.5', true );
 
 		$current_theme = wp_get_theme();
-		wp_enqueue_script( 'pwll-frontend-js', PWLL_URL . 'public/assets/js/frontend.js', array( 'jquery' ), PWLL_VERSION, true );
+		wp_enqueue_script( 'pwll-frontend-js', PWLL_URL . 'public/assets/js/frontend.js', array( 'jquery' ), (string) filemtime( PWLL_DIR . 'public/assets/js/frontend.js' ), true );
 
 		eval( WPSCORE()->eval_product_data( 'PWLL', 'pwll_class_pwll_eval_3' ) );
 

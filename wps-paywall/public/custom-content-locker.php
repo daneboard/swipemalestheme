@@ -30,27 +30,16 @@ function pwll_premium_badge( $content, $post_id = null, $params = array() ) {
 		return '';
 	}
 
-	// Return buffer when user has premium access.
-	$has_premium_access = get_user_meta( get_current_user_id(), '_has_premium_access', true );
-	if ( 'on' === $has_premium_access ) {
+	// Return buffer when user has premium access (Woo, Ad-Removal, or admin preview).
+	if ( pwll_user_has_premium_access() ) {
 		return '';
 	}
 
-	$badge_icon     = xbox_get_field_value( 'pwll-options', 'pwll-badge-icon', 'lock' );
-	$badge_icon_svg = '';
-	switch ( $badge_icon ) {
-		case 'lock':
-			$badge_icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"><path fill="#ffffff" d="M18 10v-4c0-3.313-2.687-6-6-6s-6 2.687-6 6v4h-3v14h18v-14h-3zm-10 0v-4c0-2.206 1.794-4 4-4s4 1.794 4 4v4h-8z"/></svg>';
-			break;
-		case 'star':
-			$badge_icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"><path fill="#ffffff" d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z"/></svg>';
-			break;
-	}
 	$badge_text = xbox_get_field_value( 'pwll-options', 'pwll-badge-text', 'Premium' );
 
 	$style = isset( $params['style'] ) ? $params['style'] : '';
 
-	return '<div class="pwll-badge" style="' . esc_attr( $style ) . '"><span class="badge-icon">' . $badge_icon_svg . '</span><span class="badge-text">' . $badge_text . '</span></div>';
+	return '<div class="pwll-badge" style="' . esc_attr( $style ) . '"><span class="badge-text">' . $badge_text . '</span></div>';
 }
 
 add_filter( 'wps_paywall_media_content', 'pwll_media_content_locker', 10, 2 );
@@ -85,15 +74,8 @@ function pwll_media_content_locker( $content, $post_id ) {
 		return $content;
 	}
 
-	// Return default content when user has premium access.
-	$has_premium_access = get_user_meta( get_current_user_id(), '_has_premium_access', true );
-	if ( 'on' === $has_premium_access ) {
-		return $content;
-	}
-
-	// Return default content when admin navigates as premium member.
-	$pwll_navigate_as_premium_member = xbox_get_field_value( 'pwll-options', 'pwll-navigate-as-premium-member', 'off' );
-	if ( 'on' === $pwll_navigate_as_premium_member && current_user_can( 'manage_options' ) ) {
+	// Return default content when user has premium access (Woo, Ad-Removal, or admin preview).
+	if ( pwll_user_has_premium_access() ) {
 		return $content;
 	}
 

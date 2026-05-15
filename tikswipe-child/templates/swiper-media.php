@@ -49,7 +49,6 @@ if ( 'video' === $post_format ) {
 
 	<?php echo $meta_items; ?>
 
-	<?php echo apply_filters( 'wps_paywall_premium_badge', '', get_the_id() ); ?>
 	<?php
 	ob_start(
 		function ( $buffer ) {
