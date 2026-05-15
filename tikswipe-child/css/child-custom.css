@@ -307,20 +307,20 @@ body.wpst-is-fullscreen .wpst-pwa-btn {
     height: auto !important;
 }
 
-/* "Remove Ads" CTA in the home header — same pill geometry as the old PWA
-   button, brand red so it stands out against the video reel behind it. */
+/* "Remove Ads" CTA in the home header — inherits the discreet pill look
+   from .wpst-pwa-btn (translucent black + white text). The brand-red
+   shield icon is the only color accent, so the button doesn't compete
+   with the video reel behind it. */
 .tsar-remove-ads-btn {
     display: inline-flex !important;
     align-items: center;
     gap: 6px;
-    background: #fd0131 !important;
     color: #fff !important;
     text-decoration: none;
-    box-shadow: 0 4px 14px -2px rgba(253, 1, 49, 0.55);
     transition: background .15s, transform .05s;
 }
 .tsar-remove-ads-btn:hover {
-    background: #e1012b !important;
+    background: rgba(0, 0, 0, 0.85) !important;
     color: #fff !important;
 }
 .tsar-remove-ads-btn:active {

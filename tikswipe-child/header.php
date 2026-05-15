@@ -64,8 +64,8 @@ if ( wp_is_mobile() ) :
 					?>
 					<a class="wpst-pwa-btn tsar-remove-ads-btn" href="<?php echo esc_url( tsar_subscription_url() ); ?>">
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-							<path d="M12 2L4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3z" fill="currentColor"/>
-							<path d="M8.5 12l2.5 2.5L16 9.5" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+							<path d="M12 2L4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3z" fill="#fd0131"/>
+							<path d="M8.5 12l2.5 2.5L16 9.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
 						</svg>
 						<span><?php esc_html_e( 'Remove Ads', 'tikswipe-child' ); ?></span>
 					</a>
