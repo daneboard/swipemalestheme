@@ -70,6 +70,7 @@ class TSS_Admin {
 			array(
 				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
 				'nonce'       => wp_create_nonce( 'tss_admin' ),
+				'iconSvg'     => tss_dashicon_svg_map(),
 				'i18n'        => array(
 					'pickImage'    => __( 'Select image', 'tikswipe-shop' ),
 					'useImage'     => __( 'Use this image', 'tikswipe-shop' ),

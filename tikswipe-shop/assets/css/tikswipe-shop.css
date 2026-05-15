@@ -135,6 +135,13 @@
 	height: 13px;
 	color: inherit;
 }
+.tss-shop-card__tag .tss-svg-icon {
+	width: 13px;
+	height: 13px;
+	display: inline-block;
+	flex: 0 0 auto;
+	color: inherit;
+}
 .tss-shop-card__tag .tss-tag-icon-img {
 	width: 13px;
 	height: 13px;

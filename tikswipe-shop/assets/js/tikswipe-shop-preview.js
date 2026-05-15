@@ -43,7 +43,11 @@
 		if (iconImg) {
 			iconHtml = '<img class="tss-tag-icon-img" src="' + escapeHtml(iconImg) + '" alt="">';
 		} else if (dashicon) {
-			iconHtml = '<span class="dashicons dashicons-' + escapeHtml(dashicon) + '" aria-hidden="true"></span>';
+			// Prefer the same inline SVG the frontend uses (server-side
+			// rendered, passed via wp_localize_script) so the preview is
+			// pixel-identical and doesn't rely on the dashicons font.
+			var svg = (window.tssAdmin && window.tssAdmin.iconSvg && window.tssAdmin.iconSvg[dashicon]) || '';
+			iconHtml = svg ? svg : '<span class="dashicons dashicons-' + escapeHtml(dashicon) + '" aria-hidden="true"></span>';
 		}
 
 		return {

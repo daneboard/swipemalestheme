@@ -77,7 +77,72 @@ function tss_get_tag_icon_url( $item_id ) {
 }
 
 /**
- * Build the HTML for the tag's icon. Custom image > Dashicon > empty.
+ * Inline SVG markup for each curated Dashicon. Used by the frontend so the
+ * tag icon renders even when the dashicons font isn't loaded (optimizers
+ * often strip it from non-admin pages, leaving a missing-glyph square).
+ *
+ * @param string $slug Dashicon slug.
+ * @param int    $size Pixels.
+ * @return string SVG element or empty string if no match.
+ */
+function tss_inline_icon_svg( $slug, $size = 14 ) {
+	$paths = array(
+		'cart'              => '<path d="M3 4a1 1 0 0 1 1-1h2.2a1.5 1.5 0 0 1 1.46 1.16L8 6h12.5a1 1 0 0 1 .97 1.26l-2 7A1 1 0 0 1 18.5 15H9.4l-.34 1.5H19a1 1 0 0 1 0 2H8a1 1 0 0 1-.98-1.22L8.5 11 6.7 5H4a1 1 0 0 1-1-1Zm6 17.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/>',
+		'store'             => '<path d="M4.4 4h15.2l1.3 4.05a2.7 2.7 0 0 1-5 2.05 2.7 2.7 0 0 1-4.95 0 2.7 2.7 0 0 1-4.95 0A2.7 2.7 0 0 1 1 8.05L2.3 4ZM4 11.86c.6.3 1.3.45 2 .43.95 0 1.85-.28 2.5-.78.65.5 1.55.78 2.5.78s1.85-.28 2.5-.78c.65.5 1.55.78 2.5.78.7.02 1.4-.13 2-.43V20H4v-8.14Zm3 1.64h6v4H7v-4Z"/>',
+		'tag'               => '<path d="M11.6 2.4 21 11.8a2 2 0 0 1 0 2.8L13.6 22a2 2 0 0 1-2.8 0L1.4 12.6A2 2 0 0 1 .8 11l.4-7a2 2 0 0 1 2-2l7-.4a2 2 0 0 1 1.4.6ZM6.5 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>',
+		'tickets-alt'       => '<path d="M2 7a1 1 0 0 1 1-1h18a1 1 0 0 1 1 1v3a2 2 0 0 0 0 4v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3a2 2 0 0 0 0-4V7Zm7 1.5a.5.5 0 0 0-.5.5v6a.5.5 0 0 0 1 0V9a.5.5 0 0 0-.5-.5Z"/>',
+		'money-alt'         => '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm.9 14.7v1.1a.9.9 0 1 1-1.8 0v-1.1a4 4 0 0 1-3-2.6.9.9 0 0 1 1.7-.55c.4 1 1.3 1.65 2.4 1.65 1.3 0 2.1-.6 2.1-1.5 0-.9-.7-1.3-2.4-1.7-2-.5-3.6-1.2-3.6-3.2 0-1.5 1.05-2.7 2.8-3v-1.1a.9.9 0 1 1 1.8 0v1.1c1.4.2 2.4 1 2.8 2.2a.9.9 0 0 1-1.7.55c-.3-.8-1-1.25-2-1.25-1.2 0-1.9.55-1.9 1.35 0 .85.7 1.2 2.3 1.6 2.1.55 3.7 1.25 3.7 3.3 0 1.65-1.1 2.85-3.2 3.15Z"/>',
+		'products'          => '<path d="M3 6h18v2H3V6Zm1 4h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10Zm5-7h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1Zm.5 9a1 1 0 0 0 0 2h5a1 1 0 1 0 0-2h-5Z"/>',
+		'star-filled'       => '<path d="M12 2.5a.8.8 0 0 1 .72.46l2.7 5.66 6.16.88a.8.8 0 0 1 .45 1.37l-4.5 4.4 1.07 6.16a.8.8 0 0 1-1.18.85L12 19.4l-5.42 2.88a.8.8 0 0 1-1.18-.85l1.07-6.15-4.5-4.4a.8.8 0 0 1 .45-1.38l6.16-.88 2.7-5.66A.8.8 0 0 1 12 2.5Z"/>',
+		'awards'            => '<path d="M5 3h14v3a5 5 0 0 1-3.5 4.77A4.5 4.5 0 0 1 13 13.92V17h2.5a.5.5 0 0 1 .5.5V19h2v2H6v-2h2v-1.5a.5.5 0 0 1 .5-.5H11v-3.08a4.5 4.5 0 0 1-2.5-3.15A5 5 0 0 1 5 6V3Zm0 2v1a3 3 0 0 0 1.5 2.6V5H5Zm12.5 0v3.6A3 3 0 0 0 19 6V5h-1.5Z"/>',
+		'heart'             => '<path d="M12 21s-7.5-4.5-9.5-9A5.5 5.5 0 0 1 12 6.5 5.5 5.5 0 0 1 21.5 12c-2 4.5-9.5 9-9.5 9Z"/>',
+		'thumbs-up'         => '<path d="M2 11a2 2 0 0 1 2-2h2v12H4a2 2 0 0 1-2-2v-8Zm6-2 4-7c1.5 0 3 1 3 3v3h5a2 2 0 0 1 2 2.2L20.7 19a2 2 0 0 1-2 1.8H8V9Z"/>',
+		'yes-alt'           => '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm5 7.3-6.3 7a.9.9 0 0 1-1.35.05L6.5 13.4a.9.9 0 0 1 1.3-1.25l2.15 2.2 5.65-6.3A.9.9 0 0 1 17 9.3Z"/>',
+		'clock'             => '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm.9 5.5a.9.9 0 0 0-1.8 0v5l.05.3.15.25 3 3a.9.9 0 0 0 1.3-1.3l-2.7-2.7v-4.55Z"/>',
+		'info'              => '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 3.5a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6Zm1.5 11.5h-3a.7.7 0 0 1 0-1.4h.8v-3.6h-.6a.7.7 0 0 1 0-1.4h1.5a.7.7 0 0 1 .7.7v4.3h.6a.7.7 0 0 1 0 1.4Z"/>',
+		'warning'           => '<path d="M11.13 3.05a1 1 0 0 1 1.74 0l9.8 17a1 1 0 0 1-.87 1.5H2.2a1 1 0 0 1-.87-1.5l9.8-17ZM12 9a.9.9 0 0 0-.9.9v4.3a.9.9 0 0 0 1.8 0V9.9A.9.9 0 0 0 12 9Zm0 8.6a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Z"/>',
+		'megaphone'         => '<path d="M3 9a3 3 0 0 1 3-3h2l9-3v18l-9-3H6a3 3 0 0 1-3-3V9Zm5 6.5v3a1.5 1.5 0 0 0 3 0V16l-3-.5Z"/>',
+		'lightbulb'         => '<path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2ZM9 20a1 1 0 0 1 1-1h4a1 1 0 0 1 0 2v.5A1.5 1.5 0 0 1 12.5 23h-1A1.5 1.5 0 0 1 10 21.5V21a1 1 0 0 1-1-1Z"/>',
+		'arrow-up-alt'      => '<path d="M12 3a1 1 0 0 1 .7.3l7 7a1 1 0 0 1-1.4 1.4L13 6.4V20a1 1 0 0 1-2 0V6.4l-5.3 5.3a1 1 0 0 1-1.4-1.4l7-7A1 1 0 0 1 12 3Z"/>',
+		'arrow-down-alt'    => '<path d="M12 21a1 1 0 0 1-.7-.3l-7-7a1 1 0 0 1 1.4-1.4l5.3 5.3V4a1 1 0 0 1 2 0v13.6l5.3-5.3a1 1 0 0 1 1.4 1.4l-7 7A1 1 0 0 1 12 21Z"/>',
+		'flag'              => '<path d="M5 3a1 1 0 0 1 1 1v16a1 1 0 0 1-2 0V4a1 1 0 0 1 1-1Zm3 1h11l-2 4 2 4H8V4Z"/>',
+		'cover-image'       => '<path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5Zm12 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM5 18l4-5 3 3 4-4 3 3v3H5Z"/>',
+		'admin-customizer'  => '<path d="M13.6 3.4a2 2 0 0 1 2.8 0l4.2 4.2a2 2 0 0 1 0 2.8L10.4 21.6a2 2 0 0 1-1.4.6H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 .6-1.4L13.6 3.4Zm-1.4 4.2 4.2 4.2 2.5-2.5-4.2-4.2-2.5 2.5Z"/>',
+		'controls-volumeon' => '<path d="M3 9v6h4l5 5V4L7 9H3Zm12 3a4 4 0 0 0-2-3.5v7A4 4 0 0 0 15 12Zm-2-7v2a5 5 0 0 1 0 10v2a7 7 0 0 0 0-14Z"/>',
+		'video-alt3'        => '<path d="M3 4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4Zm6 4v8l7-4-7-4Z"/>',
+		'visibility'        => '<path d="M12 5C6.5 5 2.5 9 1 12c1.5 3 5.5 7 11 7s9.5-4 11-7c-1.5-3-5.5-7-11-7Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/>',
+	);
+
+	if ( ! isset( $paths[ $slug ] ) ) {
+		return '';
+	}
+	return sprintf(
+		'<svg class="tss-svg-icon" viewBox="0 0 24 24" width="%1$d" height="%1$d" fill="currentColor" aria-hidden="true">%2$s</svg>',
+		(int) $size,
+		$paths[ $slug ]
+	);
+}
+
+/**
+ * Map of dashicon slug => raw SVG inner paths. Used by the admin preview
+ * JS so the preview matches what the frontend renders.
+ *
+ * @return array<string,string>
+ */
+function tss_dashicon_svg_map() {
+	$map = array();
+	foreach ( array_keys( tss_dashicon_choices() ) as $slug ) {
+		$svg = tss_inline_icon_svg( $slug, 14 );
+		if ( '' !== $svg ) {
+			$map[ $slug ] = $svg;
+		}
+	}
+	return $map;
+}
+
+/**
+ * Build the HTML for the tag's icon. Custom image > inline SVG (from
+ * Dashicon slug) > empty.
  *
  * @param int $item_id Shop item ID.
  * @return string Safe HTML.
@@ -91,7 +156,7 @@ function tss_render_tag_icon( $item_id ) {
 	if ( $dashicon ) {
 		$choices = tss_dashicon_choices();
 		if ( isset( $choices[ $dashicon ] ) ) {
-			return '<span class="dashicons dashicons-' . esc_attr( $dashicon ) . '" aria-hidden="true"></span>';
+			return tss_inline_icon_svg( $dashicon, 14 );
 		}
 	}
 	return '';
