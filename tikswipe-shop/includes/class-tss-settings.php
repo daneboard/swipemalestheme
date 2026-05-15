@@ -59,6 +59,26 @@ class TSS_Settings {
 				'default'           => 1.5,
 			)
 		);
+		register_setting(
+			self::GROUP,
+			'tss_cooldown_slides',
+			array(
+				'type'              => 'integer',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_cooldown' ),
+				'default'           => 1,
+			)
+		);
+	}
+
+	public static function sanitize_cooldown( $v ) {
+		$v = (int) $v;
+		if ( $v < 0 ) {
+			$v = 0;
+		}
+		if ( $v > 20 ) {
+			$v = 20;
+		}
+		return $v;
 	}
 
 	public static function sanitize_strategy( $v ) {
@@ -95,6 +115,7 @@ class TSS_Settings {
 		$strategy     = get_option( 'tss_strategy', 'thompson' );
 		$window_days  = (int) get_option( 'tss_window_days', 30 );
 		$close_weight = (float) get_option( 'tss_close_weight', 1.5 );
+		$cooldown     = (int) get_option( 'tss_cooldown_slides', 1 );
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'TikSwipe Shop — Settings', 'tikswipe-shop' ); ?></h1>
@@ -170,6 +191,17 @@ class TSS_Settings {
 							<input type="number" id="tss_close_weight" name="tss_close_weight" value="<?php echo esc_attr( $close_weight ); ?>" class="small-text" min="0" max="10" step="0.1">
 							<p class="description">
 								<?php esc_html_e( 'How strongly an explicit close counts as negative signal. 1.0 = same weight as a passive ignore; 2.0 = a close hurts twice as much as a non-click. Defaults to 1.5. Applies to Thompson and Weighted-CTR.', 'tikswipe-shop' ); ?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th scope="row"><label for="tss_cooldown_slides"><?php esc_html_e( 'Cooldown after close', 'tikswipe-shop' ); ?></label></th>
+						<td>
+							<input type="number" id="tss_cooldown_slides" name="tss_cooldown_slides" value="<?php echo esc_attr( $cooldown ); ?>" class="small-text" min="0" max="20" step="1">
+							<?php esc_html_e( 'slides', 'tikswipe-shop' ); ?>
+							<p class="description">
+								<?php esc_html_e( 'After a visitor manually closes a card, skip showing any card on the next N slides — a breathing room so ads do not feel pushy. 1 = the very next video is ad-free; 2 = next two are; 0 = no cooldown. Resets if another close happens during the cooldown.', 'tikswipe-shop' ); ?>
 							</p>
 						</td>
 					</tr>

@@ -42,10 +42,11 @@ class TSS_Frontend {
 			'tikswipe-shop',
 			'tssData',
 			array(
-				'restUrl'      => esc_url_raw( rest_url( 'tikswipe-shop/v1/lookup' ) ),
-				'trackUrl'     => esc_url_raw( rest_url( 'tikswipe-shop/v1/track' ) ),
-				'showDelayMs'  => 10000,
-				'closeDelayMs' => 5000,
+				'restUrl'        => esc_url_raw( rest_url( 'tikswipe-shop/v1/lookup' ) ),
+				'trackUrl'       => esc_url_raw( rest_url( 'tikswipe-shop/v1/track' ) ),
+				'showDelayMs'    => 10000,
+				'closeDelayMs'   => 5000,
+				'cooldownSlides' => (int) get_option( 'tss_cooldown_slides', 1 ),
 				'i18n'    => array(
 					'close' => __( 'Close', 'tikswipe-shop' ),
 					'buy'   => __( 'Buy', 'tikswipe-shop' ),

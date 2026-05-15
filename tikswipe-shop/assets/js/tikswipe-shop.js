@@ -17,12 +17,21 @@
 (function ($) {
 	'use strict';
 
-	var SHOW_MS   = (tssData && tssData.showDelayMs) || 10000;
-	var CLOSE_MS  = (tssData && tssData.closeDelayMs) || 5000;
-	var REST_URL  = tssData && tssData.restUrl;
-	var TRACK_URL = tssData && tssData.trackUrl;
+	var SHOW_MS    = (tssData && tssData.showDelayMs) || 10000;
+	var CLOSE_MS   = (tssData && tssData.closeDelayMs) || 5000;
+	var REST_URL   = tssData && tssData.restUrl;
+	var TRACK_URL  = tssData && tssData.trackUrl;
+	var COOLDOWN   = tssData && typeof tssData.cooldownSlides === 'number'
+		? Math.max(0, tssData.cooldownSlides)
+		: 1;
 
 	var cache = {};
+
+	// Number of upcoming slides that should NOT show a card. Set to COOLDOWN
+	// whenever the visitor manually closes a card; decremented each time a
+	// brand-new slide is first activated. Kept in memory only (resets on
+	// page reload) so the breathing room is per-session.
+	var skipRemaining = 0;
 
 	function track(itemId, event) {
 		if (!TRACK_URL || !itemId) { return; }
@@ -194,6 +203,7 @@
 			e.preventDefault();
 			e.stopPropagation();
 			track($slide.data('tssItemId'), 'close');
+			skipRemaining = COOLDOWN;
 			$slide.removeClass('tss-active tss-can-close');
 			state.activated = false;
 			state.elapsed   = 0;
@@ -205,6 +215,13 @@
 	function handleSlide($slide) {
 		if ($slide.data('tssHandled')) { return; }
 		$slide.data('tssHandled', true);
+
+		// Cooldown: skip the configured number of brand-new slides after a
+		// manual close so consecutive cards never feel pushy.
+		if (skipRemaining > 0) {
+			skipRemaining--;
+			return;
+		}
 
 		var postId = parseInt($slide.data('id'), 10);
 		if (!postId) { return; }
@@ -269,6 +286,7 @@
 			is_video_slide: $active.hasClass('swiper-video-slide'),
 			has_card:       !!$active.find('.tss-shop-card').length,
 			card_active:    $active.hasClass('tss-active'),
+			cooldown_left:  skipRemaining,
 			document_hidden: document.hidden,
 			video_found:    !!video,
 			video_paused:   video ? video.paused : null,
