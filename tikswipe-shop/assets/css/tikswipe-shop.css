@@ -1,0 +1,221 @@
+/*
+ * TikSwipe Shop — dark TikTok-style card on swiper slides.
+ *
+ * Visibility model:
+ *  - Card and its children all start with pointer-events: none so the
+ *    invisible card never intercepts clicks meant for the original post
+ *    UI (title, tags, side buttons) before activation or after the user
+ *    closes it. They only become interactive while the slide has the
+ *    .tss-active class — i.e. while the card is actually showing.
+ */
+
+.tss-shop-card,
+.tss-shop-card * { box-sizing: border-box; }
+
+.tss-shop-card {
+	position: absolute;
+	left: 12px;
+	right: 90px;
+	bottom: 120px;
+	max-width: 460px;
+	background: #000;
+	color: #fff;
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+	padding: 10px 12px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	z-index: 5;
+	opacity: 0;
+	transform: translateY(20px);
+	transition: opacity .35s ease, transform .35s ease;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	pointer-events: none;
+}
+.tss-shop-card,
+.tss-shop-card > *,
+.tss-shop-card > * > * { pointer-events: none; }
+
+.swiper-slide.tss-active .tss-shop-card {
+	opacity: 1;
+	transform: translateY(0);
+}
+.swiper-slide.tss-active .tss-shop-card > a,
+.swiper-slide.tss-active .tss-shop-card > button,
+.swiper-slide.tss-active .tss-shop-card__close {
+	pointer-events: auto;
+}
+
+/* Anchor wrapping image + body — clicking takes user to the Buy URL. */
+.tss-shop-card__link {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex: 1 1 auto;
+	min-width: 0;
+	text-decoration: none;
+	color: inherit;
+}
+.tss-shop-card__link:hover,
+.tss-shop-card__link:focus { color: inherit; text-decoration: none; }
+
+.tss-shop-card__image {
+	position: relative;
+	flex: 0 0 64px;
+	width: 64px;
+	height: 64px;
+	border-radius: 6px;
+	overflow: hidden;
+	background: #111;
+}
+/* Image fill: theme has .swiper-slide img { object-fit: contain } at the
+ * same specificity, so we need !important on object-fit too. */
+.tss-shop-card__image img,
+.swiper-slide .tss-shop-card__image img {
+	width: 100% !important;
+	height: 100% !important;
+	max-width: none !important;
+	max-height: none !important;
+	min-width: 100% !important;
+	min-height: 100% !important;
+	object-fit: cover !important;
+	object-position: center !important;
+	display: block !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	border-radius: 0 !important;
+	position: static !important;
+	top: auto !important;
+	left: auto !important;
+}
+.tss-shop-card__position {
+	position: absolute;
+	top: 4px;
+	left: 4px;
+	background: rgba(0, 0, 0, 0.75);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 600;
+	border-radius: 3px;
+	padding: 1px 4px;
+	line-height: 1.4;
+}
+
+.tss-shop-card__body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+.tss-shop-card__title {
+	font-size: 14px;
+	font-weight: 600;
+	color: #fff;
+	line-height: 1.25;
+	margin: 0 0 4px;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+.tss-shop-card__tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: rgba(34, 197, 94, 0.18);
+	color: #4ade80;
+	border-radius: 4px;
+	font-size: 11px;
+	font-weight: 500;
+	padding: 2px 6px;
+	line-height: 1.4;
+}
+.tss-shop-card__tag .dashicons {
+	font-size: 13px;
+	width: 13px;
+	height: 13px;
+	color: inherit;
+}
+.tss-shop-card__tag .tss-svg-icon {
+	width: 13px;
+	height: 13px;
+	display: inline-block;
+	flex: 0 0 auto;
+	color: inherit;
+}
+.tss-shop-card__tag .tss-tag-icon-img {
+	width: 13px;
+	height: 13px;
+	object-fit: contain;
+	display: inline-block;
+}
+.tss-shop-card__price {
+	font-size: 15px;
+	font-weight: 700;
+	color: #fff;
+	margin-top: 4px;
+}
+
+.tss-shop-card__buy {
+	flex: 0 0 auto;
+	background: #fd0131;
+	color: #fff !important;
+	border: 0;
+	border-radius: 6px;
+	font-size: 14px;
+	font-weight: 600;
+	padding: 9px 18px;
+	cursor: pointer;
+	text-decoration: none;
+	line-height: 1;
+}
+.tss-shop-card__buy:hover,
+.tss-shop-card__buy:focus {
+	background: #d90029;
+	color: #fff !important;
+	text-decoration: none;
+}
+
+/* Close button — floats just above the card's top-right corner so it
+ * never overlaps the Buy button or the price. */
+.tss-shop-card__close {
+	position: absolute;
+	top: -10px;
+	right: -8px;
+	width: 24px;
+	height: 24px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	background: #000;
+	color: #fff;
+	cursor: pointer;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	opacity: 0;
+	transition: opacity .3s ease;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.tss-shop-card__close:hover { background: #222; }
+.swiper-slide.tss-active.tss-can-close .tss-shop-card__close { opacity: 1; }
+.tss-shop-card__close svg { width: 12px; height: 12px; }
+
+/* Hide post infos while the shop card is active. */
+.swiper-slide .single-content-infos { transition: opacity .3s ease; }
+.swiper-slide.tss-active .single-content-infos {
+	opacity: 0;
+	pointer-events: none;
+}
+
+@media (max-width: 480px) {
+	.tss-shop-card {
+		left: 8px;
+		right: 78px;
+		bottom: 90px;
+		padding: 8px 10px;
+		gap: 8px;
+	}
+	.tss-shop-card__image { width: 56px; height: 56px; flex-basis: 56px; }
+	.tss-shop-card__title { font-size: 13px; }
+	.tss-shop-card__buy { padding: 8px 14px; font-size: 13px; }
+}
