@@ -210,6 +210,12 @@ function tikswipe_child_top_banner() {
 	if ( is_admin() || is_embed() || is_customize_preview() ) {
 		return;
 	}
+	// Premium users have ad-free status — skip the entire banner so the
+	// 50px sticky strip doesn't leave a black bar at the top. Guarded by
+	// class_exists so the theme keeps working with the plugin disabled.
+	if ( class_exists( 'TSAR_Membership' ) && TSAR_Membership::is_premium() ) {
+		return;
+	}
 	?>
 	<script>
 	(function () {

@@ -145,6 +145,16 @@ class TSAR_Ad_Blocker {
 			$html
 		);
 
+		// 6. Child theme's sticky top banner container (renders as a 50px
+		// black strip even when its <ins> child is empty). The child also
+		// short-circuits this for premium users, but strip here too in case
+		// it slipped through (cache, plugin temporarily off, etc).
+		$html = preg_replace(
+			'#<div\b[^>]*\bid\s*=\s*["\']tikswipe-top-banner["\'][^>]*>.*?</div>#is',
+			'',
+			$html
+		);
+
 		return $html;
 	}
 
@@ -218,7 +228,7 @@ class TSAR_Ad_Blocker {
 		'iframe[src*="pemsrv"],iframe[src*="magsrv"],iframe[src*="opoxv"],iframe[src*="exacdn"],' +
 		'script[src*="exoclick"],script[src*="exosrv"],script[src*="exdynsrv"],' +
 		'script[src*="pemsrv"],script[src*="magsrv"],script[src*="opoxv"],' +
-		'.swiper-slide-happy';
+		'.swiper-slide-happy,#tikswipe-top-banner';
 
 	function sweep(root){
 		try {
