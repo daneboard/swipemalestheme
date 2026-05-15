@@ -193,6 +193,16 @@ function tikswipe_child_enqueue_scripts() {
 			});
 		})();
 	" );
+
+	// Reload the page after a successful registration (parent does this
+	// for login but not register). Loaded only on the frontend.
+	wp_enqueue_script(
+		'tikswipe-child-auth-redirect',
+		get_stylesheet_directory_uri() . '/js/auth-redirect.js',
+		array( 'jquery' ),
+		$js_version . '.' . filemtime( get_stylesheet_directory() . '/js/auth-redirect.js' ),
+		true
+	);
 }
 add_action( 'wp_enqueue_scripts', 'tikswipe_child_enqueue_scripts', 21 );
 

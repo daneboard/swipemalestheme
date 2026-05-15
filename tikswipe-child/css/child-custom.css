@@ -307,35 +307,6 @@ body.wpst-is-fullscreen .wpst-pwa-btn {
     height: auto !important;
 }
 
-/* Shared header CTA pill — same geometry as the old PWA "Fav this app"
-   button. Two variants below: outlined for the neutral Login action,
-   filled brand-red for the Remove Ads conversion. */
-.tsar-header-cta {
-    display: inline-flex !important;
-    align-items: center;
-    gap: 6px;
-    text-decoration: none;
-    transition: background .15s, transform .05s, border-color .15s;
-}
-.tsar-header-cta:active {
-    transform: translateY(1px);
-}
-.tsar-header-cta svg {
-    flex: 0 0 14px;
-}
-
-/* Login variant — outlined, neutral so it doesn't compete with Remove Ads */
-.tsar-login-cta {
-    background: rgba(255, 255, 255, 0.08) !important;
-    color: #fff !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
-}
-.tsar-login-cta:hover {
-    background: rgba(255, 255, 255, 0.18) !important;
-    border-color: #fff !important;
-    color: #fff !important;
-}
-
 /* "Remove Ads" CTA in the home header — same pill geometry as the old PWA
    button, brand red so it stands out against the video reel behind it. */
 .tsar-remove-ads-btn {
@@ -1759,4 +1730,230 @@ body.tsar-subscription-page .tsar-countdown-time {
     body.tsar-subscription-page .tsar-countdown-time {
         font-size: 26px;
     }
+}
+
+/* ========================================
+   Hide the footer "Profile" icon entirely.
+   Footer is grid-rendered with footer-menu-N columns based on how many
+   items were emitted server-side, so we also reclaim the column the
+   profile would have taken so the remaining icons stay evenly spaced.
+   ======================================== */
+#menu-profil,
+.footer-menu .menu-profile,
+.footer-menu a[id="menu-profil"] {
+    display: none !important;
+}
+/* creators on, regular user: was 4 (Home / Search / Favorites / Profile) → 3 */
+.footer-menu.footer-menu-4 {
+    grid-template-columns: repeat(3, 1fr) !important;
+}
+/* creators on, admin/author: was 5 (… / Add Content / Profile) → 4 */
+.footer-menu.footer-menu-5 {
+    grid-template-columns: repeat(4, 1fr) !important;
+}
+
+/* ========================================
+   Dark-theme override for the parent theme's login / register / reset
+   password modal (#main-nav .slideup-box, rendered to wp_footer by
+   inc/ajax/ajax-login-register.php). Defaults are a white card with
+   #333 text — completely off-brand on our pure-black UI.
+   ======================================== */
+#main-nav.slideup-box,
+body #main-nav.slideup-box {
+    background: #0a0a0a;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(253, 1, 49, 0.08);
+}
+#main-nav.slideup-box * {
+    box-sizing: border-box;
+}
+/* The dark-bg overlay behind the modal — make it deeper than the parent's
+   rgba(0,0,0,0.8) so the dark card has contrast. */
+body.tsar-subscription-page .dark-bg,
+body:not(.media-body):not(.grid) .dark-bg {
+    background: rgba(0, 0, 0, 0.85);
+}
+
+/* Tabs row (Login / Register / close button) */
+#main-nav .login-nav {
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+#main-nav .login-nav a {
+    color: rgba(255, 255, 255, 0.6) !important;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    padding: 14px 16px;
+    font-weight: 600;
+    transition: color .15s, border-color .15s;
+    flex: 1;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+#main-nav .login-nav a:hover {
+    color: #fff !important;
+}
+#main-nav .login-nav a.active {
+    color: #fff !important;
+    border-bottom-color: #fd0131;
+}
+#main-nav .login-nav a svg {
+    fill: currentColor;
+    color: currentColor;
+}
+#main-nav .login-nav a svg path,
+#main-nav .login-nav a svg circle {
+    fill: currentColor;
+}
+#main-nav .close-main-nav {
+    background: transparent !important;
+    border: 0 !important;
+    color: #fff;
+    padding: 10px;
+    flex: 0 0 auto;
+    line-height: 0;
+}
+#main-nav .close-main-nav svg path {
+    fill: rgba(255, 255, 255, 0.7);
+}
+#main-nav .close-main-nav:hover svg path {
+    fill: #fff;
+}
+
+/* Form sections + fields */
+#main-nav .wpst-login-section {
+    padding: 20px 22px 24px;
+    background: transparent;
+}
+#main-nav .form-field {
+    margin: 0 0 14px;
+}
+#main-nav .form-field label {
+    display: block;
+    color: rgba(255, 255, 255, 0.65) !important;
+    font-size: 12px;
+    font-weight: 500;
+    margin: 0 0 4px;
+}
+#main-nav .form-field input,
+#main-nav input.form-control,
+#main-nav input[type="text"],
+#main-nav input[type="email"],
+#main-nav input[type="password"] {
+    width: 100%;
+    background: #000 !important;
+    color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 10px !important;
+    padding: 10px 12px !important;
+    font: inherit;
+    box-shadow: none !important;
+    transition: border-color .15s;
+}
+#main-nav .form-field input:focus,
+#main-nav input.form-control:focus,
+#main-nav input[type="text"]:focus,
+#main-nav input[type="email"]:focus,
+#main-nav input[type="password"]:focus {
+    outline: none !important;
+    border-color: #fd0131 !important;
+}
+#main-nav .form-field input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Submit buttons (Login / Register / Reset) */
+#main-nav .button.button-color,
+#main-nav button.button-color,
+#main-nav button[type="submit"] {
+    background: #fd0131 !important;
+    color: #fff !important;
+    border: 0 !important;
+    border-radius: 12px !important;
+    padding: 12px 18px !important;
+    font-weight: 700 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: background .15s, transform .05s;
+    box-shadow: 0 4px 14px -2px rgba(253, 1, 49, 0.55);
+}
+#main-nav .button.button-color:hover,
+#main-nav button.button-color:hover,
+#main-nav button[type="submit"]:hover {
+    background: #e1012b !important;
+}
+#main-nav .button.button-color:active,
+#main-nav button.button-color:active,
+#main-nav button[type="submit"]:active {
+    transform: translateY(1px);
+}
+
+/* "Lost password?" link */
+#main-nav .form-field.lost-password {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+#main-nav a#ms-reset-password,
+#main-nav .slideup-box a#ms-reset-password,
+body #main-nav a#ms-reset-password {
+    color: rgba(255, 255, 255, 0.55) !important;
+    font-size: 12px;
+    margin-left: auto;
+    text-decoration: none;
+}
+#main-nav a#ms-reset-password:hover {
+    color: #fd0131 !important;
+}
+
+/* Reset password section */
+#main-nav .wpst-reset-password h3 {
+    color: #fff !important;
+    font-size: 16px;
+    margin: 0 0 8px;
+}
+#main-nav .wpst-reset-password p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    margin: 0 0 14px;
+    line-height: 1.45;
+}
+
+/* Error + alert blocks */
+#main-nav .wpst-errors {
+    margin: 8px 0 0;
+    color: #ff8a8a;
+    font-size: 13px;
+    min-height: 18px;
+}
+#main-nav .wpst-errors:empty {
+    display: none;
+}
+#main-nav .alert,
+#main-nav .alert-danger {
+    background: rgba(255, 138, 138, 0.08) !important;
+    border: 1px solid rgba(255, 138, 138, 0.35) !important;
+    color: #ffb4b4 !important;
+    border-radius: 10px !important;
+    padding: 12px 14px !important;
+}
+
+/* Loading state */
+#main-nav .wpst-loading {
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    padding: 14px;
+}
+
+/* Registration-complete success state */
+#main-nav .registration-complete .wpst-login-section {
+    color: #bdffd0;
 }
