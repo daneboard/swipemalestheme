@@ -875,11 +875,13 @@ body.page-template-template-favorites-php .alert-info {
 }
 
 /* ========================================
-   Footer fix for search/favorites: proper position
+   Footer position + colors for every non-video page.
+   Mirrors the behaviour the parent only applied to search / favorites
+   — pure black, full width, fixed at bottom, icons + labels white —
+   so every standalone page (subscription, search, favorites, profile,
+   author, single-non-video, regular WP pages) has the same bottom nav.
    ======================================== */
-body.page-template-template-search-php footer,
-body.search footer,
-body.page-template-template-favorites-php footer {
+body:not(.media-body):not(.grid) footer {
     position: fixed !important;
     bottom: 0 !important;
     left: 50% !important;
@@ -887,38 +889,22 @@ body.page-template-template-favorites-php footer {
     width: 100% !important;
     z-index: 10 !important;
     background-color: #000 !important;
+    max-width: 100% !important;
 }
-
-body.page-template-template-search-php .footer-menu,
-body.search .footer-menu,
-body.page-template-template-favorites-php .footer-menu {
+body:not(.media-body):not(.grid) .footer-menu {
     background-color: rgba(0, 0, 0, 0.95) !important;
 }
-
-/* Footer icons: use currentColor for proper dark/light */
-body.page-template-template-search-php .footer-menu svg path,
-body.search .footer-menu svg path,
-body.page-template-template-favorites-php .footer-menu svg path {
+body:not(.media-body):not(.grid) .footer-menu a,
+body:not(.media-body):not(.grid) .footer-menu a small {
+    color: #fff;
+}
+body:not(.media-body):not(.grid) .footer-menu svg path {
     fill: currentColor;
 }
-
-body.page-template-template-search-php .footer-menu a,
-body.search .footer-menu a,
-body.page-template-template-favorites-php .footer-menu a {
-    color: #fff;
-}
-
-body.page-template-template-search-php .footer-menu #fav-menu svg path,
-body.search .footer-menu #fav-menu svg path,
-body.page-template-template-favorites-php .footer-menu #fav-menu svg path {
+/* Favorites heart icon uses stroke for its outline state */
+body:not(.media-body):not(.grid) .footer-menu #fav-menu svg path {
     stroke: #fff;
     fill: none;
-}
-
-body.page-template-template-search-php .footer-menu a small,
-body.search .footer-menu a small,
-body.page-template-template-favorites-php .footer-menu a small {
-    color: #fff;
 }
 
 body.page-template-template-favorites-php .remove-fav svg path {
@@ -1136,19 +1122,8 @@ body.tsar-subscription-page main.tsar-page {
     width: 100%;
 }
 
-/* Footer fixed (same pattern as favorites/search pages) */
-body.tsar-subscription-page footer {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 100% !important;
-    z-index: 10 !important;
-    background-color: #000 !important;
-}
-body.tsar-subscription-page .footer-menu {
-    background-color: #000 !important;
-}
+/* Footer behaviour for /subscription is covered by the generic
+   body:not(.media-body):not(.grid) footer block above. */
 
 /* Card — pure black with a soft red ambient halo behind it */
 body.tsar-subscription-page .tsar-card {
@@ -1190,7 +1165,9 @@ body.tsar-subscription-page .tsar-hero-glow {
     background: radial-gradient(circle, rgba(253, 1, 49, 0.35) 0%, rgba(253, 1, 49, 0) 65%);
     pointer-events: none;
     z-index: 0;
-    filter: blur(8px);
+    /* The radial gradient already feathers the edge — a tiny blur is enough
+       for a soft glow without the hazy look we don't use elsewhere. */
+    filter: blur(2px);
 }
 body.tsar-subscription-page .tsar-hero-icon {
     position: relative;
