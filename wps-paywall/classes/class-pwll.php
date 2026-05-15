@@ -285,7 +285,7 @@ final class PWLL {
 		/**
 		 * CSS
 		 */
-		wp_enqueue_style( 'pwll-frontend-style', PWLL_URL . 'public/assets/css/frontend.css', array(), PWLL_VERSION, 'all' );
+		wp_enqueue_style( 'pwll-frontend-style', PWLL_URL . 'public/assets/css/frontend.css', array(), (string) filemtime( PWLL_DIR . 'public/assets/css/frontend.css' ), 'all' );
 
 		/**
 		 * JS
@@ -317,7 +317,7 @@ final class PWLL {
 		wp_enqueue_script( 'pwll-jquery-validate-js', PWLL_URL . 'public/assets/js/jquery.validate.min.js', array( 'jquery' ), '1.19.5', true );
 
 		$current_theme = wp_get_theme();
-		wp_enqueue_script( 'pwll-frontend-js', PWLL_URL . 'public/assets/js/frontend.js', array( 'jquery' ), PWLL_VERSION, true );
+		wp_enqueue_script( 'pwll-frontend-js', PWLL_URL . 'public/assets/js/frontend.js', array( 'jquery' ), (string) filemtime( PWLL_DIR . 'public/assets/js/frontend.js' ), true );
 
 		eval( WPSCORE()->eval_product_data( 'PWLL', 'pwll_class_pwll_eval_3' ) );
 

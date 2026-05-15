@@ -21,7 +21,8 @@ function pwll_unlock_box() {
 
 	$title       = xbox_get_field_value( 'pwll-options', 'pwll-paywall-popup-title', __( 'Premium Membership', 'pwll_lang' ) );
 	$description = xbox_get_field_value( 'pwll-options', 'pwll-paywall-popup-description', __( 'Become a Premium Member and Get Access to All our Exclusive Videos', 'pwll_lang' ) );
-	$cta_text    = xbox_get_field_value( 'pwll-options', 'pwll-paywall-popup-button-text', __( 'Start Membership', 'pwll_lang' ) );
+	// Mirror the on-thumbnail overlay label so the modal CTA reads the same word.
+	$cta_text    = xbox_get_field_value( 'pwll-options', 'pwll-locked-content-area-text', __( 'Unlock Video', 'pwll_lang' ) );
 	?>
 	<div class="pwll-modal-bg"></div>
 	<div class="pwll-unlock-box">
