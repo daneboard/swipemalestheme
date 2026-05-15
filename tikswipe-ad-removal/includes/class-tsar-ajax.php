@@ -1,7 +1,6 @@
 <?php
 /**
- * AJAX endpoints (frontend submission only). Admin actions go through
- * standard admin-post.php handlers in TSAR_Admin.
+ * AJAX endpoints (logged-in users only). Submission + status polling.
  *
  * @package TikSwipe_Ad_Removal
  */
@@ -14,7 +13,7 @@ class TSAR_Ajax {
 
 	public static function init() {
 		add_action( 'wp_ajax_tsar_submit_request', array( __CLASS__, 'submit_request' ) );
-		// nopriv intentionally not registered — only logged-in users may submit.
+		add_action( 'wp_ajax_tsar_check_status', array( __CLASS__, 'check_status' ) );
 	}
 
 	public static function submit_request() {
@@ -30,6 +29,12 @@ class TSAR_Ajax {
 		}
 
 		$user_id = get_current_user_id();
+
+		// Block if user already has a pending request — only one in flight at a time.
+		$existing_pending = (int) TSAR_Frontend::get_pending_for_user( $user_id );
+		if ( $existing_pending > 0 ) {
+			wp_send_json_error( array( 'message' => __( 'You already have a pending request.', 'tikswipe-ad-removal' ) ), 409 );
+		}
 
 		// Basic rate limit so users don't spam-create requests.
 		$last = (int) get_user_meta( $user_id, '_tsar_last_submission', true );
@@ -49,12 +54,8 @@ class TSAR_Ajax {
 		}
 
 		$paypal_email = isset( $_POST['paypal_email'] ) ? sanitize_email( wp_unslash( $_POST['paypal_email'] ) ) : '';
-		$note         = isset( $_POST['note'] ) ? sanitize_textarea_field( wp_unslash( $_POST['note'] ) ) : '';
-		if ( strlen( $note ) > 500 ) {
-			$note = substr( $note, 0, 500 );
-		}
-
-		$plan = $plans[ $plan_id ];
+		$plan         = $plans[ $plan_id ];
+		$now          = time();
 
 		global $wpdb;
 		$inserted = $wpdb->insert(
@@ -65,9 +66,9 @@ class TSAR_Ajax {
 				'amount'            => $plan['price'],
 				'currency'          => $settings['currency'],
 				'paypal_email_used' => $paypal_email,
-				'txn_note'          => $note,
+				'txn_note'          => '',
 				'status'            => 'pending',
-				'created_at'        => time(),
+				'created_at'        => $now,
 			),
 			array( '%d', '%s', '%f', '%s', '%s', '%s', '%s', '%d' )
 		);
@@ -76,12 +77,48 @@ class TSAR_Ajax {
 			wp_send_json_error( array( 'message' => __( 'Could not save your request. Please try again.', 'tikswipe-ad-removal' ) ), 500 );
 		}
 
-		update_user_meta( $user_id, '_tsar_last_submission', time() );
+		update_user_meta( $user_id, '_tsar_last_submission', $now );
 
 		wp_send_json_success(
 			array(
-				'message' => $settings['thanks_text'],
+				'message'    => $settings['thanks_text'],
+				'request_id' => (int) $wpdb->insert_id,
+				'created_at' => $now,
+				'window'     => (int) $settings['review_window'],
 			)
 		);
+	}
+
+	/**
+	 * Returns the latest request status + premium info so the frontend can
+	 * update the page without a reload.
+	 */
+	public static function check_status() {
+		check_ajax_referer( 'tsar_check_status', 'nonce' );
+
+		if ( ! is_user_logged_in() ) {
+			wp_send_json_error( array( 'message' => __( 'Not logged in.', 'tikswipe-ad-removal' ) ), 401 );
+		}
+
+		$user_id = get_current_user_id();
+		$latest  = tsar_get_latest_request_for_user( $user_id );
+
+		$payload = array(
+			'is_premium' => TSAR_Membership::is_premium( $user_id ),
+			'expires'    => TSAR_Membership::get_expiration( $user_id ),
+			'request'    => null,
+		);
+
+		if ( $latest ) {
+			$payload['request'] = array(
+				'id'           => (int) $latest['id'],
+				'status'       => (string) $latest['status'],
+				'created_at'   => (int) $latest['created_at'],
+				'processed_at' => $latest['processed_at'] ? (int) $latest['processed_at'] : null,
+				'days_granted' => (int) $latest['days_granted'],
+			);
+		}
+
+		wp_send_json_success( $payload );
 	}
 }

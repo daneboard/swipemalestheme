@@ -1,6 +1,10 @@
 <?php
 /**
- * Frontend shortcode + asset enqueue for the payment-claim form.
+ * Virtual /subscription page handled entirely by the plugin.
+ *
+ * Adds a rewrite rule, intercepts the request in template_redirect, and
+ * renders our template wrapped in the active theme's get_header / get_footer
+ * so it inherits the dark theme look from the child.
  *
  * @package TikSwipe_Ad_Removal
  */
@@ -9,9 +13,51 @@ defined( 'ABSPATH' ) || exit;
 
 class TSAR_Frontend {
 
+	const QUERY_VAR = 'tsar_subscription';
+
 	public static function init() {
-		add_shortcode( 'tikswipe_remove_ads', array( __CLASS__, 'shortcode' ) );
+		add_action( 'init', array( __CLASS__, 'register_rewrite' ) );
+		add_filter( 'query_vars', array( __CLASS__, 'register_query_var' ) );
+		add_action( 'template_redirect', array( __CLASS__, 'maybe_render' ) );
+		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'register_assets' ) );
+		add_filter( 'document_title_parts', array( __CLASS__, 'title' ) );
+	}
+
+	public static function register_rewrite() {
+		$slug = tsar_get_setting( 'subscription_slug', 'subscription' );
+		$slug = trim( (string) $slug, '/' );
+		if ( '' === $slug ) {
+			return;
+		}
+		add_rewrite_rule(
+			'^' . preg_quote( $slug, '#' ) . '/?$',
+			'index.php?' . self::QUERY_VAR . '=1',
+			'top'
+		);
+	}
+
+	public static function register_query_var( $vars ) {
+		$vars[] = self::QUERY_VAR;
+		return $vars;
+	}
+
+	public static function is_subscription_page() {
+		return (bool) get_query_var( self::QUERY_VAR );
+	}
+
+	public static function title( $parts ) {
+		if ( self::is_subscription_page() ) {
+			$parts['title'] = __( 'Subscription', 'tikswipe-ad-removal' );
+		}
+		return $parts;
+	}
+
+	public static function body_class( $classes ) {
+		if ( self::is_subscription_page() ) {
+			$classes[] = 'tsar-subscription-page';
+		}
+		return $classes;
 	}
 
 	public static function register_assets() {
@@ -33,118 +79,48 @@ class TSAR_Frontend {
 		);
 	}
 
-	public static function shortcode( $atts ) {
-		$settings = tsar_get_settings();
-
-		if ( empty( $settings['enabled'] ) ) {
-			return '';
+	public static function maybe_render() {
+		if ( ! self::is_subscription_page() ) {
+			return;
 		}
+
+		global $wp_query;
+		$wp_query->is_404      = false;
+		$wp_query->is_singular = false;
+		$wp_query->is_home     = false;
+		$wp_query->is_archive  = false;
+		status_header( 200 );
 
 		wp_enqueue_style( 'tsar-frontend' );
-
-		if ( ! is_user_logged_in() ) {
-			return self::render_notice( esc_html( $settings['login_text'] ) );
-		}
-
 		wp_enqueue_script( 'tsar-frontend' );
+
+		$settings = tsar_get_settings();
+
 		wp_localize_script(
 			'tsar-frontend',
 			'TSAR_Frontend',
 			array(
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'tsar_submit_request' ),
-				'i18n'    => array(
-					'submitting' => __( 'Submitting…', 'tikswipe-ad-removal' ),
-					'genericErr' => __( 'Something went wrong. Please try again.', 'tikswipe-ad-removal' ),
+				'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
+				'submitNonce'  => wp_create_nonce( 'tsar_submit_request' ),
+				'statusNonce'  => wp_create_nonce( 'tsar_check_status' ),
+				'reviewWindow' => (int) $settings['review_window'],
+				'pollInterval' => 30, // seconds.
+				'i18n'         => array(
+					'submitting'   => __( 'Submitting…', 'tikswipe-ad-removal' ),
+					'genericErr'   => __( 'Something went wrong. Please try again.', 'tikswipe-ad-removal' ),
+					'reviewing'    => __( 'Reviewing your payment…', 'tikswipe-ad-removal' ),
+					'estimated'    => __( 'Estimated wait', 'tikswipe-ad-removal' ),
+					'overdue'      => __( 'Taking longer than usual — hang tight, we are still reviewing.', 'tikswipe-ad-removal' ),
+					'approvedTtl'  => __( 'Approved!', 'tikswipe-ad-removal' ),
+					'approvedMsg'  => __( 'Your ads have been removed. Reload any page to enjoy ad-free browsing.', 'tikswipe-ad-removal' ),
+					'rejectedTtl'  => __( 'Request not approved', 'tikswipe-ad-removal' ),
+					'rejectedMsg'  => $settings['rejected_text'],
 				),
 			)
 		);
 
-		$user_id = get_current_user_id();
-
-		if ( TSAR_Membership::is_premium( $user_id ) ) {
-			return self::render_status( $user_id, $settings );
-		}
-
-		$pending = self::get_pending_for_user( $user_id );
-
-		ob_start();
-		?>
-		<div class="tsar-wrap">
-			<?php if ( $pending ) : ?>
-				<div class="tsar-notice tsar-notice-info">
-					<?php esc_html_e( 'You have a pending payment request. Once we confirm your PayPal payment we will remove the ads from your account.', 'tikswipe-ad-removal' ); ?>
-				</div>
-			<?php endif; ?>
-
-			<div class="tsar-paypal-info">
-				<p>
-					<strong><?php esc_html_e( 'Send PayPal payment to:', 'tikswipe-ad-removal' ); ?></strong>
-					<code class="tsar-paypal-email"><?php echo esc_html( $settings['paypal_email'] ? $settings['paypal_email'] : __( '(not configured yet)', 'tikswipe-ad-removal' ) ); ?></code>
-				</p>
-				<p class="tsar-disclaimer"><?php echo esc_html( $settings['disclaimer'] ); ?></p>
-			</div>
-
-			<form class="tsar-form" id="tsar-form" data-tsar-form>
-				<?php foreach ( tsar_plans() as $plan ) : ?>
-					<label class="tsar-plan">
-						<input type="radio" name="tsar_plan" value="<?php echo esc_attr( $plan['id'] ); ?>" required>
-						<span class="tsar-plan-label"><?php echo esc_html( $plan['label'] ); ?></span>
-						<span class="tsar-plan-price"><?php echo esc_html( tsar_format_price( $plan['price'] ) ); ?></span>
-					</label>
-				<?php endforeach; ?>
-
-				<label class="tsar-field">
-					<span><?php esc_html_e( 'PayPal email used (optional)', 'tikswipe-ad-removal' ); ?></span>
-					<input type="email" name="tsar_paypal_email" placeholder="<?php echo esc_attr( wp_get_current_user()->user_email ); ?>">
-				</label>
-
-				<label class="tsar-field">
-					<span><?php esc_html_e( 'Note / transaction reference (optional)', 'tikswipe-ad-removal' ); ?></span>
-					<textarea name="tsar_note" rows="2" maxlength="500"></textarea>
-				</label>
-
-				<label class="tsar-field tsar-confirm">
-					<input type="checkbox" name="tsar_confirm" value="1" required>
-					<span><?php esc_html_e( 'I confirm I have sent the PayPal payment.', 'tikswipe-ad-removal' ); ?></span>
-				</label>
-
-				<button type="submit" class="tsar-submit"><?php esc_html_e( 'Submit Payment Request', 'tikswipe-ad-removal' ); ?></button>
-				<div class="tsar-feedback" data-tsar-feedback aria-live="polite"></div>
-			</form>
-		</div>
-		<?php
-		return ob_get_clean();
-	}
-
-	private static function render_status( $user_id, $settings ) {
-		$expires = TSAR_Membership::get_expiration( $user_id );
-		ob_start();
-		?>
-		<div class="tsar-wrap tsar-active">
-			<div class="tsar-notice tsar-notice-success">
-				<strong><?php esc_html_e( 'Ad-Free is active on your account.', 'tikswipe-ad-removal' ); ?></strong>
-				<p>
-					<?php if ( '0' === (string) $expires || 0 === $expires ) : ?>
-						<?php esc_html_e( 'Plan: Lifetime — enjoy ad-free browsing forever.', 'tikswipe-ad-removal' ); ?>
-					<?php else : ?>
-						<?php
-						printf(
-							/* translators: %s: human readable date. */
-							esc_html__( 'Active until %s.', 'tikswipe-ad-removal' ),
-							esc_html( tsar_format_datetime( $expires ) )
-						);
-						?>
-					<?php endif; ?>
-				</p>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
-	}
-
-	private static function render_notice( $message ) {
-		return '<div class="tsar-wrap"><div class="tsar-notice">' . wp_kses_post( $message ) . '</div></div>';
+		include TSAR_PLUGIN_DIR . 'templates/subscription.php';
+		exit;
 	}
 
 	public static function get_pending_for_user( $user_id ) {

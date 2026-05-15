@@ -30,7 +30,6 @@ class TSAR_Requests_List_Table extends WP_List_Table {
 			'plan'       => __( 'Plan', 'tikswipe-ad-removal' ),
 			'amount'     => __( 'Amount', 'tikswipe-ad-removal' ),
 			'paypal'     => __( 'PayPal email', 'tikswipe-ad-removal' ),
-			'note'       => __( 'Note', 'tikswipe-ad-removal' ),
 			'status'     => __( 'Status', 'tikswipe-ad-removal' ),
 			'created_at' => __( 'Submitted', 'tikswipe-ad-removal' ),
 			'actions'    => __( 'Actions', 'tikswipe-ad-removal' ),
@@ -145,8 +144,6 @@ class TSAR_Requests_List_Table extends WP_List_Table {
 				return esc_html( $item['currency'] . ' ' . number_format( (float) $item['amount'], 2 ) );
 			case 'paypal':
 				return $item['paypal_email_used'] ? esc_html( $item['paypal_email_used'] ) : '—';
-			case 'note':
-				return $item['txn_note'] ? '<span title="' . esc_attr( $item['txn_note'] ) . '">' . esc_html( wp_trim_words( $item['txn_note'], 8, '…' ) ) . '</span>' : '—';
 			case 'status':
 				return sprintf(
 					'<span class="tsar-status tsar-status-%s">%s</span>',

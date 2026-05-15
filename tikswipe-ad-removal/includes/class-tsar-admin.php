@@ -23,6 +23,16 @@ class TSAR_Admin {
 		add_action( 'admin_post_tsar_member_update', array( __CLASS__, 'handle_member_update' ) );
 		add_action( 'admin_post_tsar_member_revoke', array( __CLASS__, 'handle_member_revoke' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'flash_notices' ) );
+		add_action( 'update_option_' . TSAR_OPTION_KEY, array( __CLASS__, 'maybe_flush_rewrites' ), 10, 2 );
+	}
+
+	public static function maybe_flush_rewrites( $old, $new ) {
+		$old_slug = isset( $old['subscription_slug'] ) ? $old['subscription_slug'] : '';
+		$new_slug = isset( $new['subscription_slug'] ) ? $new['subscription_slug'] : '';
+		if ( $old_slug !== $new_slug ) {
+			TSAR_Frontend::register_rewrite();
+			flush_rewrite_rules();
+		}
 	}
 
 	public static function register_menu() {
@@ -102,16 +112,22 @@ class TSAR_Admin {
 		$defaults = tsar_default_settings();
 		$out      = array();
 
-		$out['enabled']         = ! empty( $input['enabled'] ) ? 1 : 0;
-		$out['paypal_email']    = isset( $input['paypal_email'] ) ? sanitize_email( $input['paypal_email'] ) : '';
-		$out['price_30days']    = isset( $input['price_30days'] ) ? number_format( (float) $input['price_30days'], 2, '.', '' ) : $defaults['price_30days'];
-		$out['price_lifetime']  = isset( $input['price_lifetime'] ) ? number_format( (float) $input['price_lifetime'], 2, '.', '' ) : $defaults['price_lifetime'];
-		$out['days_30days']     = isset( $input['days_30days'] ) ? max( 1, (int) $input['days_30days'] ) : $defaults['days_30days'];
-		$out['currency']        = isset( $input['currency'] ) ? strtoupper( sanitize_text_field( $input['currency'] ) ) : $defaults['currency'];
-		$out['currency_symbol'] = isset( $input['currency_symbol'] ) ? sanitize_text_field( $input['currency_symbol'] ) : $defaults['currency_symbol'];
-		$out['disclaimer']      = isset( $input['disclaimer'] ) ? wp_kses_post( $input['disclaimer'] ) : $defaults['disclaimer'];
-		$out['thanks_text']     = isset( $input['thanks_text'] ) ? wp_kses_post( $input['thanks_text'] ) : $defaults['thanks_text'];
-		$out['login_text']      = isset( $input['login_text'] ) ? wp_kses_post( $input['login_text'] ) : $defaults['login_text'];
+		$out['enabled']           = ! empty( $input['enabled'] ) ? 1 : 0;
+		$out['paypal_email']      = isset( $input['paypal_email'] ) ? sanitize_email( $input['paypal_email'] ) : '';
+		$out['price_30days']      = isset( $input['price_30days'] ) ? number_format( (float) $input['price_30days'], 2, '.', '' ) : $defaults['price_30days'];
+		$out['price_lifetime']    = isset( $input['price_lifetime'] ) ? number_format( (float) $input['price_lifetime'], 2, '.', '' ) : $defaults['price_lifetime'];
+		$out['days_30days']       = isset( $input['days_30days'] ) ? max( 1, (int) $input['days_30days'] ) : $defaults['days_30days'];
+		$out['currency']          = isset( $input['currency'] ) ? strtoupper( sanitize_text_field( $input['currency'] ) ) : $defaults['currency'];
+		$out['currency_symbol']   = isset( $input['currency_symbol'] ) ? sanitize_text_field( $input['currency_symbol'] ) : $defaults['currency_symbol'];
+		$out['subscription_slug'] = isset( $input['subscription_slug'] ) ? sanitize_title( $input['subscription_slug'] ) : $defaults['subscription_slug'];
+		if ( '' === $out['subscription_slug'] ) {
+			$out['subscription_slug'] = $defaults['subscription_slug'];
+		}
+		$out['review_window']     = isset( $input['review_window'] ) ? max( 60, (int) $input['review_window'] ) : $defaults['review_window'];
+		$out['disclaimer']        = isset( $input['disclaimer'] ) ? wp_kses_post( $input['disclaimer'] ) : $defaults['disclaimer'];
+		$out['thanks_text']       = isset( $input['thanks_text'] ) ? wp_kses_post( $input['thanks_text'] ) : $defaults['thanks_text'];
+		$out['login_text']        = isset( $input['login_text'] ) ? wp_kses_post( $input['login_text'] ) : $defaults['login_text'];
+		$out['rejected_text']     = isset( $input['rejected_text'] ) ? wp_kses_post( $input['rejected_text'] ) : $defaults['rejected_text'];
 
 		return $out;
 	}
@@ -269,6 +285,22 @@ class TSAR_Admin {
 						</td>
 					</tr>
 					<tr>
+						<th><label for="tsar-slug"><?php esc_html_e( 'Subscription page slug', 'tikswipe-ad-removal' ); ?></label></th>
+						<td>
+							<code><?php echo esc_html( trailingslashit( home_url( '/' ) ) ); ?></code>
+							<input type="text" id="tsar-slug" name="<?php echo esc_attr( TSAR_OPTION_KEY ); ?>[subscription_slug]" value="<?php echo esc_attr( $s['subscription_slug'] ); ?>" class="regular-text">
+							<p class="description"><?php esc_html_e( 'Public URL for the subscription page (default: subscription).', 'tikswipe-ad-removal' ); ?></p>
+							<p><a class="button" href="<?php echo esc_url( tsar_subscription_url() ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open page', 'tikswipe-ad-removal' ); ?></a></p>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="tsar-review-window"><?php esc_html_e( 'Review window (seconds)', 'tikswipe-ad-removal' ); ?></label></th>
+						<td>
+							<input type="number" id="tsar-review-window" min="60" name="<?php echo esc_attr( TSAR_OPTION_KEY ); ?>[review_window]" value="<?php echo esc_attr( $s['review_window'] ); ?>" class="small-text">
+							<p class="description"><?php esc_html_e( 'Countdown shown to users after they submit a request. Default 5400 = 1h30.', 'tikswipe-ad-removal' ); ?></p>
+						</td>
+					</tr>
+					<tr>
 						<th><label><?php esc_html_e( 'Currency', 'tikswipe-ad-removal' ); ?></label></th>
 						<td>
 							<input type="text" name="<?php echo esc_attr( TSAR_OPTION_KEY ); ?>[currency]" value="<?php echo esc_attr( $s['currency'] ); ?>" class="small-text" maxlength="6">
@@ -318,8 +350,11 @@ class TSAR_Admin {
 						</td>
 					</tr>
 					<tr>
-						<th><?php esc_html_e( 'Shortcode', 'tikswipe-ad-removal' ); ?></th>
-						<td><code>[tikswipe_remove_ads]</code></td>
+						<th><label for="tsar-rejected"><?php esc_html_e( 'Rejected message', 'tikswipe-ad-removal' ); ?></label></th>
+						<td>
+							<textarea id="tsar-rejected" name="<?php echo esc_attr( TSAR_OPTION_KEY ); ?>[rejected_text]" rows="2" class="large-text"><?php echo esc_textarea( $s['rejected_text'] ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'Shown to the user when their request is rejected.', 'tikswipe-ad-removal' ); ?></p>
+						</td>
 					</tr>
 				</table>
 				<?php submit_button(); ?>

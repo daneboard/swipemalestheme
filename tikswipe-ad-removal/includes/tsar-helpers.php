@@ -14,16 +14,19 @@ function tsar_table() {
 
 function tsar_default_settings() {
 	return array(
-		'enabled'         => 1,
-		'paypal_email'    => '',
-		'price_30days'    => '1.99',
-		'price_lifetime'  => '6.99',
-		'days_30days'     => 30,
-		'currency'        => 'USD',
-		'currency_symbol' => '$',
-		'disclaimer'      => __( 'Please use the same email you registered with on this site, or include your account email in the PayPal payment note. Your request will be reviewed and ads will be removed once payment is confirmed.', 'tikswipe-ad-removal' ),
-		'thanks_text'     => __( 'Thanks! Your request was received. We will review your payment and remove ads from your account shortly.', 'tikswipe-ad-removal' ),
-		'login_text'      => __( 'You need to log in to purchase ad removal.', 'tikswipe-ad-removal' ),
+		'enabled'           => 1,
+		'paypal_email'      => '',
+		'price_30days'      => '1.99',
+		'price_lifetime'    => '6.99',
+		'days_30days'       => 30,
+		'currency'          => 'USD',
+		'currency_symbol'   => '$',
+		'subscription_slug' => 'subscription',
+		'review_window'     => 5400, // 1h30 in seconds.
+		'disclaimer'        => __( 'Please use the same email you registered with on this site, or include your account email in the PayPal payment note. Your request will be reviewed and ads will be removed once payment is confirmed.', 'tikswipe-ad-removal' ),
+		'thanks_text'       => __( 'Thanks! Your request was received. We will review your payment shortly.', 'tikswipe-ad-removal' ),
+		'login_text'        => __( 'You need to log in to purchase ad removal.', 'tikswipe-ad-removal' ),
+		'rejected_text'     => __( 'Your previous request was not approved. If you believe this was a mistake, please contact support and submit a new request below.', 'tikswipe-ad-removal' ),
 	);
 }
 
@@ -72,6 +75,28 @@ function tsar_format_datetime( $timestamp ) {
 		return '—';
 	}
 	return wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $timestamp );
+}
+
+function tsar_subscription_url() {
+	$slug = tsar_get_setting( 'subscription_slug', 'subscription' );
+	$slug = trim( $slug, '/' );
+	if ( '' === $slug ) {
+		$slug = 'subscription';
+	}
+	return home_url( '/' . $slug . '/' );
+}
+
+function tsar_get_latest_request_for_user( $user_id ) {
+	global $wpdb;
+	$table = tsar_table();
+	$row   = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT * FROM {$table} WHERE user_id = %d ORDER BY id DESC LIMIT 1",
+			(int) $user_id
+		),
+		ARRAY_A
+	);
+	return $row ? $row : null;
 }
 
 function tsar_status_label( $status ) {

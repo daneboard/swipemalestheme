@@ -19,6 +19,12 @@ class TSAR_Install {
 		if ( ! wp_next_scheduled( 'tsar_daily_expire' ) ) {
 			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'tsar_daily_expire' );
 		}
+
+		// Register the rule then flush so /subscription is reachable immediately.
+		if ( class_exists( 'TSAR_Frontend' ) ) {
+			TSAR_Frontend::register_rewrite();
+		}
+		flush_rewrite_rules();
 	}
 
 	public static function deactivate() {
@@ -26,6 +32,7 @@ class TSAR_Install {
 		if ( $timestamp ) {
 			wp_unschedule_event( $timestamp, 'tsar_daily_expire' );
 		}
+		flush_rewrite_rules();
 	}
 
 	public static function maybe_upgrade() {
