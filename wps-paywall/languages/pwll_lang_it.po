@@ -1,0 +1,412 @@
+# Copyright (C) 2025 WPS Paywall
+# This file is distributed under the same license as the WPS Paywall package.
+msgid ""
+msgstr ""
+"Project-Id-Version: WPS Paywall\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-09-25 15:25+0000\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-KeywordsList: __;_e;_ex:1,2c;_n:1,2;_n_noop:1,2;_nx:1,2,4c;_nx_noop:1,2,3c;_x:1,2c;esc_attr__;esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c\n"
+"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPathExcluded-0: *.js\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language: \n"
+"Language-Team: \n"
+
+#: ../admin/admin-post-columns.php:6, ../admin/admin-post-columns.php:41
+msgid "WPS Paywall"
+msgstr "WPS Paywall"
+
+#: ../admin/admin-post-columns.php:42
+msgid "Premium"
+msgstr "Premium"
+
+#: ../admin/admin-post-columns.php:119
+msgid "Edit this item inline"
+msgstr "Modificare questo articolo in linea"
+
+#: ../admin/admin-post-columns.php:121
+msgid "Quick Edit"
+msgstr "Modifica rapida"
+
+#: ../classes/class-pwll.php:44, ../classes/class-pwll.php:53
+msgid "Do not clone or wake up this class"
+msgstr "Non clonare o svegliare questa classe"
+
+#: ../classes/class-pwll.php:389
+msgid "An error occured during the suppression:"
+msgstr "Si verifica un errore durante la soppressione:"
+
+#: ../classes/class-pwll.php:390
+msgid "Select a WP category"
+msgstr "Seleziona una categoria WP"
+
+#: ../classes/class-pwll.php:391
+msgid "Select Videos status"
+msgstr "Selezionare lo stato dei video"
+
+#: ../classes/class-pwll.php:392
+msgid "AND"
+msgstr "E"
+
+#: ../classes/class-pwll.php:393
+msgid "Insert at least 1 valid url in the textarea above"
+msgstr "Inserire almeno 1 url valido nell'area di testo sopra"
+
+#: ../classes/class-pwll.php:394
+msgid "Check at least 1 video"
+msgstr "Controllare almeno 1 video"
+
+#: ../classes/class-pwll.php:395
+msgid "to enable this button"
+msgstr "per attivare questo pulsante"
+
+#: ../classes/class-pwll.php:396
+msgid "Import"
+msgstr "Importazioni"
+
+#: ../classes/class-pwll.php:397
+msgid "videos and save this search as a Feed. All your Feeds are displayed at the bottom of this page."
+msgstr "video e salvare questa ricerca come Feed. Tutti i tuoi Feed vengono visualizzati in fondo a questa pagina."
+
+#: ../public/paywall-modal.php:106
+msgid "12 months"
+msgstr "12 mesi"
+
+#: ../public/paywall-modal.php:131
+msgid "6 months"
+msgstr "6 mesi"
+
+#: ../public/paywall-modal.php:150
+msgid "3 months"
+msgstr "3 mesi"
+
+#: ../public/paywall-modal.php:169
+msgid "1 month"
+msgstr "1 mese"
+
+#: ../tgmpa/config.php:45
+msgid "Install Required Plugins"
+msgstr "Installare Plugin necessari"
+
+#: ../tgmpa/config.php:46
+msgid "Install Plugins"
+msgstr "Installare Plugin"
+
+#. translators: %s: plugin name.
+#: ../tgmpa/config.php:48
+msgid "Installing Plugin: %s"
+msgstr "Installazione Plugin: %"
+
+#. translators: %s: plugin name.
+#: ../tgmpa/config.php:50
+msgid "Updating Plugin: %s"
+msgstr "Connettore di aggiornamento: %"
+
+#: ../tgmpa/config.php:51
+msgid "Something went wrong with the plugin API."
+msgstr "Qualcosa è andato storto con il plugin API."
+
+#. translators: 1: plugin name(s).
+#: ../tgmpa/config.php:53
+msgid "WP-Script products requires the following plugin: %1$s."
+msgid_plural "WP-Script products requires the following plugins: %1$s."
+msgstr[0] "I prodotti WP-Script richiedono il seguente plugin: %1$s."
+msgstr[1] "I prodotti WP-Script richiedono i seguenti plugin: %1$s."
+
+#. translators: 1: plugin name(s).
+#: ../tgmpa/config.php:59
+msgid "WP-Script products recommends the following plugin: %1$s."
+msgid_plural "WP-Script products recommends the following plugins: %1$s."
+msgstr[0] "Prodotti WP-Script consiglia il seguente plugin: %1$s."
+msgstr[1] "Prodotti WP-Script consiglia i seguenti plugin: %1$s."
+
+#. translators: 1: plugin name(s).
+#: ../tgmpa/config.php:65
+msgid "%1$s needs to be updated to its latest version to ensure maximum compatibility with WP-Script products"
+msgid_plural "%1$s need to be updated to their latest version to ensure maximum compatibility with WP-Script products"
+msgstr[0] "%1$s deve essere aggiornato alla sua ultima versione per garantire la massima compatibilità con i prodotti WP-Script"
+msgstr[1] "%1$s devono essere aggiornati alla loro ultima versione per garantire la massima compatibilità con i prodotti WP-Script"
+
+#: ../admin/pages/page-options-x.php:32
+msgid "Options"
+msgstr "Opzioni"
+
+#: ../admin/pages/page-options-x.php:65
+msgid "General"
+msgstr "Generale"
+
+#: ../admin/pages/page-options-x.php:66
+msgid "Paywall Popup"
+msgstr "Paywall Popup"
+
+#: ../admin/pages/page-options-x.php:67
+msgid "Pricing"
+msgstr "Prezzo"
+
+#: ../admin/pages/page-options-x.php:68
+msgid "Checkout"
+msgstr "Checkout"
+
+#: ../admin/pages/page-options-x.php:84
+msgid "Navigate as premium member"
+msgstr "Navigare come membro premium"
+
+#: ../admin/pages/page-options-x.php:89
+msgid "Enable this option to navigate on your site as premium member with unlocked content."
+msgstr "Abilita questa opzione per navigare sul tuo sito come membro premium con contenuti sbloccati."
+
+#: ../admin/pages/page-options-x.php:117
+msgid "Main color"
+msgstr "Colore principale"
+
+#: ../admin/pages/page-options-x.php:120
+msgid "Set the color of the lock button, the active pricing plan, etc."
+msgstr "Impostare il colore del pulsante di blocco, il piano di prezzi attivo, ecc."
+
+#: ../admin/pages/page-options-x.php:127
+msgid "Round corners"
+msgstr "Angoli tondi"
+
+#: ../admin/pages/page-options-x.php:132
+msgid "Round the corners of the paywall popup, buttons, inputs, etc."
+msgstr "Arrotondare gli angoli del popup paywall, pulsanti, ingressi, ecc."
+
+#: ../admin/pages/page-options-x.php:139
+msgid "Locked content area text"
+msgstr "Testo dell'area dei contenuti bloccati"
+
+#: ../admin/pages/page-options-x.php:143
+msgid "Set locked content area text (eg. Unlock Video)."
+msgstr "Impostare il testo dell'area del contenuto bloccato (ad esempio sbloccare il video)."
+
+#: ../admin/pages/page-options-x.php:149
+msgid "Badge featured images"
+msgstr "Badge immagini in evidenza"
+
+#: ../admin/pages/page-options-x.php:154
+msgid "Add a lock badge on archive's featured images for your premium posts."
+msgstr "Aggiungi un badge di blocco sulle immagini in evidenza dell'archivio per i tuoi post premium."
+
+#: ../admin/pages/page-options-x.php:161
+msgid "Badge settings"
+msgstr "Impostazioni di errore"
+
+#: ../admin/pages/page-options-x.php:193
+msgid "Badge text"
+msgstr "Testo cattivo"
+
+#: ../admin/pages/page-options-x.php:197
+msgid "Set the badge text."
+msgstr "Imposta il testo del badge."
+
+#: ../admin/pages/page-options-x.php:212
+msgid "Title"
+msgstr "Titolo"
+
+#: ../admin/pages/page-options-x.php:216
+msgid "Set the title of the paywall popup (eg. Premium Membership)."
+msgstr "Impostare il titolo del popup paywall (ad esempio Premium Membership)."
+
+#: ../admin/pages/page-options-x.php:223
+msgid "Description"
+msgstr "Designazione"
+
+#: ../admin/pages/page-options-x.php:227
+msgid "Set the description of the paywall popup (eg. Become a Premium Member and Get Access to All our Exclusive Videos)"
+msgstr "Impostare la descrizione del popup paywall (ad esempio Diventa membro Premium e Accedi a tutti i nostri video esclusivi)"
+
+#: ../admin/pages/page-options-x.php:255
+msgid "Button text"
+msgstr "Testo del pulsante"
+
+#: ../admin/pages/page-options-x.php:259
+msgid "Set the paywall popup button text."
+msgstr "Impostare il testo del pulsante popup paywall."
+
+#: ../admin/pages/page-options-x.php:711
+msgid "Subscription Plans"
+msgstr "Piani di abbonamento"
+
+#: ../admin/pages/page-options-x.php:277
+msgid "Enable 1 month"
+msgstr "Attivare 1 mese"
+
+#: ../admin/pages/page-options-x.php:282
+msgid "Offer the possibility to your users to pay every month in order to access to your Premium content."
+msgstr "Offrire la possibilità ai tuoi utenti di pagare ogni mese per accedere ai tuoi contenuti Premium."
+
+#: ../admin/pages/page-options-x.php:290
+msgid "1 month settings"
+msgstr "impostazioni di 1 mese"
+
+#: ../admin/pages/page-options-x.php:300, ../admin/pages/page-options-x.php:408, ../admin/pages/page-options-x.php:516, ../admin/pages/page-options-x.php:624, ../admin/pages/page-options-x.php:750
+msgid "Price"
+msgstr "Prezzo"
+
+#: ../admin/pages/page-options-x.php:318, ../admin/pages/page-options-x.php:426, ../admin/pages/page-options-x.php:534, ../admin/pages/page-options-x.php:642
+msgid "Sign-up fee"
+msgstr "Tassa di iscrizione"
+
+#: ../admin/pages/page-options-x.php:335, ../admin/pages/page-options-x.php:443, ../admin/pages/page-options-x.php:551, ../admin/pages/page-options-x.php:659
+msgid "Free trial"
+msgstr "Prova gratuita"
+
+#: ../admin/pages/page-options-x.php:340
+msgid "Offer the possibility to your users to test before subscribing for 1 month."
+msgstr "Offrire la possibilità ai tuoi utenti di testare prima di sottoscrivere per 1 mese."
+
+#: ../admin/pages/page-options-x.php:347, ../admin/pages/page-options-x.php:455, ../admin/pages/page-options-x.php:563, ../admin/pages/page-options-x.php:671
+msgid "Free trial length"
+msgstr "Lunghezza di prova gratuita"
+
+#: ../admin/pages/page-options-x.php:364, ../admin/pages/page-options-x.php:472, ../admin/pages/page-options-x.php:580, ../admin/pages/page-options-x.php:688
+msgid "Free trial period"
+msgstr "Periodo di prova gratuito"
+
+#: ../admin/pages/page-options-x.php:369, ../admin/pages/page-options-x.php:585, ../admin/pages/page-options-x.php:693
+msgid "Day"
+msgstr "Giorno"
+
+#: ../admin/pages/page-options-x.php:370, ../admin/pages/page-options-x.php:586, ../admin/pages/page-options-x.php:694
+msgid "Week"
+msgstr "Rassegna"
+
+#: ../admin/pages/page-options-x.php:371, ../admin/pages/page-options-x.php:587, ../admin/pages/page-options-x.php:695
+msgid "Month"
+msgstr "Mese"
+
+#: ../admin/pages/page-options-x.php:372, ../admin/pages/page-options-x.php:588, ../admin/pages/page-options-x.php:696
+msgid "Year"
+msgstr "Anno"
+
+#: ../admin/pages/page-options-x.php:385
+msgid "Enable 3 months"
+msgstr "Attivare 3 mesi"
+
+#: ../admin/pages/page-options-x.php:390
+msgid "Offer the possibility to your users to pay every 3 months in order to access to your Premium content."
+msgstr "Offri la possibilità ai tuoi utenti di pagare ogni 3 mesi per accedere ai tuoi contenuti Premium."
+
+#: ../admin/pages/page-options-x.php:398
+msgid "3 months settings"
+msgstr "impostazioni di 3 mesi"
+
+#: ../admin/pages/page-options-x.php:448
+msgid "Offer the possibility to your users to test before subscribing for 3 months."
+msgstr "Offrire la possibilità ai tuoi utenti di testare prima di sottoscrivere per 3 mesi."
+
+#: ../admin/pages/page-options-x.php:464
+#: ../admin/pages/page-options-x.php:493
+msgid "Enable 6 months"
+msgstr "Abilitare 6 mesi"
+
+#: ../admin/pages/page-options-x.php:498
+msgid "Offer the possibility to your users to pay every 6 months in order to access to your Premium content."
+msgstr "Offri la possibilità ai tuoi utenti di pagare ogni 6 mesi per accedere al tuo contenuto Premium."
+
+#: ../admin/pages/page-options-x.php:506
+msgid "6 months settings"
+msgstr "impostazioni di 6 mesi"
+
+#: ../admin/pages/page-options-x.php:556
+msgid "Offer the possibility to your users to test before subscribing for 6 months."
+msgstr "Offrire la possibilità ai tuoi utenti di testare prima di sottoscrivere per 6 mesi."
+
+#: ../admin/pages/page-options-x.php:601
+msgid "Enable 12 months"
+msgstr "Abilitare 12 mesi"
+
+#: ../admin/pages/page-options-x.php:606
+msgid "Offer the possibility to your users to pay every year in order to access to your Premium content."
+msgstr "Offrire la possibilità ai tuoi utenti di pagare ogni anno per accedere ai tuoi contenuti Premium."
+
+#: ../admin/pages/page-options-x.php:614
+msgid "12 months settings"
+msgstr "impostazioni 12 mesi"
+
+#: ../admin/pages/page-options-x.php:664
+msgid "Offer the possibility to your users to test before subscribing for 12 months."
+msgstr "Offrire la possibilità ai tuoi utenti di testare prima di sottoscrivere per 12 mesi."
+
+#: ../admin/pages/page-options-x.php:727
+msgid "Lifetime Plan"
+msgstr "Piano di vita"
+
+#: ../admin/pages/page-options-x.php:732
+msgid "Offer the possibility to your users to pay only one-time in order to access to your Premium content for life."
+msgstr "Offri la possibilità ai tuoi utenti di pagare solo una volta per accedere al tuo contenuto Premium per tutta la vita."
+
+#: ../admin/pages/page-options-x.php:740
+msgid "Lifetime settings"
+msgstr "Impostazioni di vita"
+
+#: ../admin/pages/page-options-x.php:775
+msgid "First name"
+msgstr "Nome"
+
+#: ../admin/pages/page-options-x.php:780
+msgid "Ask for the user's first name on the checkout section."
+msgstr "Chiedi il nome dell'utente nella sezione checkout."
+
+#: ../admin/pages/page-options-x.php:786
+msgid "Last name"
+msgstr "Cognome"
+
+#: ../admin/pages/page-options-x.php:791
+msgid "Ask for the user's last name on the checkout section."
+msgstr "Chiedi l'ultimo nome dell'utente nella sezione checkout."
+
+#: ../admin/pages/page-options-x.php:797
+msgid "Address"
+msgstr "Indirizzo"
+
+#: ../admin/pages/page-options-x.php:802
+msgid "Ask for the user's address on the checkout section."
+msgstr "Chiedi l'indirizzo dell'utente nella sezione checkout."
+
+#: ../admin/pages/page-options-x.php:808
+msgid "City"
+msgstr "Città"
+
+#: ../admin/pages/page-options-x.php:813
+msgid "Ask for the user's city on the checkout section."
+msgstr "Chiedere la città dell'utente nella sezione checkout."
+
+#: ../admin/pages/page-options-x.php:819
+msgid "Postcode"
+msgstr "Codice postale"
+
+#: ../admin/pages/page-options-x.php:824
+msgid "Ask for the user's postcode on the checkout section."
+msgstr "Chiedi il codice postale dell'utente nella sezione checkout."
+
+#: ../admin/pages/page-options-x.php:830
+msgid "Country"
+msgstr "Paese"
+
+#: ../admin/pages/page-options-x.php:835
+msgid "Ask for the user's country on the checkout section."
+msgstr "Chiedi il paese dell'utente nella sezione checkout."
+
+#: ../admin/pages/page-options-x.php:841
+msgid "Phone"
+msgstr "Telefono"
+
+#: ../admin/pages/page-options-x.php:846
+msgid "Ask for the user's phone on the checkout section."
+msgstr "Chiedi il telefono dell'utente nella sezione checkout."
+
+#: ../woocommerce/checkout/thankyou.php:24
+msgid "Thank you! You have now access to all our exclusive content."
+msgstr "Grazie! Ora avete accesso a tutti i nostri contenuti esclusivi."
+
+#: ../woocommerce/checkout/thankyou.php:26
+msgid "Back to home"
+msgstr "Torna a casa"

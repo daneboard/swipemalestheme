@@ -1,0 +1,1064 @@
+body.woocommerce-checkout,
+body.woocommerce-account {
+	font-size: 1rem;
+}
+
+.mb-20 {
+	margin-bottom: 20px;
+}
+
+.woocommerce-notices-wrapper,
+.woocommerce-form-coupon-toggle,
+.woocommerce-page.woocommerce-checkout form #order_review td.product-name .product-quantity,
+.woocommerce.woocommerce-checkout form #order_review td.product-name .product-quantity {
+	display: none !important;
+}
+
+.woocommerce-checkout-review-order {
+	padding-bottom: 30px;
+}
+
+body .woocommerce form .form-row {
+	margin-bottom: 20px;
+	padding: 0;
+}
+
+body .woocommerce form .form-row label {
+	margin-bottom: 3px;
+}
+
+body .woocommerce form .form-row label.error {
+	background: #df4130;
+	color: #fff;
+	padding: 0 5px;
+	font-size: 14px;
+}
+
+.pwll-close-modal {
+	position: absolute;
+	top: -10px;
+	right: -10px;
+	padding: 0;
+	border: 2px solid transparent;
+	border-radius: 100% !important;
+	-webkit-border-radius: 100% !important;
+	-moz-border-radius: 100% !important;
+	width: 30px;
+	height: 30px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	transition: all 0.2s ease-in-out;
+	cursor: pointer;
+	z-index: 3;
+}
+
+.unlock-box {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 15px;
+}
+
+.unlock-box .duration {
+	background-color: rgba(0, 0, 0, 0.3);
+	padding: 2px 8px;
+}
+
+.unlock-box .duration svg {
+	position: relative;
+	top: -1px;
+}
+
+.theme-famoustube .video-block,
+.theme-kolortube .video-block,
+.theme-vtube .video-block {
+	position: relative;
+}
+
+.pwll-badge {
+	position: absolute;
+	top: 5px;
+	right: 5px;
+	background-color: rgba(0, 0, 0, 0.5);
+	color: #fff;
+	z-index: 999;
+	display: flex !important;
+	justify-content: center;
+	align-items: center;
+	text-transform: uppercase;
+	font-size: 75%;
+	font-weight: 700;
+	/* height: 20px; */
+	line-height: 1;
+	padding: 0 !important;
+	letter-spacing: 1px;
+}
+
+.swiper-slide .pwll-badge {
+	top: calc(50% - 50px);
+	left: 50%;
+	right: inherit;
+	transform: translate(-50%, -50%);
+	border-style: solid;
+	border-width: 1px;
+}
+
+#load-more-fav-vids-content .media-item .pwll-badge {
+	right: inherit;
+	left: 5px;
+}
+
+/* .pwll-badge:hover {
+	background-color: #333333 !important;
+	border-color: #333333 !important;
+} */
+
+.pwll-badge .badge-icon {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 3px;
+	/* height: 20px; */
+}
+
+.pwll-badge .badge-icon svg {
+	width: 13px;
+	height: 13px;
+	position: relative;
+	top: -1px;
+}
+
+.pwll-badge .badge-text {
+	/* height: 20px; */
+	line-height: 1;
+	padding: 0 5px;
+}
+
+aside .pwll-badge {
+	font-size: 70%;
+	padding: 0 !important;
+}
+
+aside .pwll-badge svg {
+	width: 15;
+	height: 15px;
+}
+
+button.open-pwll-box {
+	border: none;
+	cursor: pointer;
+	transition: all 0.2s ease-in-out;
+	padding: 20px;
+}
+
+.locked-button {
+	font-size: 1rem;
+	text-align: center;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 5px;
+	text-decoration: none;
+	border-radius: 0;
+	background: rgba(255, 255, 255, 0.8) !important;
+	border: 2px solid rgba(0, 0, 0, 0.05) !important;
+	transition: all 0.2s ease-in-out;
+	color: inherit !important;
+}
+
+.locked-button svg {
+	width: 26px;
+	height: 26px;
+}
+
+.locked-button:hover {
+	background-color: rgba(255, 255, 255, 0.7) !important;
+	border-style: solid !important;
+	border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.locked-button-large {
+	font-size: 26px;
+	font-weight: bold;
+	width: 100%;
+	height: 100%;
+	aspect-ratio: 16 / 9;
+}
+
+.locked-button-large svg {
+	width: 46px;
+	height: 46px;
+}
+
+.premium-video-bg {
+	background-repeat: no-repeat;
+	background-size: cover;
+}
+
+.theme-kolortube .premium-video-bg,
+.theme-vtube .premium-video-bg {
+	width: 100%;
+	height: 100%;
+	position: absolute;
+}
+
+.theme-tikswipe .premium-video-bg {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background-position: center;
+	background-size: contain;
+}
+
+.premium-video-bg .locked-button-large {
+	border: none !important;
+}
+
+.lock-top {
+	fill: none;
+	stroke-width: 5;
+	stroke-linecap: round;
+	stroke-miterlimit: 10;
+	stroke-dasharray: 300;
+	stroke-dashoffset: 0;
+	transition: all 300ms ease-out;
+}
+
+.lock-top.loaded {
+	stroke-dashoffset: -30;
+	/* stroke: #02ac1e; */
+}
+
+/* .lock-top.loaded ~ .lock-body {
+	fill: #02ac1e;
+} */
+.lock-top.loading {
+	stroke: #000;
+	opacity: 0.3;
+}
+
+/* .lock-outline{
+	fill: #fff;
+} */
+
+.lock-outline {
+	fill: none;
+}
+
+.lock-body {
+	/* fill: #02ac1e; */
+	opacity: 1;
+	transition: all 300ms ease-out;
+}
+
+.lock-body.loading {
+	/* fill: #000 !important; */
+	opacity: 0.3;
+}
+
+.lock-spinner {
+	fill: none;
+	/* stroke: #000; */
+	stroke-width: 5;
+	stroke-linecap: round;
+	stroke-miterlimit: 10;
+	opacity: 0;
+	transition: opacity 200ms ease;
+}
+
+.lock-spinner.loading {
+	opacity: 1;
+}
+
+.pwll-modal-bg {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.8);
+	z-index: 99999;
+	-webkit-overflow-scrolling: touch;
+}
+
+.pwll-unlock-box {
+	display: none;
+	max-height: calc(100% - 30px);
+	width: calc(100% - 30px);
+	max-width: 600px;
+	background: #f5f5f5;
+	z-index: 99999;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: 0;
+	box-shadow: 0 12px 20px 0px rgb(0 0 0 / 10%);
+}
+
+.pwll-unlock-box .pwll-header {
+	position: relative;
+	background-color: #fff;
+	text-align: center;
+	padding: 15px 25px;
+	z-index: 2;
+	box-shadow: 0 4px 2px -2px rgba(0, 0, 0, 0.07);
+}
+
+.pwll-unlock-box .pwll-header h2 {
+	margin: 0;
+	font-size: 20px;
+	font-weight: bold;
+	text-transform: inherit;
+	line-height: 1.4;
+	color: #333 !important;
+}
+
+.pwll-unlock-box .pwll-header p {
+	margin-bottom: 0;
+	opacity: 0.8;
+}
+
+.pwll-unlock-box .pwll-content {
+	padding: 0 30px;
+	font-size: 16px;
+	max-height: calc(100vh - 150px);
+	overflow-y: auto;
+}
+
+/* Width */
+.pwll-unlock-box .pwll-content::-webkit-scrollbar {
+	width: 10px;
+}
+
+/* Track */
+.pwll-unlock-box .pwll-content::-webkit-scrollbar-track {
+	background: #ddd;
+}
+
+/* Handle */
+.pwll-unlock-box .pwll-content::-webkit-scrollbar-thumb {
+	background: #ccc;
+}
+
+.pwll-unlock-box .pwll-content .woocommerce {
+	margin-top: 25px;
+}
+
+.pwll-unlock-box .pwll-content .membership-desc {
+	display: block;
+	color: #333;
+	margin: 20px 0;
+	font-size: 14px;
+	text-align: center;
+}
+
+.pwll-unlock-box .pwll-content label {
+	color: #555;
+	font-size: 14px;
+	margin-bottom: 5px;
+	font-weight: bold;
+}
+
+.pwll-unlock-box h3 {
+	text-transform: inherit;
+	letter-spacing: -0.5px;
+	color: #555 !important;
+	font-size: 20px;
+	font-weight: bold;
+	margin: 0 0 20px;
+}
+
+.pwll-unlock-box h3.plan-select {
+	margin-left: 40px;
+}
+
+body.woocommerce-checkout h3 {
+	margin: 15px 0;
+	font-size: 1.2rem;
+	font-weight: bold;
+}
+
+body form #order_review_heading:not(.elementor-widget-woocommerce-checkout-page #order_review_heading) {
+	padding: 0;
+	border: none;
+	margin: 15px 0;
+}
+
+body form #order_review:not(.elementor-widget-woocommerce-checkout-page #order_review) {
+	padding: 0;
+	border: none;
+}
+
+body .woocommerce-billing-fields__field-wrapper {
+	margin-top: 30px;
+}
+
+body .woocommerce-billing-fields {
+	margin-bottom: 20px;
+}
+
+body .payment_box p:first-of-type {
+	margin: 0;
+}
+
+body .payment_box fieldset p:first-of-type {
+	font-size: inherit;
+	padding: inherit;
+	font-style: inherit;
+}
+
+.woocommerce:where(body:not(.woocommerce-block-theme-has-button-styles)) #respond input#submit,
+.woocommerce:where(body:not(.woocommerce-block-theme-has-button-styles)) a.button,
+.woocommerce:where(body:not(.woocommerce-block-theme-has-button-styles)) button.button,
+.woocommerce:where(body:not(.woocommerce-block-theme-has-button-styles)) input.button,
+:where(body:not(.woocommerce-block-theme-has-button-styles)) .woocommerce #respond input#submit,
+:where(body:not(.woocommerce-block-theme-has-button-styles)) .woocommerce a.button,
+:where(body:not(.woocommerce-block-theme-has-button-styles)) .woocommerce button.button,
+:where(body:not(.woocommerce-block-theme-has-button-styles)) .woocommerce input.button {
+	color: #fff !important;
+}
+
+.pwll-unlock-box .woocommerce input,
+.pwll-unlock-box .woocommerce select,
+.pwll-unlock-box .woocommerce textarea {
+	background-color: #fff;
+	border: 1px solid #e5e5e5;
+	box-shadow: none;
+	color: #555;
+	font-weight: 400;
+	transition: border-color 0.2s ease-in-out;
+}
+
+.pwll-unlock-box .woocommerce input,
+.pwll-unlock-box .woocommerce select {
+	height: 35px;
+	padding: 0 10px;
+}
+
+.subscription-row {
+	display: grid;
+	/* grid-template-columns: repeat(2, 1fr); */
+	gap: 15px;
+	margin: 20px 0 0;
+}
+
+.lifetime-row {
+	margin-top: 20px;
+}
+
+.pwll-pricing-plan {
+	position: relative;
+	background-color: #fff;
+	padding: 15px 15px 0;
+	border-width: 2px;
+	border-style: solid;
+	border-color: #e5e5e5;
+	-webkit-transition: all .1s ease-out;
+	-moz-transition: all .1s ease-out;
+	-ms-transition: all .1s ease-out;
+	-o-transition: all .1s ease-out;
+	transition: all .1s ease-out;
+	cursor: pointer;
+	flex: 1;
+	text-align: center;
+	opacity: 0.8;
+	z-index: 1;
+	box-sizing: initial;
+}
+
+.pwll-pricing-plan.checked {
+	opacity: 1;
+}
+
+.pwll-cancel {
+	font-size: 14px;
+	text-align: center;
+	margin: 20px 0 0;
+}
+
+.pwll-price {
+	text-align: center;
+	margin: 5px 0 0;
+	font-size: 30px;
+	font-weight: bold;
+	color: #555;
+}
+
+.pwll-most-popular {
+	background-color: #e5e5e5;
+	position: absolute;
+	color: #222;
+	top: -22px;
+	width: 100%;
+	left: 0;
+	border-width: 2px;
+	border-style: solid;
+	border-color: #e5e5e5;
+	margin: 0 -2px;
+	text-transform: uppercase;
+	font-weight: 600;
+	font-size: 12px;
+	height: 25px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	line-height: 0;
+	box-sizing: initial;
+	-webkit-transition: all .1s ease-out;
+	-moz-transition: all .1s ease-out;
+	-ms-transition: all .1s ease-out;
+	-o-transition: all .1s ease-out;
+	transition: all .1s ease-out;
+}
+
+.pwll-pricing-plan.checked .pwll-most-popular,
+.pwll-pricing-plan:hover .pwll-most-popular {
+	color: #fff;
+}
+
+.pwll-price .woocommerce-Price-amount span.woocommerce-Price-currencySymbol {
+	font-size: 65%;
+	position: relative;
+	top: -6px;
+}
+
+.pwll-price .woocommerce-Price-amount span.decimals {
+	position: relative;
+	font-size: 65%;
+	top: -7px;
+}
+
+.pwll-price .per-month {
+	text-transform: uppercase;
+	font-size: 45%;
+	margin-left: 2px;
+	position: relative;
+	top: -2px;
+}
+
+.pwll-plan-discount {
+	position: absolute;
+	right: -5px;
+	top: -5px;
+	background: #ffd90f;
+	padding: 2px 6px;
+	font-size: 13px;
+	border-radius: 3px;
+	font-weight: 600;
+}
+
+.pwll-plan-title {
+	text-transform: uppercase;
+	font-size: 15px;
+	font-weight: 600;
+	text-align: center;
+	display: flex;
+	gap: 6px;
+	justify-content: center;
+	align-items: center;
+	color: #333;
+	margin-bottom: 10px;
+}
+
+.pwll-plan-title::before {
+	content: '';
+	width: 20px;
+	min-width: 20px;
+	height: 20px;
+	background-color: #e5e5e5;
+	background-repeat: no-repeat;
+	-webkit-border-radius: 100%;
+	-moz-border-radius: 100%;
+	border-radius: 100%;
+	display: block;
+}
+
+.pwll-pricing-plan.checked .pwll-plan-title::before {
+	background-size: 12px;
+	background-image: url('../img/check.svg');
+	background-position: center;
+}
+
+.pwll-plan-description {
+	font-size: 9px;
+	margin: 5px 0 17px;
+	color: #555;
+	line-height: 1.7;
+}
+
+.pwll-bottom-plan {
+	display: flex;
+	gap: 15px;
+	justify-content: center;
+	align-items: center;
+	margin-bottom: 17px;
+}
+
+.pwll-free-trial {
+	display: inline-block;
+	background-color: rgba(0, 0, 0, 0.6);
+	padding: 5px 15px;
+	border-radius: 30px;
+	color: #fff;
+	font-weight: 700;
+	font-size: 13px;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+}
+
+.pwll-sign-up-fee {
+	font-style: italic;
+	font-size: 14px;
+}
+
+.pwll-loading {
+	display: none;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.5);
+	z-index: 99999;
+}
+
+body .woocommerce #payment #place_order,
+body .woocommerce-page #payment #place_order {
+	float: none;
+	font-size: 20px;
+	transition: all 0.2s ease-in-out;
+}
+
+body .pwll-content .woocommerce #payment #place_order:hover,
+body .pwll-content .woocommerce-page #payment #place_order:hover,
+body .pwll-close-modal:hover {
+	background-color: #333 !important;
+	border-color: #333 !important;
+}
+
+body #add_payment_method #payment div.payment_box,
+body .woocommerce-cart #payment div.payment_box,
+body .woocommerce-checkout #payment div.payment_box {
+	padding: 10px 15px;
+	background: rgba(0, 0, 0, 0.025);
+	margin-top: 10px;
+}
+
+body .woocommerce form .form-row input.input-text,
+body .woocommerce form .form-row textarea,
+body #add_payment_method #payment div.payment_box input.input-text,
+body #add_payment_method #payment div.payment_box textarea,
+body .woocommerce-cart #payment div.payment_box input.input-text,
+body .woocommerce-cart #payment div.payment_box textarea,
+body .woocommerce-checkout #payment div.payment_box input.input-text,
+body .woocommerce-checkout #payment div.payment_box textarea {
+	border-color: rgba(0, 0, 0, 0.15);
+	height: 40px;
+	line-height: 40px;
+}
+
+body .woocommerce .select2-container--default .select2-selection--single {
+	height: 40px;
+	line-height: 40px;
+	border-color: rgba(0, 0, 0, 0.15);
+	padding: 0 0.75em;
+}
+
+body .select2-container--default .select2-selection--single .select2-selection__arrow {
+	height: 38px;
+}
+
+body .woocommerce .select2-container--default .select2-selection--single .select2-selection__rendered {
+	line-height: inherit;
+}
+
+body #add_payment_method #payment div.payment_box::before,
+body .woocommerce-cart #payment div.payment_box::before,
+body .woocommerce-checkout #payment div.payment_box::before {
+	content: none;
+}
+
+body #add_payment_method #payment ul.payment_methods,
+body .woocommerce-cart #payment ul.payment_methods,
+body .woocommerce-checkout #payment ul.payment_methods {
+	padding: 0;
+	border-bottom: none;
+}
+
+body #add_payment_method #payment div.form-row,
+body .woocommerce-cart #payment div.form-row,
+body .woocommerce-checkout #payment div.form-row {
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+body .woocommerce-checkout #payment div.form-row.place-order button#place_order {
+	display: block;
+	width: 100%;
+	padding: 20px;
+	border-width: 1px;
+	border-style: solid;
+	margin-top: 1rem;
+}
+
+body .woocommerce-checkout #payment div.form-row.place-order button#place_order:hover {
+	background-color: transparent !important;
+}
+
+body #add_payment_method #payment ul.payment_methods li,
+body .woocommerce-cart #payment ul.payment_methods li,
+body .woocommerce-checkout #payment ul.payment_methods li {
+	margin: 5px;
+}
+
+body #add_payment_method #payment ul.payment_methods li label,
+body .woocommerce-cart #payment ul.payment_methods li label,
+body .woocommerce-checkout #payment ul.payment_methods li label {
+	cursor: pointer;
+}
+
+body #add_payment_method #payment div.payment_box .wc-credit-card-form label,
+body .woocommerce-cart #payment div.payment_box .wc-credit-card-form label,
+body .woocommerce-checkout #payment div.payment_box .wc-credit-card-form label {
+	display: block;
+	width: 100%;
+}
+
+body #add_payment_method #payment,
+body .woocommerce-cart #payment,
+body .woocommerce-checkout #payment,
+body .pwll-unlock-box .pwll-content #place_order {
+	background-color: transparent !important;
+	border-radius: 0;
+}
+
+.woocommerce-account-fields,
+.woocommerce-order-details .order-again,
+.woocommerce_account_subscriptions .no_subscriptions .woocommerce-Button {
+	display: none !important
+}
+
+.woocommerce-page.woocommerce-checkout form #order_review table tr.cart-subtotal,
+.woocommerce-page.woocommerce-checkout form #order_review table tr.recurring-totals,
+.woocommerce-page.woocommerce-checkout form #order_review table tr.recurring-total,
+.woocommerce-page.woocommerce-checkout form #order_review table tr.ywsbs-recurring-totals-items {
+	display: none;
+}
+
+.pwll-button {
+	font-size: 1rem;
+	font-weight: bold;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 12px 18px;
+	color: #fff;
+	border-width: 2px;
+	border-style: solid;
+	outline: 0;
+	text-decoration: none;
+	transition: all 0.15s ease-in-out;
+}
+
+.start-membership-button {
+	font-size: 20px;
+	text-transform: uppercase;
+	margin: 20px 0 40px;
+}
+
+.back-button {
+	display: inline-block;
+	text-transform: inherit;
+}
+
+.pwll-button:hover,
+.pwll-button:focus,
+.pwll-button:active {
+	background: transparent !important;
+	color: #333;
+	text-decoration: none;
+}
+
+.pwll-checkout {
+	display: flex;
+	gap: 50px;
+	justify-content: space-between;
+}
+
+body.woocommerce.woocommerce-checkout form #order_review,
+body.woocommerce.woocommerce-checkout form #order_review_heading,
+body.woocommerce-page.woocommerce-checkout form #order_review,
+body.woocommerce-page.woocommerce-checkout form #order_review_heading {
+	width: 100% !important;
+}
+
+body #add_payment_method #payment ul.payment_methods li input,
+body .woocommerce-cart #payment ul.payment_methods li input,
+body .woocommerce-checkout #payment ul.payment_methods li input {
+	margin: 0;
+	border-width: 1px;
+	border-style: solid;
+}
+
+.woocommerce-checkout-payment input[type=checkbox],
+.woocommerce-checkout-payment input[type=radio] {
+	--active-inner: #fff;
+	--border: #bbc1e1;
+	--background: #fff;
+	--disabled: #f6f8ff;
+	--disabled-inner: #e1e6f9;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	height: 21px;
+	outline: none;
+	display: inline-block;
+	vertical-align: top;
+	position: relative;
+	margin: 0;
+	cursor: pointer;
+	border: 1px solid var(--bc, var(--border)) !important;
+	background: var(--b, var(--background)) !important;
+	transition: background 0.3s, border-color 0.3s, box-shadow 0.2s;
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:after,
+.woocommerce-checkout-payment input[type=radio]:after {
+	content: "";
+	display: block;
+	left: 0;
+	top: 0;
+	position: absolute;
+	transition: transform var(--d-t, 0.3s) var(--d-t-e, ease), opacity var(--d-o, 0.2s);
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:checked,
+.woocommerce-checkout-payment input[type=radio]:checked {
+	--b: var(--active);
+	--bc: var(--active);
+	--d-o: 0.3s;
+	--d-t: 0.6s;
+	--d-t-e: cubic-bezier(0.2, 0.85, 0.32, 1.2);
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:disabled,
+.woocommerce-checkout-payment input[type=radio]:disabled {
+	--b: var(--disabled);
+	cursor: not-allowed;
+	opacity: 0.9;
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:disabled:checked,
+.woocommerce-checkout-payment input[type=radio]:disabled:checked {
+	--b: var(--disabled-inner);
+	--bc: var(--border);
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:disabled+label,
+.woocommerce-checkout-payment input[type=radio]:disabled+label {
+	cursor: not-allowed;
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:hover:not(:checked):not(:disabled),
+.woocommerce-checkout-payment input[type=radio]:hover:not(:checked):not(:disabled) {
+	--bc: var(--border-hover);
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:not(.switch),
+.woocommerce-checkout-payment input[type=radio]:not(.switch) {
+	width: 21px !important;
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:not(.switch):after,
+.woocommerce-checkout-payment input[type=radio]:not(.switch):after {
+	opacity: var(--o, 0);
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:not(.switch):checked,
+.woocommerce-checkout-payment input[type=radio]:not(.switch):checked {
+	--o: 1;
+}
+
+.woocommerce-checkout-payment input[type=checkbox]+label,
+.woocommerce-checkout-payment input[type=radio]+label {
+	line-height: 21px !important;
+	display: inline-block;
+	vertical-align: top;
+	cursor: pointer;
+	margin-left: 4px;
+}
+
+.woocommerce-checkout-payment input[type=checkbox]+label {
+	margin-left: 8px;
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:not(.switch) {
+	border-radius: 7px;
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:not(.switch):after {
+	width: 5px;
+	height: 9px;
+	border: 2px solid var(--active-inner);
+	border-top: 0;
+	border-left: 0;
+	left: 7px;
+	top: 4px;
+	transform: rotate(var(--r, 20deg));
+}
+
+.woocommerce-checkout-payment input[type=checkbox]:not(.switch):checked {
+	--r: 43deg;
+}
+
+.woocommerce-checkout-payment input[type=checkbox].switch {
+	width: 38px !important;
+	border-radius: 11px;
+}
+
+.woocommerce-checkout-payment input[type=checkbox].switch:after {
+	left: 2px;
+	top: 2px;
+	border-radius: 50%;
+	width: 15px !important;
+	height: 15px;
+	background: var(--ab, var(--border));
+	transform: translateX(var(--x, 0));
+}
+
+.woocommerce-checkout-payment input[type=checkbox].switch:checked {
+	--ab: var(--active-inner);
+	--x: 17px;
+}
+
+.woocommerce-checkout-payment input[type=checkbox].switch:disabled:not(:checked):after {
+	opacity: 0.6;
+}
+
+.woocommerce-checkout-payment input[type=radio] {
+	border-radius: 50%;
+}
+
+.woocommerce-checkout-payment input[type=radio]:after {
+	width: 19px !important;
+	height: 19px;
+	border-radius: 50%;
+	background: var(--active-inner);
+	opacity: 0;
+	transform: scale(var(--s, 0.7));
+}
+
+.woocommerce-checkout-payment input[type=radio]:checked {
+	--s: .5;
+}
+
+.pwll-checkout-billing,
+.pwll-checkout-order {
+	flex: 1;
+}
+
+.pwll-spinner {
+	-webkit-animation: rotate 2s linear infinite;
+	animation: rotate 2s linear infinite;
+	z-index: 2;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	margin: -25px 0 0 -25px;
+	width: 50px;
+	height: 50px;
+}
+
+.pwll-spinner .path {
+	stroke: #ffffff;
+	stroke-linecap: round;
+	-webkit-animation: dash 1.5s ease-in-out infinite;
+	animation: dash 1.5s ease-in-out infinite;
+}
+
+@-webkit-keyframes rotate {
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes rotate {
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+@-webkit-keyframes dash {
+	0% {
+		stroke-dasharray: 1, 150;
+		stroke-dashoffset: 0;
+	}
+
+	50% {
+		stroke-dasharray: 90, 150;
+		stroke-dashoffset: -35;
+	}
+
+	100% {
+		stroke-dasharray: 90, 150;
+		stroke-dashoffset: -124;
+	}
+}
+
+@keyframes dash {
+	0% {
+		stroke-dasharray: 1, 150;
+		stroke-dashoffset: 0;
+	}
+
+	50% {
+		stroke-dasharray: 90, 150;
+		stroke-dashoffset: -35;
+	}
+
+	100% {
+		stroke-dasharray: 90, 150;
+		stroke-dashoffset: -124;
+	}
+}
+
+@media (max-width: 991.98px) {
+	.pwll-checkout {
+		flex-direction: column;
+		gap: 0;
+	}
+
+	.pwll-unlock-box .pwll-content {
+		padding: 0 20px;
+	}
+
+	.locked-button-large {
+		font-size: 20px;
+	}
+
+	.locked-button-large svg {
+		width: 36px;
+		height: 36px;
+	}
+}
+
+@media (max-width: 767.98px) {
+	.pwll-plan-title {
+		font-size: 14px;
+	}
+
+	.pwll-price {
+		font-size: 26px;
+	}
+
+	.theme-tikswipe .premium-video-bg {
+		background-size: cover;
+	}
+}
