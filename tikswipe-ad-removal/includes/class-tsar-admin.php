@@ -153,11 +153,13 @@ class TSAR_Admin {
 			<p class="description">
 				<?php esc_html_e( 'Approve a request to grant ad-free time. Set days = 0 for lifetime.', 'tikswipe-ad-removal' ); ?>
 			</p>
-			<form method="get">
-				<input type="hidden" name="page" value="<?php echo esc_attr( self::MENU_SLUG ); ?>">
-				<?php $table->views(); ?>
-				<?php $table->display(); ?>
-			</form>
+			<?php
+			// Note: deliberately NOT wrapping the list table in a <form>
+			// because each row has its own POST form for the Approve action
+			// and nested forms are dropped by the browser.
+			$table->views();
+			$table->display();
+			?>
 		</div>
 		<?php
 	}
