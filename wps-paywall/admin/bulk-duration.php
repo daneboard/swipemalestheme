@@ -25,10 +25,9 @@ class PWLL_Bulk_Duration {
 	}
 
 	public static function register_menu() {
-		add_submenu_page(
-			'pwll-options',
+		add_management_page(
 			esc_html__( 'Bulk Paywall by Duration', 'pwll_lang' ),
-			esc_html__( 'Bulk by duration', 'pwll_lang' ),
+			esc_html__( 'Paywall by Duration', 'pwll_lang' ),
 			'manage_options',
 			self::MENU_SLUG,
 			array( __CLASS__, 'render_page' )
@@ -120,7 +119,7 @@ class PWLL_Bulk_Duration {
 		$max = isset( $_POST['max'] ) && '' !== $_POST['max'] ? max( 0, (int) $_POST['max'] ) : null;
 
 		if ( ! in_array( $op, array( 'apply', 'remove' ), true ) ) {
-			wp_safe_redirect( admin_url( 'admin.php?page=' . self::MENU_SLUG ) );
+			wp_safe_redirect( admin_url( 'tools.php?page=' . self::MENU_SLUG ) );
 			exit;
 		}
 
@@ -147,7 +146,7 @@ class PWLL_Bulk_Duration {
 			60
 		);
 
-		wp_safe_redirect( admin_url( 'admin.php?page=' . self::MENU_SLUG ) );
+		wp_safe_redirect( admin_url( 'tools.php?page=' . self::MENU_SLUG ) );
 		exit;
 	}
 
