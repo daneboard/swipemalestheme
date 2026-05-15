@@ -27,12 +27,12 @@ $last_rejected  = $latest_request && 'rejected' === $latest_request['status'] &&
 	<div class="content-wrapper">
 		<div class="tsar-card">
 
-			<header class="tsar-header">
+			<div class="tsar-header">
 				<h1 class="tsar-title"><?php esc_html_e( 'Remove Ads', 'tikswipe-ad-removal' ); ?></h1>
 				<p class="tsar-subtitle">
 					<?php esc_html_e( 'Support the site and enjoy ad-free browsing.', 'tikswipe-ad-removal' ); ?>
 				</p>
-			</header>
+			</div>
 
 			<?php if ( empty( $settings['enabled'] ) ) : ?>
 
