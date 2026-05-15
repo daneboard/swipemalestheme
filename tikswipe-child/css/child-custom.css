@@ -57,6 +57,12 @@ body:not(.media-body):not(.grid) header {
 body:not(.media-body):not(.grid) .logo {
     background-color: #000;
 }
+/* Parent theme's site wrapper has background:#fff and is only overridden
+   on video pages. Force it black here too so no white strip leaks between
+   the header and the page content. */
+body:not(.media-body):not(.grid) .content {
+    background-color: #000 !important;
+}
 body:not(.media-body):not(.grid) .footer-menu,
 body:not(.media-body):not(.grid) footer {
     background-color: #000 !important;
@@ -66,6 +72,13 @@ body:not(.media-body):not(.grid) footer {
    install the app. */
 body:not(.media-body):not(.grid) header .menu ul,
 body:not(.media-body):not(.grid) header .menu nav {
+    display: none !important;
+}
+/* The global video progress bar (#wpst-global-progress) is rendered by
+   the parent theme footer.php on every page. It only makes sense on
+   video pages, so hide it everywhere else. */
+body:not(.media-body):not(.grid) #wpst-global-progress,
+body:not(.media-body):not(.grid) .wpst-progress-bar {
     display: none !important;
 }
 
