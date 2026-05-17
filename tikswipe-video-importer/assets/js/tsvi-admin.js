@@ -422,4 +422,68 @@
 		});
 	});
 
+	/* ==========================================================
+	   Upload File: send a video file, queue it for the worker
+	   ========================================================== */
+
+	$('#tsvi-file-upload-form').on('submit', function (e) {
+		e.preventDefault();
+
+		var form  = this;
+		var fileEl = form.querySelector('input[name="tsvi_file"]');
+		if (!fileEl || !fileEl.files || !fileEl.files[0]) {
+			alert('Select a video file.');
+			return;
+		}
+
+		var fd = new FormData();
+		fd.append('action',    'tsvi_upload_file');
+		fd.append('nonce',     tsvi.nonce);
+		fd.append('tsvi_file', fileEl.files[0]);
+		fd.append('title',     form.querySelector('input[name="title"]').value);
+		fd.append('category',  form.querySelector('select[name="category"]').value);
+
+		var $btn      = $('#tsvi-btn-upload-file').prop('disabled', true).text('Uploading...');
+		var $progress = $('#tsvi-upload-progress').show().val(0);
+		var $status   = $('#tsvi-upload-status').show().text('Sending file to server...');
+
+		$.ajax({
+			url:         tsvi.ajax_url,
+			type:        'POST',
+			data:        fd,
+			processData: false,
+			contentType: false,
+			xhr: function () {
+				var xhr = new window.XMLHttpRequest();
+				xhr.upload.addEventListener('progress', function (e) {
+					if (e.lengthComputable) {
+						var pct = (e.loaded / e.total) * 100;
+						$progress.val(pct);
+						$status.text('Uploading: ' + Math.round(pct) + '%');
+					}
+				}, false);
+				return xhr;
+			}
+		}).done(function (resp) {
+			if (resp.success) {
+				$progress.val(100);
+				$status.html('<span class="tsvi-ok">Queued! (' + resp.data.size_mb + ' MB) — the worker will compress + upload to Bunny in under 1 minute. Refreshing...</span>');
+				setTimeout(function () { location.reload(); }, 2000);
+			} else {
+				$status.html('<span class="tsvi-err">Error: ' + resp.data + '</span>');
+				$btn.prop('disabled', false).text('Upload & Publish');
+			}
+		}).fail(function (xhr) {
+			$status.html('<span class="tsvi-err">Upload failed (HTTP ' + xhr.status + ').</span>');
+			$btn.prop('disabled', false).text('Upload & Publish');
+		});
+	});
+
+	$('#tsvi-btn-clear-file-history').on('click', function () {
+		$.post(tsvi.ajax_url, {
+			action: 'tsvi_file_clear_history',
+			nonce:  tsvi.nonce
+		}).done(function () { location.reload(); });
+	});
+
 })(jQuery);

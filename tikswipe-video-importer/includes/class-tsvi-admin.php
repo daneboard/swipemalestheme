@@ -20,6 +20,8 @@ class TSVI_Admin {
 		add_action( 'wp_ajax_tsvi_direct_queue', array( __CLASS__, 'ajax_direct_queue' ) );
 		add_action( 'wp_ajax_tsvi_direct_clear_history', array( __CLASS__, 'ajax_direct_clear_history' ) );
 		add_action( 'wp_ajax_tsvi_recompress_start', array( __CLASS__, 'ajax_recompress_start' ) );
+		add_action( 'wp_ajax_tsvi_upload_file', array( __CLASS__, 'ajax_upload_file' ) );
+		add_action( 'wp_ajax_tsvi_file_clear_history', array( __CLASS__, 'ajax_file_clear_history' ) );
 	}
 
 	/* ------------------------------------------------------------------
@@ -53,6 +55,15 @@ class TSVI_Admin {
 			'manage_options',
 			'tsvi-direct',
 			array( __CLASS__, 'page_direct_upload' )
+		);
+
+		add_submenu_page(
+			'tsvi-scrape',
+			'Upload File',
+			'Upload File',
+			'manage_options',
+			'tsvi-upload',
+			array( __CLASS__, 'page_upload_file' )
 		);
 
 		add_submenu_page(
@@ -1303,19 +1314,45 @@ python3 -c "import curl_cffi; print('curl_cffi OK')"</pre>
 			wp_send_json_error( 'No valid URLs.' );
 		}
 
-		$queue = get_option( 'tsvi_direct_upload_queue', array() );
+		global $wpdb;
+
+		$queue        = get_option( 'tsvi_direct_upload_queue', array() );
+		$existing_urls = array_column( $queue, 'url' );
+
+		$added   = 0;
+		$skipped = 0;
 		foreach ( $urls as $url ) {
-			$queue[] = array(
+			// Skip if already queued.
+			if ( in_array( $url, $existing_urls, true ) ) {
+				$skipped++;
+				continue;
+			}
+			// Skip if already imported as a post.
+			$existing = $wpdb->get_var( $wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta}
+				 WHERE meta_key = '_tsvi_source_url' AND meta_value = %s LIMIT 1",
+				$url
+			) );
+			if ( $existing ) {
+				$skipped++;
+				continue;
+			}
+			$queue[]         = array(
 				'url'       => $url,
 				'queued_at' => current_time( 'Y-m-d H:i' ),
 			);
+			$existing_urls[] = $url;
+			$added++;
 		}
 		update_option( 'tsvi_direct_upload_queue', $queue, false );
 
 		// Trigger background processing.
 		TSVI_Bunny::schedule_direct_upload();
 
-		wp_send_json_success( array( 'queued' => count( $urls ) ) );
+		wp_send_json_success( array(
+			'queued'  => $added,
+			'skipped' => $skipped,
+		) );
 	}
 
 	/* ------------------------------------------------------------------
@@ -1330,6 +1367,241 @@ python3 -c "import curl_cffi; print('curl_cffi OK')"</pre>
 		}
 
 		update_option( 'tsvi_direct_upload_history', array(), false );
+		wp_send_json_success();
+	}
+
+	/* ------------------------------------------------------------------
+	   Upload File page — upload a local video, compress, push to Bunny,
+	   create and publish a post (same end-state as scrape).
+	   ------------------------------------------------------------------ */
+
+	public static function page_upload_file() {
+		$queue   = get_option( 'tsvi_file_upload_queue', array() );
+		$history = array_reverse( get_option( 'tsvi_file_upload_history', array() ) );
+		$cats    = get_categories( array( 'hide_empty' => false ) );
+
+		$queue_count   = count( $queue );
+		$history_count = count( $history );
+
+		$max_upload = wp_max_upload_size();
+		$max_mb     = round( $max_upload / 1048576 );
+		?>
+		<div class="wrap">
+			<h1>Upload Video File</h1>
+			<p class="description">Send a video from your computer. It goes through the same flow as scrape: compressed to 720p (FFmpeg), uploaded to Bunny CDN, then a post is created and <strong>published</strong>.</p>
+
+			<?php if ( ! TSVI_Bunny::is_enabled() ) : ?>
+				<div class="notice notice-error"><p>Bunny CDN is not configured. Go to <a href="<?php echo admin_url( 'admin.php?page=tsvi-settings' ); ?>">Settings</a> first.</p></div>
+			<?php endif; ?>
+
+			<?php if ( ! TSVI_Bunny::ffmpeg_available() ) : ?>
+				<div class="notice notice-warning"><p>FFmpeg not detected — videos will be uploaded at original size (no compression).</p></div>
+			<?php endif; ?>
+
+			<div class="tsvi-card">
+				<h2>1. Select Video</h2>
+				<form id="tsvi-file-upload-form" enctype="multipart/form-data">
+					<table class="form-table">
+						<tr>
+							<th>Video file</th>
+							<td>
+								<input type="file" name="tsvi_file" accept="video/*" required>
+								<p class="description">Max upload: <code><?php echo esc_html( $max_mb ); ?> MB</code> (server limit). Supported: mp4, webm, mov, mkv, avi.</p>
+							</td>
+						</tr>
+						<tr>
+							<th>Title (optional)</th>
+							<td>
+								<input type="text" name="title" class="regular-text" placeholder="Leave blank to use filename">
+							</td>
+						</tr>
+						<tr>
+							<th>Category</th>
+							<td>
+								<select name="category">
+									<option value="">-- None (uses default) --</option>
+									<?php foreach ( $cats as $c ) : ?>
+										<option value="<?php echo esc_attr( $c->term_id ); ?>"><?php echo esc_html( $c->name ); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</td>
+						</tr>
+					</table>
+					<p>
+						<button type="submit" class="button button-primary button-hero" id="tsvi-btn-upload-file">Upload & Publish</button>
+					</p>
+					<progress id="tsvi-upload-progress" value="0" max="100" style="display:none;width:100%;height:24px;"></progress>
+					<p id="tsvi-upload-status" style="display:none;"></p>
+				</form>
+			</div>
+
+			<?php if ( $queue_count > 0 ) : ?>
+			<div class="tsvi-card">
+				<h2>Pending <span class="tsvi-badge tsvi-badge-pending"><?php echo $queue_count; ?></span></h2>
+				<table class="wp-list-table widefat striped">
+					<thead><tr><th>#</th><th>File</th><th>Title</th><th>Queued</th></tr></thead>
+					<tbody>
+					<?php foreach ( $queue as $i => $item ) : ?>
+						<tr>
+							<td><?php echo $i + 1; ?></td>
+							<td><small><?php echo esc_html( $item['filename'] ?? '?' ); ?></small></td>
+							<td><?php echo esc_html( $item['title'] ?? '' ); ?></td>
+							<td><small><?php echo esc_html( $item['queued_at'] ?? '' ); ?></small></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			<?php endif; ?>
+
+			<div class="tsvi-card">
+				<h2>
+					Upload History
+					<span class="tsvi-badge tsvi-badge-done"><?php echo $history_count; ?></span>
+					<?php if ( $history ) : ?>
+						<button class="button button-small tsvi-btn-danger" id="tsvi-btn-clear-file-history" onclick="return confirm('Clear all file upload history?');">Clear History</button>
+					<?php endif; ?>
+				</h2>
+				<?php if ( $history ) : ?>
+					<table class="wp-list-table widefat striped">
+						<thead><tr><th style="width:90px;">Date</th><th>File</th><th>CDN URL</th><th style="width:90px;">Status</th><th style="width:160px;">Post</th></tr></thead>
+						<tbody>
+						<?php foreach ( $history as $h ) :
+							$post_status = '';
+							$post_exists = false;
+							if ( ! empty( $h['post_id'] ) ) {
+								$post_obj = get_post( $h['post_id'] );
+								if ( $post_obj ) {
+									$post_exists = true;
+									$post_status = $post_obj->post_status;
+								}
+							}
+							?>
+							<tr>
+								<td><small><?php echo esc_html( $h['date'] ); ?></small></td>
+								<td><small><?php echo esc_html( $h['source'] ); ?></small></td>
+								<td>
+									<?php if ( ! empty( $h['cdn_url'] ) ) : ?>
+										<input type="text" readonly value="<?php echo esc_attr( $h['cdn_url'] ); ?>" class="regular-text tsvi-copy-field" onclick="this.select();document.execCommand('copy');">
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+								<td>
+									<?php if ( ! empty( $h['error'] ) ) : ?>
+										<span class="tsvi-err" title="<?php echo esc_attr( $h['error'] ); ?>"><?php echo esc_html( mb_substr( $h['error'], 0, 30 ) ); ?></span>
+									<?php else : ?>
+										<span class="tsvi-ok">OK</span>
+									<?php endif; ?>
+								</td>
+								<td>
+									<?php if ( ! $post_exists && ! empty( $h['post_id'] ) ) : ?>
+										<span class="tsvi-err">deleted</span>
+									<?php elseif ( $post_exists && $post_status === 'publish' ) : ?>
+										<span class="tsvi-ok">published</span>
+										<a class="button button-small" href="<?php echo esc_url( get_edit_post_link( $h['post_id'] ) ); ?>" target="_blank">Edit #<?php echo intval( $h['post_id'] ); ?></a>
+									<?php elseif ( $post_exists ) : ?>
+										<span class="tsvi-warn"><?php echo esc_html( $post_status ); ?></span>
+										<a class="button button-small" href="<?php echo esc_url( get_edit_post_link( $h['post_id'] ) ); ?>" target="_blank">Edit #<?php echo intval( $h['post_id'] ); ?></a>
+									<?php else : ?>
+										—
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php else : ?>
+					<p>No uploads yet.</p>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
+	}
+
+	/* ------------------------------------------------------------------
+	   AJAX: Receive an uploaded video file, queue it for processing.
+	   ------------------------------------------------------------------ */
+
+	public static function ajax_upload_file() {
+		check_ajax_referer( 'tsvi_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized.' );
+		}
+
+		if ( empty( $_FILES['tsvi_file'] ) || ! isset( $_FILES['tsvi_file']['tmp_name'] ) ) {
+			wp_send_json_error( 'No file uploaded.' );
+		}
+
+		$file = $_FILES['tsvi_file'];
+
+		if ( $file['error'] !== UPLOAD_ERR_OK ) {
+			$messages = array(
+				UPLOAD_ERR_INI_SIZE   => 'File exceeds server upload_max_filesize.',
+				UPLOAD_ERR_FORM_SIZE  => 'File exceeds form max size.',
+				UPLOAD_ERR_PARTIAL    => 'File was only partially uploaded.',
+				UPLOAD_ERR_NO_FILE    => 'No file uploaded.',
+				UPLOAD_ERR_NO_TMP_DIR => 'Missing temp folder on server.',
+				UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk.',
+				UPLOAD_ERR_EXTENSION  => 'A PHP extension blocked the upload.',
+			);
+			wp_send_json_error( $messages[ $file['error'] ] ?? ( 'Upload error code ' . $file['error'] ) );
+		}
+
+		$orig_name = sanitize_file_name( $file['name'] );
+		$ext       = strtolower( pathinfo( $orig_name, PATHINFO_EXTENSION ) );
+
+		$allowed = array( 'mp4', 'webm', 'mov', 'mkv', 'avi', 'm4v' );
+		if ( ! in_array( $ext, $allowed, true ) ) {
+			wp_send_json_error( 'Unsupported file type: ' . $ext );
+		}
+
+		// Store the uploaded file in a private folder under uploads.
+		$upload_dir = wp_upload_dir();
+		$queue_dir  = $upload_dir['basedir'] . '/tsvi-uploads';
+		if ( ! is_dir( $queue_dir ) ) {
+			wp_mkdir_p( $queue_dir );
+			file_put_contents( $queue_dir . '/.htaccess', "Deny from all\n" );
+			file_put_contents( $queue_dir . '/index.html', '' );
+		}
+
+		$dest_name = uniqid( 'tsvi_', true ) . '.' . $ext;
+		$dest_path = $queue_dir . '/' . $dest_name;
+
+		if ( ! @move_uploaded_file( $file['tmp_name'], $dest_path ) ) {
+			wp_send_json_error( 'Failed to save uploaded file to ' . $queue_dir );
+		}
+
+		// Append to the file queue.
+		$queue   = get_option( 'tsvi_file_upload_queue', array() );
+		$queue[] = array(
+			'path'      => $dest_path,
+			'filename'  => $orig_name,
+			'title'     => sanitize_text_field( $_POST['title'] ?? '' ),
+			'category'  => intval( $_POST['category'] ?? 0 ),
+			'author'    => get_current_user_id(),
+			'queued_at' => current_time( 'Y-m-d H:i' ),
+		);
+		update_option( 'tsvi_file_upload_queue', $queue, false );
+
+		TSVI_Bunny::schedule_file_upload();
+
+		TSVI_Log::write( 'import', 'File queued for processing: ' . $orig_name );
+
+		wp_send_json_success( array(
+			'queued'   => 1,
+			'filename' => $orig_name,
+			'size_mb'  => round( $file['size'] / 1048576, 2 ),
+		) );
+	}
+
+	public static function ajax_file_clear_history() {
+		check_ajax_referer( 'tsvi_nonce', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized.' );
+		}
+		update_option( 'tsvi_file_upload_history', array(), false );
 		wp_send_json_success();
 	}
 }

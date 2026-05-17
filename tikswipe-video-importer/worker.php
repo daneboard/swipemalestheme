@@ -58,12 +58,14 @@ if ( $arg === '--status' ) {
 		 WHERE meta_key = '_tsvi_bunny_status' AND meta_value = 'uploaded'"
 	);
 	$direct_queue = count( get_option( 'tsvi_direct_upload_queue', array() ) );
+	$file_queue   = count( get_option( 'tsvi_file_upload_queue', array() ) );
 
 	echo "=== TikSwipe CDN Queue Status ===\n";
 	echo "CDN Pending:    {$pending}\n";
 	echo "CDN Failed:     {$failed}\n";
 	echo "CDN Uploaded:   {$uploaded}\n";
 	echo "Direct Pending: {$direct_queue}\n";
+	echo "File Pending:   {$file_queue}\n";
 	echo "Lock active:    " . ( get_transient( 'tsvi_cli_lock' ) ? 'YES' : 'no' ) . "\n";
 	exit( 0 );
 }
@@ -91,10 +93,13 @@ $processed_cdn = tsvi_process_cdn_queue( $batch_size );
 // ---- Process Direct Upload Queue ----
 $processed_direct = tsvi_process_direct_queue( $batch_size );
 
+// ---- Process File Upload Queue ----
+$processed_file = tsvi_process_file_queue( $batch_size );
+
 // ---- Process Recompress Queue (if enabled via admin) ----
 $processed_rc = tsvi_process_recompress_queue( $batch_size );
 
-if ( $processed_cdn === 0 && $processed_direct === 0 && $processed_rc === 0 ) {
+if ( $processed_cdn === 0 && $processed_direct === 0 && $processed_file === 0 && $processed_rc === 0 ) {
 	tsvi_log( 'Nothing to process.' );
 }
 
@@ -209,15 +214,25 @@ function tsvi_process_cdn_queue( $batch_size ) {
 
 /**
  * Process the direct upload queue (URLs from wp_options).
+ * Uses an atomic dequeue lock to prevent any other process from picking
+ * the same items.
  */
 function tsvi_process_direct_queue( $batch_size ) {
+	// Atomic dequeue.
+	if ( get_transient( 'tsvi_direct_dequeue_lock' ) ) {
+		return 0;
+	}
+	set_transient( 'tsvi_direct_dequeue_lock', 1, 60 );
+
 	$queue = get_option( 'tsvi_direct_upload_queue', array() );
 	if ( empty( $queue ) ) {
+		delete_transient( 'tsvi_direct_dequeue_lock' );
 		return 0;
 	}
 
 	$batch = array_splice( $queue, 0, $batch_size );
 	update_option( 'tsvi_direct_upload_queue', $queue, false );
+	delete_transient( 'tsvi_direct_dequeue_lock' );
 
 	$total = count( $batch );
 	tsvi_log( "Direct queue: {$total} items to process." );
@@ -235,6 +250,46 @@ function tsvi_process_direct_queue( $batch_size ) {
 			tsvi_log( "  [" . ( $i + 1 ) . "/{$total}] FAILED: " . $last['error'] );
 		} else {
 			tsvi_log( "  [" . ( $i + 1 ) . "/{$total}] OK — " . ( $last['cdn_url'] ?? '?' ) );
+		}
+	}
+
+	return $total;
+}
+
+/**
+ * Process the file upload queue (locally-uploaded video files).
+ */
+function tsvi_process_file_queue( $batch_size ) {
+	if ( get_transient( 'tsvi_file_dequeue_lock' ) ) {
+		return 0;
+	}
+	set_transient( 'tsvi_file_dequeue_lock', 1, 60 );
+
+	$queue = get_option( 'tsvi_file_upload_queue', array() );
+	if ( empty( $queue ) ) {
+		delete_transient( 'tsvi_file_dequeue_lock' );
+		return 0;
+	}
+
+	$batch = array_splice( $queue, 0, $batch_size );
+	update_option( 'tsvi_file_upload_queue', $queue, false );
+	delete_transient( 'tsvi_file_dequeue_lock' );
+
+	$total = count( $batch );
+	tsvi_log( "File queue: {$total} items to process." );
+
+	foreach ( $batch as $i => $item ) {
+		$fname = $item['filename'] ?? '?';
+		tsvi_log( "  [" . ( $i + 1 ) . "/{$total}] Processing file: " . $fname );
+
+		TSVI_Bunny::process_single_file( $item );
+
+		$history = get_option( 'tsvi_file_upload_history', array() );
+		$last    = end( $history );
+		if ( $last && ! empty( $last['error'] ) ) {
+			tsvi_log( "  [" . ( $i + 1 ) . "/{$total}] FAILED: " . $last['error'] );
+		} else {
+			tsvi_log( "  [" . ( $i + 1 ) . "/{$total}] OK — post #" . ( $last['post_id'] ?? '?' ) );
 		}
 	}
 
