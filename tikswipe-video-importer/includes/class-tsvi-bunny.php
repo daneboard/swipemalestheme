@@ -12,6 +12,7 @@ class TSVI_Bunny {
 
 	const CRON_HOOK        = 'tsvi_bunny_process_queue';
 	const DIRECT_CRON_HOOK = 'tsvi_direct_process_queue';
+	const FILE_CRON_HOOK   = 'tsvi_file_process_queue';
 
 	/**
 	 * Register the background cron hooks.
@@ -19,6 +20,7 @@ class TSVI_Bunny {
 	public static function init_cron() {
 		add_action( self::CRON_HOOK, array( __CLASS__, 'process_queue' ) );
 		add_action( self::DIRECT_CRON_HOOK, array( __CLASS__, 'process_direct_queue' ) );
+		add_action( self::FILE_CRON_HOOK, array( __CLASS__, 'process_file_queue' ) );
 		add_action( 'wp_ajax_tsvi_worker', array( __CLASS__, 'ajax_worker' ) );
 		add_action( 'wp_ajax_nopriv_tsvi_worker', array( __CLASS__, 'ajax_worker' ) );
 		add_action( 'wp_ajax_tsvi_direct_worker', array( __CLASS__, 'ajax_direct_worker' ) );
@@ -109,6 +111,16 @@ class TSVI_Bunny {
 	}
 
 	/**
+	 * Schedule background processing for file uploads.
+	 */
+	public static function schedule_file_upload() {
+		if ( ! wp_next_scheduled( self::FILE_CRON_HOOK ) ) {
+			wp_schedule_single_event( time(), self::FILE_CRON_HOOK );
+		}
+		spawn_cron();
+	}
+
+	/**
 	 * Background cron handler: process up to 3 pending Bunny uploads per run.
 	 * Shorter videos are uploaded first. Schedules itself again if more items remain.
 	 */
@@ -116,6 +128,11 @@ class TSVI_Bunny {
 		// Only process via CLI worker (crontab), never via web requests.
 		// Web-triggered wp-cron causes multiple FFmpeg processes that overload the VPS.
 		if ( php_sapi_name() !== 'cli' ) {
+			return;
+		}
+
+		// Defer to worker.php if it's already running (avoid duplicate processing).
+		if ( get_transient( 'tsvi_cli_lock' ) ) {
 			return;
 		}
 
@@ -235,16 +252,28 @@ class TSVI_Bunny {
 	}
 
 	/**
-	 * Background cron handler: process pending direct uploads (up to 3 parallel).
-	 * Processes 1 directly + spawns 2 background workers.
+	 * Background cron handler: process pending direct uploads.
+	 * Defers to worker.php when it is running so we don't double-process.
 	 */
 	public static function process_direct_queue() {
 		if ( php_sapi_name() !== 'cli' ) {
 			return;
 		}
 
+		// Defer to worker.php if it's already running.
+		if ( get_transient( 'tsvi_cli_lock' ) ) {
+			return;
+		}
+
+		// Atomic dequeue: lock so only one process can splice the queue.
+		if ( get_transient( 'tsvi_direct_dequeue_lock' ) ) {
+			return;
+		}
+		set_transient( 'tsvi_direct_dequeue_lock', 1, 60 );
+
 		$queue = get_option( 'tsvi_direct_upload_queue', array() );
 		if ( empty( $queue ) ) {
+			delete_transient( 'tsvi_direct_dequeue_lock' );
 			return;
 		}
 
@@ -257,6 +286,7 @@ class TSVI_Bunny {
 		// Take 1 item per run (keeps CPU usage minimal).
 		$batch = array_splice( $queue, 0, 1 );
 		update_option( 'tsvi_direct_upload_queue', $queue, false );
+		delete_transient( 'tsvi_direct_dequeue_lock' );
 
 		// Process ONE item per cron run.
 		self::process_single_direct( $batch[0]['url'] );
@@ -271,92 +301,355 @@ class TSVI_Bunny {
 	}
 
 	/**
+	 * Background cron handler: process pending file uploads.
+	 * Files were uploaded via the admin "Upload File" page and stored in tsvi-uploads.
+	 */
+	public static function process_file_queue() {
+		if ( php_sapi_name() !== 'cli' ) {
+			return;
+		}
+
+		if ( get_transient( 'tsvi_cli_lock' ) ) {
+			return;
+		}
+
+		if ( get_transient( 'tsvi_file_dequeue_lock' ) ) {
+			return;
+		}
+		set_transient( 'tsvi_file_dequeue_lock', 1, 60 );
+
+		$queue = get_option( 'tsvi_file_upload_queue', array() );
+		if ( empty( $queue ) ) {
+			delete_transient( 'tsvi_file_dequeue_lock' );
+			return;
+		}
+
+		set_time_limit( 1500 );
+		ignore_user_abort( true );
+
+		wp_schedule_single_event( time() + 60, self::FILE_CRON_HOOK );
+
+		$batch = array_splice( $queue, 0, 1 );
+		update_option( 'tsvi_file_upload_queue', $queue, false );
+		delete_transient( 'tsvi_file_dequeue_lock' );
+
+		self::process_single_file( $batch[0] );
+
+		wp_clear_scheduled_hook( self::FILE_CRON_HOOK );
+		$remaining = get_option( 'tsvi_file_upload_queue', array() );
+		if ( ! empty( $remaining ) ) {
+			wp_schedule_single_event( time() + 5, self::FILE_CRON_HOOK );
+			spawn_cron();
+		}
+	}
+
+	/**
 	 * Process a single direct upload URL: download, upload to Bunny, save to history.
+	 *
+	 * Guards against duplicate processing:
+	 *   - Per-URL transient lock (prevents two workers handling the same URL).
+	 *   - Post existence check (skips if a post for this source URL already exists).
 	 */
 	public static function process_single_direct( $url ) {
 		$original_url = $url;
 
-		// If the URL doesn't look like a direct video file, resolve it via
-		// extract_video (which uses RedGifs API, yt-dlp for hosters, or scraping).
-		$is_direct_file = (bool) preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $url );
-		if ( ! $is_direct_file ) {
-			$resolved = TSVI_Scraper::extract_video( $url );
-			if ( ! is_wp_error( $resolved ) && ! empty( $resolved['video_url'] ) ) {
-				$url = $resolved['video_url'];
-			}
+		// Per-URL lock: prevents the same URL being processed concurrently.
+		$lock_key = 'tsvi_du_' . md5( $original_url );
+		if ( get_transient( $lock_key ) ) {
+			TSVI_Log::write( 'upload', 'Direct upload skipped — already in progress: ' . mb_substr( $original_url, 0, 80 ) );
+			return;
+		}
+		set_transient( $lock_key, 1, 3600 );
+
+		// Dedup: skip if a post for this source URL already exists.
+		$existing = self::find_post_by_source_url( $original_url );
+		if ( $existing ) {
+			delete_transient( $lock_key );
+			TSVI_Log::write( 'upload', 'Direct upload skipped — already imported as post #' . $existing . ': ' . mb_substr( $original_url, 0, 80 ) );
+			return;
 		}
 
-		$parsed   = wp_parse_url( $url, PHP_URL_PATH );
-		$basename = $parsed ? basename( $parsed ) : '';
-		$ext      = pathinfo( $basename, PATHINFO_EXTENSION ) ?: 'mp4';
-		$name     = pathinfo( $basename, PATHINFO_FILENAME );
-		$slug     = $name ? sanitize_title( mb_substr( $name, 0, 60 ) ) : 'direct-' . time();
-		$filename = $slug . '-' . wp_rand( 1000, 9999 ) . '.' . $ext;
+		try {
+			// If the URL doesn't look like a direct video file, resolve it via
+			// extract_video (which uses RedGifs API, yt-dlp for hosters, or scraping).
+			$is_direct_file = (bool) preg_match( '/\.(mp4|m3u8|webm)([\/\?&#]|$)/i', $url );
+			if ( ! $is_direct_file ) {
+				$resolved = TSVI_Scraper::extract_video( $url );
+				if ( ! is_wp_error( $resolved ) && ! empty( $resolved['video_url'] ) ) {
+					$url = $resolved['video_url'];
+				}
+			}
 
-		$cdn_url = self::remote_upload( $url, $filename, 'direct' );
+			$parsed   = wp_parse_url( $url, PHP_URL_PATH );
+			$basename = $parsed ? basename( $parsed ) : '';
+			$ext      = pathinfo( $basename, PATHINFO_EXTENSION ) ?: 'mp4';
+			$name     = pathinfo( $basename, PATHINFO_FILENAME );
+			$slug     = $name ? sanitize_title( mb_substr( $name, 0, 60 ) ) : 'direct-' . time();
+			$filename = $slug . '-' . wp_rand( 1000, 9999 ) . '.' . $ext;
+
+			$cdn_url = self::remote_upload( $url, $filename, 'direct' );
+
+			$entry = array(
+				'date'    => current_time( 'Y-m-d H:i' ),
+				'source'  => $original_url,
+				'cdn_url' => '',
+				'error'   => '',
+			);
+
+			if ( is_wp_error( $cdn_url ) ) {
+				$entry['error'] = $cdn_url->get_error_message();
+			} else {
+				$entry['cdn_url'] = $cdn_url;
+
+				// Final dedup just before post creation — handles race with another worker.
+				$existing = self::find_post_by_source_url( $original_url );
+				if ( $existing ) {
+					TSVI_Log::write( 'upload', 'Direct upload: post already exists #' . $existing . ' — skipping creation (CDN upload still recorded).' );
+					$entry['post_id'] = $existing;
+				} else {
+					// Create a WordPress post for the uploaded video, status: pending review.
+					// Title is the CDN URL itself for easy identification/copy.
+					$post_id = wp_insert_post( array(
+						'post_title'   => $cdn_url,
+						'post_content' => $cdn_url,
+						'post_status'  => 'pending',
+						'post_type'    => 'post',
+						'post_author'  => get_current_user_id() ?: 1,
+					), true );
+
+					if ( ! is_wp_error( $post_id ) && $post_id ) {
+						set_post_format( $post_id, 'video' );
+						update_post_meta( $post_id, 'video_url', esc_url_raw( $cdn_url ) );
+						update_post_meta( $post_id, '_tsvi_source_url', esc_url_raw( $original_url ) );
+						update_post_meta( $post_id, '_tsvi_bunny_status', 'uploaded' );
+						update_post_meta( $post_id, 'post_views_count', '0' );
+						$ext = pathinfo( wp_parse_url( $cdn_url, PHP_URL_PATH ), PATHINFO_EXTENSION );
+						if ( $ext ) {
+							update_post_meta( $post_id, '_video_extension', strtolower( $ext ) );
+						}
+						// Reset thumb generator flag so it picks up the new video.
+						delete_post_meta( $post_id, '_mtg_thumb_done' );
+						// Trigger save_post hooks (thumb generator etc.).
+						wp_update_post( array( 'ID' => $post_id ) );
+
+						$entry['post_id'] = $post_id;
+						TSVI_Log::write( 'import', 'Direct upload created post #' . $post_id . ' (pending review)', array(
+							'cdn'    => mb_substr( $cdn_url, 0, 80 ),
+							'source' => mb_substr( $original_url, 0, 80 ),
+						) );
+					} else {
+						$err_msg = is_wp_error( $post_id ) ? $post_id->get_error_message() : 'unknown';
+						TSVI_Log::error( 'Direct upload post creation failed', array( 'error' => $err_msg ) );
+					}
+				}
+			}
+
+			$history   = get_option( 'tsvi_direct_upload_history', array() );
+			$history[] = $entry;
+			if ( count( $history ) > 200 ) {
+				$history = array_slice( $history, -200 );
+			}
+			update_option( 'tsvi_direct_upload_history', $history, false );
+		} finally {
+			delete_transient( $lock_key );
+		}
+	}
+
+	/**
+	 * Process a single file upload item from the file queue.
+	 *
+	 * Transcodes the local file, uploads to Bunny, creates a post with the
+	 * CDN URL as title and status "pending" (same shape as direct URL upload).
+	 * The source file is deleted only on success — failed runs keep it so the
+	 * user can retry without re-uploading via SFTP.
+	 *
+	 * @param array $item { path, filename, author, queued_at }
+	 */
+	public static function process_single_file( $item ) {
+		$path          = $item['path'] ?? '';
+		$orig_filename = $item['filename'] ?? '';
 
 		$entry = array(
 			'date'    => current_time( 'Y-m-d H:i' ),
-			'source'  => $original_url,
+			'source'  => $orig_filename,
 			'cdn_url' => '',
 			'error'   => '',
 		);
 
-		if ( is_wp_error( $cdn_url ) ) {
-			$entry['error'] = $cdn_url->get_error_message();
-		} else {
+		if ( empty( $path ) || ! file_exists( $path ) ) {
+			$entry['error'] = 'File missing: ' . $path;
+			self::append_file_history( $entry );
+			TSVI_Log::error( 'File upload: local file missing', array( 'path' => $path ) );
+			return;
+		}
+
+		// Per-file lock (use file path hash) to prevent double processing.
+		$lock_key = 'tsvi_fu_' . md5( $path );
+		if ( get_transient( $lock_key ) ) {
+			TSVI_Log::write( 'upload', 'File upload skipped — already in progress: ' . $orig_filename );
+			return;
+		}
+		set_transient( $lock_key, 1, 3600 );
+
+		try {
+			$base_name = pathinfo( $orig_filename, PATHINFO_FILENAME ) ?: 'video-' . time();
+			$ext       = strtolower( pathinfo( $orig_filename, PATHINFO_EXTENSION ) ?: 'mp4' );
+			$slug      = sanitize_title( mb_substr( $base_name, 0, 60 ) ) ?: 'video-' . time();
+			$filename  = $slug . '-' . wp_rand( 1000, 9999 ) . '.' . $ext;
+
+			$cdn_url = self::upload_local_file( $path, $filename, 'uploads' );
+
+			if ( is_wp_error( $cdn_url ) ) {
+				$entry['error'] = $cdn_url->get_error_message();
+				self::append_file_history( $entry );
+				TSVI_Log::error( 'File upload to Bunny failed', array(
+					'file'  => $orig_filename,
+					'error' => $cdn_url->get_error_message(),
+				) );
+				// Keep the local file so the user can fix the issue and retry.
+				return;
+			}
+
 			$entry['cdn_url'] = $cdn_url;
 
-			// Create a WordPress post for the uploaded video, status: pending review.
-			// Title is the CDN URL itself for easy identification/copy.
+			// Create post: title = CDN URL, status = pending (matches direct URL upload).
 			$post_id = wp_insert_post( array(
 				'post_title'   => $cdn_url,
 				'post_content' => $cdn_url,
 				'post_status'  => 'pending',
 				'post_type'    => 'post',
-				'post_author'  => get_current_user_id() ?: 1,
+				'post_author'  => intval( $item['author'] ?? 0 ) ?: 1,
 			), true );
 
-			if ( ! is_wp_error( $post_id ) && $post_id ) {
-				set_post_format( $post_id, 'video' );
-				update_post_meta( $post_id, 'video_url', esc_url_raw( $cdn_url ) );
-				update_post_meta( $post_id, '_tsvi_source_url', esc_url_raw( $original_url ) );
-				update_post_meta( $post_id, '_tsvi_bunny_status', 'uploaded' );
-				update_post_meta( $post_id, 'post_views_count', '0' );
-				$ext = pathinfo( wp_parse_url( $cdn_url, PHP_URL_PATH ), PATHINFO_EXTENSION );
-				if ( $ext ) {
-					update_post_meta( $post_id, '_video_extension', strtolower( $ext ) );
-				}
-				// Reset thumb generator flag so it picks up the new video.
-				delete_post_meta( $post_id, '_mtg_thumb_done' );
-				// Trigger save_post hooks (thumb generator etc.).
-				wp_update_post( array( 'ID' => $post_id ) );
-
-				$entry['post_id'] = $post_id;
-				TSVI_Log::write( 'import', 'Direct upload created post #' . $post_id . ' (pending review)', array(
-					'cdn'    => mb_substr( $cdn_url, 0, 80 ),
-					'source' => mb_substr( $original_url, 0, 80 ),
-				) );
-			} else {
+			if ( is_wp_error( $post_id ) || ! $post_id ) {
 				$err_msg = is_wp_error( $post_id ) ? $post_id->get_error_message() : 'unknown';
-				TSVI_Log::error( 'Direct upload post creation failed', array( 'error' => $err_msg ) );
+				$entry['error'] = 'Post creation failed: ' . $err_msg;
+				self::append_file_history( $entry );
+				TSVI_Log::error( 'File upload post creation failed', array( 'error' => $err_msg ) );
+				return;
 			}
-		}
 
-		$history   = get_option( 'tsvi_direct_upload_history', array() );
+			set_post_format( $post_id, 'video' );
+			update_post_meta( $post_id, 'video_url', esc_url_raw( $cdn_url ) );
+			update_post_meta( $post_id, '_tsvi_bunny_status', 'uploaded' );
+			update_post_meta( $post_id, '_tsvi_upload_source', 'file' );
+			update_post_meta( $post_id, 'post_views_count', '0' );
+			$cdn_ext = pathinfo( wp_parse_url( $cdn_url, PHP_URL_PATH ), PATHINFO_EXTENSION );
+			if ( $cdn_ext ) {
+				update_post_meta( $post_id, '_video_extension', strtolower( $cdn_ext ) );
+			}
+			delete_post_meta( $post_id, '_mtg_thumb_done' );
+
+			// Trigger save_post hooks (thumb generator etc.).
+			wp_update_post( array( 'ID' => $post_id ) );
+
+			$entry['post_id'] = $post_id;
+			self::append_file_history( $entry );
+
+			// Success: delete the local file now that Bunny has it.
+			@unlink( $path );
+
+			TSVI_Log::write( 'import', 'File upload created post #' . $post_id . ' (pending review)', array(
+				'cdn'      => mb_substr( $cdn_url, 0, 80 ),
+				'filename' => $orig_filename,
+			) );
+		} finally {
+			delete_transient( $lock_key );
+		}
+	}
+
+	/**
+	 * Find a post by its stored _tsvi_source_url meta.
+	 */
+	private static function find_post_by_source_url( $url ) {
+		global $wpdb;
+		return $wpdb->get_var( $wpdb->prepare(
+			"SELECT post_id FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_tsvi_source_url' AND meta_value = %s
+			 LIMIT 1",
+			$url
+		) );
+	}
+
+	/**
+	 * Append an entry to the file upload history option.
+	 */
+	private static function append_file_history( $entry ) {
+		$history   = get_option( 'tsvi_file_upload_history', array() );
 		$history[] = $entry;
 		if ( count( $history ) > 200 ) {
 			$history = array_slice( $history, -200 );
 		}
-		update_option( 'tsvi_direct_upload_history', $history, false );
+		update_option( 'tsvi_file_upload_history', $history, false );
+	}
+
+	/**
+	 * Upload a local file to Bunny Storage (transcode → PUT).
+	 *
+	 * @param string $local_path Absolute path on disk.
+	 * @param string $filename   Destination filename on Bunny.
+	 * @param string $folder     Folder inside the storage zone.
+	 * @return string|WP_Error CDN URL or error.
+	 */
+	public static function upload_local_file( $local_path, $filename, $folder = 'uploads' ) {
+		$api_key      = get_option( 'tsvi_bunny_api_key', '' );
+		$storage_zone = get_option( 'tsvi_bunny_storage_zone', '' );
+		$region       = get_option( 'tsvi_bunny_storage_region', '' );
+
+		if ( ! $api_key || ! $storage_zone ) {
+			return new WP_Error( 'not_configured', 'Bunny API key or storage zone not set.' );
+		}
+
+		if ( ! file_exists( $local_path ) ) {
+			return new WP_Error( 'file_missing', 'Local file not found: ' . $local_path );
+		}
+
+		$filesize = filesize( $local_path );
+		if ( $filesize < 10000 ) {
+			return new WP_Error( 'empty_file', 'File too small (' . $filesize . ' bytes).' );
+		}
+
+		// Validate it's a real video.
+		$validation = self::validate_video_file( $local_path );
+		if ( is_wp_error( $validation ) ) {
+			return $validation;
+		}
+
+		// Transcode to 720p if needed.
+		$upload_file = $local_path;
+		$transcoded  = self::transcode_video( $local_path );
+		if ( $transcoded && $transcoded !== $local_path ) {
+			$upload_file = $transcoded;
+			// Transcode always outputs MP4 — adjust filename extension.
+			$filename = preg_replace( '/\.[^.]+$/', '.mp4', $filename );
+		}
+
+		$host = 'storage.bunnycdn.com';
+		if ( $region && $region !== 'default' ) {
+			$host = $region . '.' . $host;
+		}
+
+		$storage_path = '/' . $storage_zone . '/' . trim( $folder, '/' ) . '/' . $filename;
+		$upload       = self::curl_upload( 'https://' . $host . $storage_path, $upload_file, $api_key );
+
+		if ( $transcoded && $transcoded !== $local_path ) {
+			@unlink( $transcoded );
+		}
+
+		if ( is_wp_error( $upload ) ) {
+			return $upload;
+		}
+
+		return self::get_cdn_url( trim( $folder, '/' ) . '/' . $filename );
 	}
 
 	/**
 	 * Transition a post to "publish" after a successful upload.
 	 *
-	 * wp_update_post() can be silently filtered to a different status by
-	 * theme/plugin hooks (or fail outright). Log the result and fall back
-	 * to a direct DB update + cache flush so the post actually flips.
+	 * wp_publish_post() does a direct DB update first, then fires the
+	 * transition_post_status hooks (save_post etc.). We wrap it in
+	 * try/catch in case a hook throws, then verify and force via DB if
+	 * any hook reverted the status.
 	 */
 	private static function publish_post( $post_id ) {
 		$post = get_post( $post_id );
@@ -368,24 +661,22 @@ class TSVI_Bunny {
 			return;
 		}
 
-		$result = wp_update_post(
-			array(
-				'ID'          => $post_id,
-				'post_status' => 'publish',
-			),
-			true
-		);
-
-		if ( is_wp_error( $result ) ) {
-			TSVI_Log::write( 'upload', 'publish_post #' . $post_id . ': wp_update_post error: ' . $result->get_error_message() );
-		} elseif ( ! $result ) {
-			TSVI_Log::write( 'upload', 'publish_post #' . $post_id . ': wp_update_post returned 0' );
+		try {
+			wp_publish_post( $post_id );
+		} catch ( \Throwable $e ) {
+			TSVI_Log::write( 'upload', 'publish_post #' . $post_id . ': hook threw: ' . $e->getMessage() );
 		}
 
-		// Verify and force via direct DB update if hooks reverted it.
 		clean_post_cache( $post_id );
 		$fresh = get_post( $post_id );
-		if ( $fresh && 'publish' !== $fresh->post_status ) {
+
+		if ( ! $fresh ) {
+			TSVI_Log::write( 'upload', 'publish_post #' . $post_id . ': post vanished after publish' );
+			return;
+		}
+
+		if ( 'publish' !== $fresh->post_status ) {
+			// A hook reverted the status — force via direct DB update (bypasses all hooks).
 			global $wpdb;
 			$wpdb->update(
 				$wpdb->posts,
@@ -394,6 +685,8 @@ class TSVI_Bunny {
 			);
 			clean_post_cache( $post_id );
 			TSVI_Log::write( 'upload', 'publish_post #' . $post_id . ': forced via DB (was ' . $fresh->post_status . ')' );
+		} else {
+			TSVI_Log::write( 'upload', 'publish_post #' . $post_id . ': published OK' );
 		}
 	}
 

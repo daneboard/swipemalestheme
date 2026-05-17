@@ -422,4 +422,112 @@
 		});
 	});
 
+	/* ==========================================================
+	   Upload File: send a video file, queue it for the worker
+	   ========================================================== */
+
+	$('#tsvi-file-upload-form').on('submit', function (e) {
+		e.preventDefault();
+
+		var form   = this;
+		var fileEl = form.querySelector('input[name="tsvi_file"]');
+		if (!fileEl || !fileEl.files || !fileEl.files[0]) {
+			alert('Select a video file.');
+			return;
+		}
+
+		var fd = new FormData();
+		fd.append('action',    'tsvi_upload_file');
+		fd.append('nonce',     tsvi.nonce);
+		fd.append('tsvi_file', fileEl.files[0]);
+
+		var $btn      = $('#tsvi-btn-upload-file').prop('disabled', true).text('Uploading...');
+		var $progress = $('#tsvi-upload-progress').show().val(0);
+		var $status   = $('#tsvi-upload-status').show().text('Sending file to server...');
+
+		$.ajax({
+			url:         tsvi.ajax_url,
+			type:        'POST',
+			data:        fd,
+			processData: false,
+			contentType: false,
+			xhr: function () {
+				var xhr = new window.XMLHttpRequest();
+				xhr.upload.addEventListener('progress', function (e) {
+					if (e.lengthComputable) {
+						var pct = (e.loaded / e.total) * 100;
+						$progress.val(pct);
+						$status.text('Uploading: ' + Math.round(pct) + '%');
+					}
+				}, false);
+				return xhr;
+			}
+		}).done(function (resp) {
+			if (resp.success) {
+				$progress.val(100);
+				$status.html('<span class="tsvi-ok">Queued! (' + resp.data.size_mb + ' MB) — the worker will compress + upload to Bunny in under 1 minute. Refreshing...</span>');
+				setTimeout(function () { location.reload(); }, 2000);
+			} else {
+				$status.html('<span class="tsvi-err">Error: ' + resp.data + '</span>');
+				$btn.prop('disabled', false).text('Upload to Server');
+			}
+		}).fail(function (xhr) {
+			$status.html('<span class="tsvi-err">Upload failed (HTTP ' + xhr.status + ').</span>');
+			$btn.prop('disabled', false).text('Upload to Server');
+		});
+	});
+
+	$('#tsvi-btn-clear-file-history').on('click', function () {
+		$.post(tsvi.ajax_url, {
+			action: 'tsvi_file_clear_history',
+			nonce:  tsvi.nonce
+		}).done(function () { location.reload(); });
+	});
+
+	/* ==========================================================
+	   SFTP scan: enqueue files that were dropped via FileZilla
+	   ========================================================== */
+
+	$('#tsvi-btn-rescan').on('click', function () {
+		location.reload();
+	});
+
+	$('#tsvi-scan-all').on('change', function () {
+		$('.tsvi-scan-check').prop('checked', $(this).prop('checked'));
+	});
+
+	function enqueueScanned(paths, $btn, originalText) {
+		if (!paths.length) {
+			alert('No files selected.');
+			return;
+		}
+		$btn.prop('disabled', true).text('Enqueueing...');
+		$.post(tsvi.ajax_url, {
+			action: 'tsvi_enqueue_scanned',
+			nonce:  tsvi.nonce,
+			paths:  paths
+		}).done(function (resp) {
+			if (resp.success) {
+				$btn.text('Queued ' + resp.data.queued + ' (skipped ' + resp.data.skipped + ') — reloading...');
+				setTimeout(function () { location.reload(); }, 1200);
+			} else {
+				alert('Error: ' + resp.data);
+				$btn.prop('disabled', false).text(originalText);
+			}
+		}).fail(function () {
+			alert('Request failed.');
+			$btn.prop('disabled', false).text(originalText);
+		});
+	}
+
+	$('#tsvi-btn-enqueue-selected').on('click', function () {
+		var paths = $('.tsvi-scan-check:checked').map(function () { return this.value; }).get();
+		enqueueScanned(paths, $(this), 'Enqueue Selected');
+	});
+
+	$('#tsvi-btn-enqueue-all').on('click', function () {
+		var paths = $('.tsvi-scan-check').map(function () { return this.value; }).get();
+		enqueueScanned(paths, $(this), 'Enqueue All');
+	});
+
 })(jQuery);
