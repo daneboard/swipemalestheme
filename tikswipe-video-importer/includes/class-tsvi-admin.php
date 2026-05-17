@@ -1389,6 +1389,14 @@ python3 -c "import curl_cffi; print('curl_cffi OK')"</pre>
 		// Scan tsvi-uploads folder for files dropped via SFTP.
 		$upload_dir = wp_upload_dir();
 		$scan_dir   = $upload_dir['basedir'] . '/tsvi-uploads';
+
+		// Auto-create the folder so the user can drop files immediately via SFTP.
+		if ( ! is_dir( $scan_dir ) ) {
+			wp_mkdir_p( $scan_dir );
+			@file_put_contents( $scan_dir . '/.htaccess', "Deny from all\n" );
+			@file_put_contents( $scan_dir . '/index.html', '' );
+		}
+
 		$scan_files = self::scan_upload_folder( $scan_dir );
 
 		// Build a set of file paths already enqueued so we don't list them twice.
