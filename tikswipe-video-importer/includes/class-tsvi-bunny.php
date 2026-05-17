@@ -457,19 +457,23 @@ class TSVI_Bunny {
 
 	/**
 	 * Process a single file upload item from the file queue.
-	 * Transcodes the local file, uploads to Bunny, creates and publishes a post.
 	 *
-	 * @param array $item { path, filename, category, author, queued_at, title? }
+	 * Transcodes the local file, uploads to Bunny, creates a post with the
+	 * CDN URL as title and status "pending" (same shape as direct URL upload).
+	 * The source file is deleted only on success — failed runs keep it so the
+	 * user can retry without re-uploading via SFTP.
+	 *
+	 * @param array $item { path, filename, author, queued_at }
 	 */
 	public static function process_single_file( $item ) {
 		$path          = $item['path'] ?? '';
 		$orig_filename = $item['filename'] ?? '';
 
 		$entry = array(
-			'date'     => current_time( 'Y-m-d H:i' ),
-			'source'   => $orig_filename,
-			'cdn_url'  => '',
-			'error'    => '',
+			'date'    => current_time( 'Y-m-d H:i' ),
+			'source'  => $orig_filename,
+			'cdn_url' => '',
+			'error'   => '',
 		);
 
 		if ( empty( $path ) || ! file_exists( $path ) ) {
@@ -495,9 +499,6 @@ class TSVI_Bunny {
 
 			$cdn_url = self::upload_local_file( $path, $filename, 'uploads' );
 
-			// Delete temp upload regardless of result.
-			@unlink( $path );
-
 			if ( is_wp_error( $cdn_url ) ) {
 				$entry['error'] = $cdn_url->get_error_message();
 				self::append_file_history( $entry );
@@ -505,19 +506,19 @@ class TSVI_Bunny {
 					'file'  => $orig_filename,
 					'error' => $cdn_url->get_error_message(),
 				) );
+				// Keep the local file so the user can fix the issue and retry.
 				return;
 			}
 
 			$entry['cdn_url'] = $cdn_url;
 
-			$title   = $item['title'] ?? $base_name;
+			// Create post: title = CDN URL, status = pending (matches direct URL upload).
 			$post_id = wp_insert_post( array(
-				'post_title'    => $title,
-				'post_content'  => '',
-				'post_status'   => 'draft', // will be flipped to publish below
-				'post_type'     => 'post',
-				'post_author'   => intval( $item['author'] ?? 0 ) ?: 1,
-				'post_category' => ! empty( $item['category'] ) ? array( intval( $item['category'] ) ) : array(),
+				'post_title'   => $cdn_url,
+				'post_content' => $cdn_url,
+				'post_status'  => 'pending',
+				'post_type'    => 'post',
+				'post_author'  => intval( $item['author'] ?? 0 ) ?: 1,
 			), true );
 
 			if ( is_wp_error( $post_id ) || ! $post_id ) {
@@ -539,13 +540,16 @@ class TSVI_Bunny {
 			}
 			delete_post_meta( $post_id, '_mtg_thumb_done' );
 
-			// Publish (fires save_post for thumb generator etc.).
-			self::publish_post( $post_id );
+			// Trigger save_post hooks (thumb generator etc.).
+			wp_update_post( array( 'ID' => $post_id ) );
 
 			$entry['post_id'] = $post_id;
 			self::append_file_history( $entry );
 
-			TSVI_Log::write( 'import', 'File upload created post #' . $post_id . ' (published)', array(
+			// Success: delete the local file now that Bunny has it.
+			@unlink( $path );
+
+			TSVI_Log::write( 'import', 'File upload created post #' . $post_id . ' (pending review)', array(
 				'cdn'      => mb_substr( $cdn_url, 0, 80 ),
 				'filename' => $orig_filename,
 			) );
