@@ -71,11 +71,17 @@ function tikswipe_child_enqueue_scripts() {
 
 			wp_add_inline_script( 'tikswipe-vast-js', '
 				if (window.TikSwipeVAST) {
-					TikSwipeVAST.config.enabled   = true;
-					TikSwipeVAST.config.tagUrl     = ' . wp_json_encode( get_theme_mod( 'wpst_vast_tag_url', '' ) ) . ';
-					TikSwipeVAST.config.proxyUrl   = ' . wp_json_encode( admin_url( 'admin-ajax.php?action=tikswipe_vast_proxy' ) ) . ';
-					TikSwipeVAST.config.frequency  = ' . intval( get_theme_mod( 'wpst_vast_frequency', 3 ) ) . ';
-					TikSwipeVAST.config.skipAfter   = ' . intval( get_theme_mod( 'wpst_vast_skip_after', 5 ) ) . ';
+					TikSwipeVAST.config.enabled              = true;
+					TikSwipeVAST.config.tagUrl                = ' . wp_json_encode( get_theme_mod( 'wpst_vast_tag_url', '' ) ) . ';
+					TikSwipeVAST.config.proxyUrl              = ' . wp_json_encode( admin_url( 'admin-ajax.php?action=tikswipe_vast_proxy' ) ) . ';
+					TikSwipeVAST.config.frequency             = ' . intval( get_theme_mod( 'wpst_vast_frequency', 3 ) ) . ';
+					TikSwipeVAST.config.skipAfter             = ' . intval( get_theme_mod( 'wpst_vast_skip_after', 5 ) ) . ';
+					TikSwipeVAST.config.midrollEnabled        = ' . ( get_theme_mod( 'wpst_vast_midroll_enabled', false ) ? 'true' : 'false' ) . ';
+					TikSwipeVAST.config.midrollPercent        = ' . intval( get_theme_mod( 'wpst_vast_midroll_percent', 20 ) ) . ';
+					TikSwipeVAST.config.midrollTagUrl         = ' . wp_json_encode( get_theme_mod( 'wpst_vast_midroll_tag_url', '' ) ) . ';
+					TikSwipeVAST.config.interstitialEnabled   = ' . ( get_theme_mod( 'wpst_interstitial_enabled', false ) ? 'true' : 'false' ) . ';
+					TikSwipeVAST.config.interstitialZoneId    = ' . wp_json_encode( get_theme_mod( 'wpst_interstitial_zone_id', '' ) ) . ';
+					TikSwipeVAST.config.interstitialSrc       = "https://a.pemsrv.com/ad-provider.js";
 				}
 			', 'after' );
 		}
@@ -355,6 +361,39 @@ function tikswipe_child_force_rand_on_ajax( $query ) {
 add_action( 'pre_get_posts', 'tikswipe_child_force_rand_on_ajax', 999 );
 
 /**
+ * Random order on search page — initial load AND AJAX load-more (when no search query).
+ *
+ * Two cases:
+ * 1. Initial page load: template-search.php sets $tikswipe_search_discovery = true.
+ *    This flag reliably tells us to randomize ALL queries during that page render
+ *    (including the parent's eval-invoked rendering function).
+ * 2. AJAX load-more: $_POST['action'] identifies the request, empty 'query' = discovery.
+ */
+function tikswipe_child_force_rand_on_search( $query ) {
+	if ( is_admin() ) {
+		return;
+	}
+
+	// Case 1: AJAX load-more for search
+	if ( defined( 'DOING_AJAX' ) && DOING_AJAX && isset( $_POST['action'] ) ) {
+		$search_actions = array( 'load_more_search_vids', 'load_more_search_pics' );
+		if ( in_array( $_POST['action'], $search_actions, true ) && empty( $_POST['query'] ) ) {
+			$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
+			$query->set( 'order', 'DESC' );
+		}
+		return;
+	}
+
+	// Case 2: Initial page load — flag set by template-search.php / search.php
+	global $tikswipe_search_discovery;
+	if ( ! empty( $tikswipe_search_discovery ) ) {
+		$query->set( 'orderby', 'RAND(' . get_random_seed() . ')' );
+		$query->set( 'order', 'DESC' );
+	}
+}
+add_action( 'pre_get_posts', 'tikswipe_child_force_rand_on_search', 999 );
+
+/**
  * Add lazy loading to grid thumbnails — only on search/favorites pages.
  */
 function tikswipe_child_lazy_load_thumbs( $attr, $attachment, $size ) {
@@ -460,16 +499,219 @@ function tikswipe_child_vast_customizer_fields() {
 			),
 		)
 	);
+
+	// --- Mid-roll settings ---
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'toggle',
+			'settings'        => 'wpst_vast_midroll_enabled',
+			'label'           => esc_html__( 'Enable Mid-roll VAST Ad', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Show a second VAST ad during content video playback.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => false,
+			'priority'        => 60,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'slider',
+			'settings'        => 'wpst_vast_midroll_percent',
+			'label'           => esc_html__( 'Mid-roll trigger (%)', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Show mid-roll when content video reaches this percentage.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => 20,
+			'choices'         => array(
+				'min'  => 5,
+				'max'  => 80,
+				'step' => 5,
+			),
+			'priority'        => 61,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_midroll_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'text',
+			'settings'        => 'wpst_vast_midroll_tag_url',
+			'label'           => esc_html__( 'Mid-roll VAST Tag URL', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Leave empty to use the same tag URL as pre-roll.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => '',
+			'priority'        => 62,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_midroll_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+
+	// --- Interstitial fallback settings ---
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'toggle',
+			'settings'        => 'wpst_interstitial_enabled',
+			'label'           => esc_html__( 'Enable Interstitial Fallback', 'tikswipe-child' ),
+			'description'     => esc_html__( 'Show an interstitial ad when VAST returns no fill.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => false,
+			'priority'        => 70,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_vast_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
+
+	Kirki::add_field(
+		'wpst_advertising_config',
+		array(
+			'type'            => 'text',
+			'settings'        => 'wpst_interstitial_zone_id',
+			'label'           => esc_html__( 'Interstitial Zone ID', 'tikswipe-child' ),
+			'description'     => esc_html__( 'ExoClick zone ID for interstitial ads.', 'tikswipe-child' ),
+			'section'         => 'wpst_advertising_section',
+			'default'         => '',
+			'priority'        => 71,
+			'active_callback' => array(
+				array(
+					'setting'  => 'wpst_interstitial_enabled',
+					'operator' => '===',
+					'value'    => true,
+				),
+			),
+		)
+	);
 }
 add_action( 'init', 'tikswipe_child_vast_customizer_fields', 20 );
+
+/**
+ * =========================================================================
+ * GA4 ANALYTICS — Customizer setting + gtag.js + event tracking
+ * =========================================================================
+ */
+
+/**
+ * Register GA4 Measurement ID customizer field.
+ */
+function tikswipe_child_ga4_customizer_fields() {
+	if ( ! class_exists( 'Kirki' ) ) {
+		return;
+	}
+
+	Kirki::add_section(
+		'tikswipe_analytics_section',
+		array(
+			'title'    => esc_html__( 'Analytics (GA4)', 'tikswipe-child' ),
+			'priority' => 200,
+		)
+	);
+
+	Kirki::add_field(
+		'tikswipe_analytics_config',
+		array(
+			'type'        => 'text',
+			'settings'    => 'tikswipe_ga4_id',
+			'label'       => esc_html__( 'GA4 Measurement ID', 'tikswipe-child' ),
+			'description' => esc_html__( 'Enter your Google Analytics 4 Measurement ID (e.g. G-XXXXXXXXXX). Leave empty to disable.', 'tikswipe-child' ),
+			'section'     => 'tikswipe_analytics_section',
+			'default'     => '',
+			'priority'    => 10,
+		)
+	);
+}
+add_action( 'init', 'tikswipe_child_ga4_customizer_fields', 20 );
+
+/**
+ * Inject gtag.js in <head> — only when GA4 ID is set AND no other
+ * plugin (Site Kit, MonsterInsights, etc.) already provides it.
+ */
+function tikswipe_child_ga4_head() {
+	$ga4_id = get_theme_mod( 'tikswipe_ga4_id', '' );
+	if ( empty( $ga4_id ) ) {
+		return;
+	}
+
+	// Skip if Google Site Kit or another analytics plugin already loads gtag.
+	if ( wp_script_is( 'google_gtagjs', 'enqueued' ) || wp_script_is( 'google_gtagjs', 'registered' ) ) {
+		return;
+	}
+
+	$ga4_id = sanitize_text_field( $ga4_id );
+	?>
+	<script async src="https://www.googletagmanager.com/gtag/js?id=<?php echo esc_attr( $ga4_id ); ?>"></script>
+	<script>
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+	gtag('config', '<?php echo esc_js( $ga4_id ); ?>');
+	</script>
+	<?php
+}
+add_action( 'wp_head', 'tikswipe_child_ga4_head', 1 );
+
+/**
+ * Enqueue analytics event tracking JS.
+ *
+ * Loads if EITHER the Customizer GA4 ID is set OR an external plugin
+ * (e.g. Google Site Kit) already provides gtag(). The JS itself checks
+ * for gtag() and exits silently if absent.
+ */
+function tikswipe_child_ga4_enqueue() {
+	wp_enqueue_script(
+		'tikswipe-analytics-js',
+		get_stylesheet_directory_uri() . '/js/analytics.js',
+		array( 'jquery' ),
+		wp_get_theme()->get( 'Version' ) . '.' . filemtime( get_stylesheet_directory() . '/js/analytics.js' ),
+		true
+	);
+}
+add_action( 'wp_enqueue_scripts', 'tikswipe_child_ga4_enqueue', 25 );
 
 /**
  * CORS proxy for VAST tag requests.
  * Fetches the VAST XML server-side to avoid cross-origin issues.
  */
 function tikswipe_child_vast_proxy() {
-	$url = get_theme_mod( 'wpst_vast_tag_url', '' );
+	// Accept dynamic VAST URL via query param (for mid-roll with different tag)
+	// but only allow URLs from known ad networks for security.
+	$url = isset( $_GET['vast_url'] ) ? esc_url_raw( $_GET['vast_url'] ) : '';
+	if ( empty( $url ) ) {
+		$url = get_theme_mod( 'wpst_vast_tag_url', '' );
+	}
+
 	if ( ! $url ) {
+		wp_die( '' );
+	}
+
+	// Security: only proxy requests to known ad network domains.
+	$allowed_hosts = array( 'syndication.exoclick.com', 'syndication.exosrv.com', 'ads.exoclick.com', 'main.exoclick.com', 'a.pemsrv.com', 'a.magsrv.com' );
+	$host          = wp_parse_url( $url, PHP_URL_HOST );
+	if ( ! $host || ! in_array( $host, $allowed_hosts, true ) ) {
 		wp_die( '' );
 	}
 

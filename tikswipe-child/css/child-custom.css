@@ -18,22 +18,26 @@
     }
     /* Progress bar: follow 480px */
     .wpst-progress-bar {
+        width: 100% !important;
         max-width: 480px !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
         right: auto !important;
+        margin: 0 !important;
     }
-    /* Swiper arrows: pull inside the 480px container, closer together */
+    /* Swiper arrows: same column as sidebar icons, higher up */
     .swiper-button-prev,
     .swiper-button-next {
-        right: -50px !important;
+        right: 18px !important;
         left: auto !important;
     }
     .swiper-button-prev {
-        top: calc(50% - 30px) !important;
+        top: calc(50% - 140px) !important;
+        transform: translateY(-50%) !important;
     }
     .swiper-button-next {
-        top: calc(50% + 30px) !important;
+        top: calc(50% - 95px) !important;
+        transform: translateY(-50%) !important;
     }
 }
 
@@ -128,9 +132,9 @@ select,
 .wpst-fullscreen-controls {
     display: none;
     position: absolute;
-    top: 15px;
+    bottom: 80px;
     right: 15px;
-    z-index: 3;
+    z-index: 100;
     flex-direction: column;
     gap: 10px;
 }
@@ -387,8 +391,8 @@ body.media-body .swiper-slide.wpst-fullscreen::after {
     }
     .swiper-button-prev:after,
     .swiper-button-next:after {
-        width: 22px !important;
-        height: 22px !important;
+        width: 26px !important;
+        height: 26px !important;
     }
 }
 
@@ -817,7 +821,6 @@ body.page-template-template-favorites-php footer {
     left: 50% !important;
     transform: translateX(-50%) !important;
     width: 100% !important;
-    max-width: 1200px !important;
     z-index: 10 !important;
     background-color: #000 !important;
 }
@@ -976,7 +979,7 @@ body.page-template-template-favorites-php main {
 .wpst-vast-overlay {
     position: absolute;
     inset: 0;
-    z-index: 100;
+    z-index: 200;
     background: #000;
 }
 .wpst-vast-video {
@@ -1015,6 +1018,25 @@ body.page-template-template-favorites-php main {
 .wpst-vast-skip-locked {
     opacity: .45;
     pointer-events: none;
+}
+.wpst-vast-mute {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0,0,0,.7);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    z-index: 102;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    transition: background .2s;
+}
+.wpst-vast-mute:hover {
+    background: rgba(255,255,255,.2);
 }
 .wpst-vast-clickarea {
     position: absolute;

@@ -106,7 +106,6 @@ jQuery(document).ready(function () {
 				return;
 			}
 
-			// Only autoplay the video in the currently active slide, not all videos at once.
 			var isActiveSlide = videoPlayer
 				.closest('.swiper-slide')
 				.hasClass('swiper-slide-active');
@@ -121,16 +120,15 @@ jQuery(document).ready(function () {
 					post_id: videoPostId,
 				},
 				dataType: 'json',
-				beforeSend: function () {},
 				success: function (response) {
 					var player = videojs(videoPlayerId, {
 						playsinline: true,
 						muted: globalMuted,
 						autoplay: shouldAutoplay,
 						controls: true,
-						loop: true,
+						loop: false,
 						responsive: true,
-						preload: 'auto',
+						preload: 'none',
 						textTrackSettings: false,
 					});
 					player.poster(response.video_poster_url);
@@ -139,6 +137,12 @@ jQuery(document).ready(function () {
 						src: response.video_url,
 					});
 					videoPlayer.addClass('player-loaded');
+
+					// Loop: replay from buffer/cache instead of re-downloading.
+					player.on('ended', function () {
+						player.currentTime(0);
+						player.play();
+					});
 
 					// Sync mute icon for this slide
 					var parentSlide = videoPlayer.closest('.swiper-slide');

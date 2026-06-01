@@ -2,10 +2,20 @@
 	get_header();
 	$search_query      = esc_html( get_search_query() );
 	$paged             = ( get_query_var( 'paged' ) ) ? get_query_var( 'paged' ) : 1;
+
+	// Random order when no search query (discovery mode)
+	$orderby = 'ID';
+	if ( empty( $search_query ) ) {
+		$orderby = 'RAND(' . get_random_seed() . ')';
+		// Flag: tells pre_get_posts to randomize parent's rendering queries too
+		global $tikswipe_search_discovery;
+		$tikswipe_search_discovery = true;
+	}
+
 	$vids_args         = array(
 		'post_type'      => 'post',
 		'post_status'    => 'publish',
-		'orderby'        => 'ID',
+		'orderby'        => $orderby,
 		'order'          => 'DESC',
 		'posts_per_page' => 12,
 		's'              => $search_query,
